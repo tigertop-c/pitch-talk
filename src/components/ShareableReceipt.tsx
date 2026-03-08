@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
-import { Share2, Copy, Check, Twitter, MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { MessageCircle, Instagram } from "lucide-react";
 
 export interface PredictionRecord {
   ballLabel: string;
@@ -23,7 +22,6 @@ export interface ReceiptData {
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
-  const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const getTitle = (accuracy: number) => {
@@ -44,14 +42,23 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
     window.open(`https://wa.me/?text=${encodeURIComponent(shareText + "\n" + shareUrl)}`, "_blank");
   };
 
-  const handleTwitter = () => {
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, "_blank");
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(shareText + "\n" + shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleInstagram = async () => {
+    // Use Web Share API if available (works on mobile for IG Stories)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "PitchTalk Scorecard",
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (e) {
+        // User cancelled or not supported
+      }
+    }
+    // Fallback: copy text and prompt user
+    await navigator.clipboard.writeText(shareText + "\n" + shareUrl);
+    alert("Scorecard copied! Paste it in your Instagram Story ✨");
   };
 
   return (
@@ -63,12 +70,10 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
     >
       {/* The Card */}
       <div ref={cardRef} className="ios-card p-5 relative overflow-hidden">
-        {/* Background decoration */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-neon/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
         <div className="relative z-10">
-          {/* Header */}
           <div className="text-center mb-4">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1">
               Your Scorecard
@@ -76,7 +81,6 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
             <p className="text-[12px] text-muted-foreground">{data.matchTitle}</p>
           </div>
 
-          {/* Big Stats */}
           <div className="flex items-center justify-center gap-6 mb-4">
             <div className="text-center">
               <p className="text-3xl font-black text-foreground">{data.correctPicks}/{data.totalBalls}</p>
@@ -94,14 +98,12 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
             </div>
           </div>
 
-          {/* Title Badge */}
           <div className="text-center mb-4">
             <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-secondary ${color}`}>
               {title}
             </span>
           </div>
 
-          {/* Ball-by-ball mini grid */}
           <div className="flex flex-wrap gap-1 justify-center mb-3">
             {data.predictions.map((p, i) => (
               <div
@@ -120,38 +122,33 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
             ))}
           </div>
 
-          {/* Branding */}
           <p className="text-center text-[9px] text-muted-foreground/50 font-medium tracking-wider">
             PITCHTALK • PREDICT EVERY BALL
           </p>
         </div>
       </div>
 
-      {/* Share Buttons */}
+      {/* Share Buttons — WhatsApp + Instagram only */}
       <div className="flex gap-2 mt-3">
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={handleWhatsApp}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-[hsl(142,70%,45%)] text-white font-semibold text-[12px] rounded-xl"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-[12px]"
+          style={{ backgroundColor: "hsl(142, 70%, 45%)", color: "white" }}
         >
           <MessageCircle size={16} />
           WhatsApp
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={handleTwitter}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-foreground text-background font-semibold text-[12px] rounded-xl"
+          onClick={handleInstagram}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-[12px] text-primary-foreground"
+          style={{
+            background: "linear-gradient(45deg, hsl(37, 97%, 55%), hsl(333, 80%, 55%), hsl(270, 80%, 55%))",
+          }}
         >
-          <Twitter size={16} />
-          Twitter / X
-        </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={handleCopy}
-          className="flex items-center justify-center gap-1.5 py-3 px-4 bg-secondary text-foreground font-semibold text-[12px] rounded-xl"
-        >
-          {copied ? <Check size={16} className="text-neon" /> : <Copy size={16} />}
-          {copied ? "Copied!" : "Copy"}
+          <Instagram size={16} />
+          Instagram
         </motion.button>
       </div>
     </motion.div>

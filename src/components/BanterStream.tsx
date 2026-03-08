@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
+import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
 import ChatInput from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
+import { isSoundMuted } from "@/lib/sounds";
 
 interface BallBlock {
   id: number;
@@ -22,15 +24,13 @@ interface ChatItem {
   avatar: string;
   text: string;
   timestamp: string;
+  isSystem?: boolean;
 }
 
-const USERS = [
-  { name: "Rahul", avatar: "🔥" },
-  { name: "Priya", avatar: "💅" },
-  { name: "Arjun", avatar: "🏏" },
-  { name: "Sneha", avatar: "⚡" },
-  { name: "Vikram", avatar: "🎯" },
-];
+export interface FriendDef {
+  name: string;
+  avatar: string;
+}
 
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
 
@@ -47,7 +47,6 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
 };
 
 const LOCK_TIME = 15;
-
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 interface BanterStreamProps {
@@ -56,21 +55,36 @@ interface BanterStreamProps {
   onHype?: (type: "four" | "six" | "wicket") => void;
   onPredictionResolved?: (record: PredictionRecord) => void;
   onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number }>) => void;
+  soundMuted: boolean;
+  activeFriends: FriendDef[];
+  onOverComplete?: (overNum: number, participation: Record<string, boolean>) => void;
+  allPlayerStandings: { name: string; avatar: string; wins: number; total: number; accuracy: number }[];
 }
 
-const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate }: BanterStreamProps) => {
+const BanterStream = ({
+  match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
+  soundMuted, activeFriends, onOverComplete, allPlayerStandings,
+}: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
+  const [overSummaries, setOverSummaries] = useState<{ afterBallId: number; data: OverSummaryData }[]>([]);
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
-    () => Object.fromEntries(USERS.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
+    () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const ballCountRef = useRef(0);
   const countdownRef = useRef<ReturnType<typeof setInterval>>();
   const activeBallIdRef = useRef<number | null>(null);
+
+  // Over tracking
+  const legalBallsThisOver = useRef(0);
+  const currentOverNum = useRef(0);
+  const overFriendResults = useRef<Record<string, { correct: number; total: number }>>({});
+  const overParticipation = useRef<Record<string, boolean>>({});
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -78,11 +92,22 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
     }, 100);
   };
 
+  // Update userScores when new friends join
+  useEffect(() => {
+    setUserScores(prev => {
+      const next = { ...prev };
+      activeFriends.forEach(f => {
+        if (!next[f.name]) next[f.name] = { wins: 0, total: 0, streak: 0 };
+      });
+      return next;
+    });
+  }, [activeFriends]);
+
   const addFriendPicks = useCallback((ballId: number) => {
-    const shuffledUsers = [...USERS].sort(() => Math.random() - 0.5).slice(0, 3 + Math.floor(Math.random() * 2));
+    const friends = [...activeFriends].sort(() => Math.random() - 0.5).slice(0, Math.min(activeFriends.length, 3 + Math.floor(Math.random() * 2)));
     const delays = [1500, 3000, 5000, 7000, 8500];
 
-    shuffledUsers.forEach((user, i) => {
+    friends.forEach((user, i) => {
       setTimeout(() => {
         const pick = PICK_LABELS[Math.floor(Math.random() * PICK_LABELS.length)];
         setBalls(prev => prev.map(b =>
@@ -90,21 +115,36 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
             ? { ...b, friendPicks: [...b.friendPicks, { name: user.name, avatar: user.avatar, pick }] }
             : b
         ));
+        overParticipation.current[user.name] = true;
         scrollToBottom();
       }, delays[i] || 2000);
     });
-  }, []);
+  }, [activeFriends]);
+
+  const checkPickWon = (pick: string, result: string) =>
+    (pick === "Dot" && result === "dot") ||
+    (pick === "Boundary" && result === "four") ||
+    (pick === "Six" && result === "six") ||
+    (pick === "Single" && result === "single") ||
+    (pick === "Two" && result === "double") ||
+    (pick === "Three" && result === "triple") ||
+    (pick === "Wicket" && result === "wicket") ||
+    (pick === "Wide" && result === "wide") ||
+    (pick === "No Ball" && result === "noball");
 
   const resolveBall = useCallback((ballId: number) => {
     const event = onNextBall();
     ballCountRef.current += 1;
+    const isLegal = event.result !== "wide" && event.result !== "noball";
 
-    // Play bat sound on every ball result
-    try {
-      const audio = new Audio("/sounds/cricket_bat.mp3");
-      audio.volume = 0.5;
-      audio.play();
-    } catch (e) { /* audio not supported */ }
+    // Play bat sound (respects mute)
+    if (!isSoundMuted()) {
+      try {
+        const audio = new Audio("/sounds/cricket_bat.mp3");
+        audio.volume = 0.5;
+        audio.play();
+      } catch (e) {}
+    }
 
     const result: BallResult = { label: event.label, type: event.result };
 
@@ -113,80 +153,59 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
       setTimeout(() => setShakeScreen(false), 600);
       onHype?.(event.result as "four" | "six" | "wicket");
 
-      // Play IPL horn for 3 seconds with gradual fade
-      try {
-        const horn = new Audio("/sounds/ipl_horn.mp3");
-        horn.volume = 0.6;
-        horn.play();
-        const fadeStart = 2000;
-        const fadeDuration = 1000;
-        const fadeSteps = 20;
-        setTimeout(() => {
-          let step = 0;
-          const interval = setInterval(() => {
-            step++;
-            horn.volume = Math.max(0, 0.6 * (1 - step / fadeSteps));
-            if (step >= fadeSteps) {
-              clearInterval(interval);
-              horn.pause();
-              horn.currentTime = 0;
-            }
-          }, fadeDuration / fadeSteps);
-        }, fadeStart);
-      } catch (e) { /* audio not supported */ }
+      if (!isSoundMuted()) {
+        try {
+          const horn = new Audio("/sounds/ipl_horn.mp3");
+          horn.volume = 0.6;
+          horn.play();
+          setTimeout(() => {
+            let step = 0;
+            const interval = setInterval(() => {
+              step++;
+              horn.volume = Math.max(0, 0.6 * (1 - step / 20));
+              if (step >= 20) { clearInterval(interval); horn.pause(); horn.currentTime = 0; }
+            }, 50);
+          }, 2000);
+        } catch (e) {}
+      }
     }
-    // Determine if user's pick was correct
+
+    // Determine user's pick result
     let userWon: boolean | null = null;
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       if (ball?.selected) {
-        userWon = (ball.selected === "Dot" && event.result === "dot") ||
-                  (ball.selected === "Boundary" && event.result === "four") ||
-                  (ball.selected === "Six" && event.result === "six") ||
-                  (ball.selected === "Single" && event.result === "single") ||
-                  (ball.selected === "Two" && event.result === "double") ||
-                  (ball.selected === "Three" && event.result === "triple") ||
-                  (ball.selected === "Wicket" && event.result === "wicket") ||
-                  (ball.selected === "Wide" && event.result === "wide") ||
-                  (ball.selected === "No Ball" && event.result === "noball");
+        userWon = checkPickWon(ball.selected, event.result);
       }
       return prev;
     });
 
+    // Resolve all picks
     setBalls(prev => prev.map(b => {
       if (b.id === ballId) {
         const updatedPicks = b.friendPicks.map(fp => ({
           ...fp,
-          won: (fp.pick === "Dot" && event.result === "dot") ||
-               (fp.pick === "Boundary" && event.result === "four") ||
-               (fp.pick === "Six" && event.result === "six") ||
-               (fp.pick === "Single" && event.result === "single") ||
-               (fp.pick === "Two" && event.result === "double") ||
-               (fp.pick === "Three" && event.result === "triple") ||
-               (fp.pick === "Wicket" && event.result === "wicket") ||
-               (fp.pick === "Wide" && event.result === "wide") ||
-               (fp.pick === "No Ball" && event.result === "noball"),
+          won: checkPickWon(fp.pick, event.result),
         }));
         return { ...b, predictionState: "resolved" as PredictionState, result, friendPicks: updatedPicks };
       }
       return b;
     }));
 
+    // Update friend scores + over tracking
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       if (ball) {
         const scoreUpdates: Record<string, { won: boolean }> = {};
         ball.friendPicks.forEach(fp => {
-          const won = (fp.pick === "Dot" && event.result === "dot") ||
-                      (fp.pick === "Boundary" && event.result === "four") ||
-                      (fp.pick === "Six" && event.result === "six") ||
-                      (fp.pick === "Single" && event.result === "single") ||
-                      (fp.pick === "Two" && event.result === "double") ||
-                      (fp.pick === "Three" && event.result === "triple") ||
-                      (fp.pick === "Wicket" && event.result === "wicket") ||
-                      (fp.pick === "Wide" && event.result === "wide") ||
-                      (fp.pick === "No Ball" && event.result === "noball");
+          const won = checkPickWon(fp.pick, event.result);
           scoreUpdates[fp.name] = { won };
+          // Track over results
+          if (!overFriendResults.current[fp.name]) {
+            overFriendResults.current[fp.name] = { correct: 0, total: 0 };
+          }
+          overFriendResults.current[fp.name].total += 1;
+          if (won) overFriendResults.current[fp.name].correct += 1;
         });
         setUserScores(prev => {
           const next = { ...prev };
@@ -206,7 +225,7 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
       return prev;
     });
 
-    // Report prediction to parent for receipts
+    // Report prediction to parent
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       onPredictionResolved?.({
@@ -219,12 +238,52 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
       return prev;
     });
 
+    // Check end of over
+    if (isLegal) {
+      legalBallsThisOver.current += 1;
+      if (legalBallsThisOver.current >= 6) {
+        currentOverNum.current += 1;
+        const overNum = currentOverNum.current;
+
+        // Find over MVP (among friends who participated)
+        const friendResults = { ...overFriendResults.current };
+        let mvp: OverSummaryData["overMvp"] = null;
+        let maxCorrect = 0;
+        Object.entries(friendResults).forEach(([name, r]) => {
+          if (r.correct > maxCorrect) {
+            maxCorrect = r.correct;
+            const friend = activeFriends.find(f => f.name === name);
+            mvp = { name, avatar: friend?.avatar || "🏏", correct: r.correct, total: r.total };
+          }
+        });
+
+        // Create over summary
+        const summaryData: OverSummaryData = {
+          overNumber: overNum,
+          overMvp: mvp,
+          standings: allPlayerStandings,
+        };
+
+        setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
+
+        // Report participation to parent for inactivity tracking
+        onOverComplete?.(overNum, { ...overParticipation.current });
+
+        // Reset over tracking
+        legalBallsThisOver.current = 0;
+        overFriendResults.current = {};
+        overParticipation.current = {};
+      }
+    }
+
+    // Banter messages
     const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
 
+    const friendsList = activeFriends;
     for (let i = 0; i < numMessages; i++) {
-      const user = USERS[Math.floor(Math.random() * USERS.length)];
+      const user = friendsList[Math.floor(Math.random() * friendsList.length)];
       idRef.current += 1;
       const chatId = idRef.current;
       setTimeout(() => {
@@ -240,16 +299,9 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
       }, 500 + i * 800);
     }
 
-    setTimeout(() => {
-      setWaitingForNext(true);
-      scrollToBottom();
-    }, numMessages * 800 + 1500);
-
-    setTimeout(() => {
-      setWaitingForNext(false);
-      startNewBall();
-    }, numMessages * 800 + 5000);
-  }, [onNextBall]);
+    setTimeout(() => { setWaitingForNext(true); scrollToBottom(); }, numMessages * 800 + 1500);
+    setTimeout(() => { setWaitingForNext(false); startNewBall(); }, numMessages * 800 + 5000);
+  }, [onNextBall, activeFriends, allPlayerStandings]);
 
   const startNewBall = useCallback(() => {
     idRef.current += 1;
@@ -324,23 +376,46 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
   }, []);
 
   useEffect(() => {
+    // Initial system message about sounds
+    idRef.current += 1;
+    setChats([{
+      id: idRef.current,
+      parentBallId: 0,
+      user: "PitchTalk",
+      avatar: "🏏",
+      text: "🔊 Sound effects are ON! Use the 🔇 button in the header to mute anytime.",
+      timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+      isSystem: true,
+    }]);
     startNewBall();
     return () => clearInterval(countdownRef.current);
   }, []);
 
-  const renderItems: { type: "ball" | "chat"; ball?: BallBlock; chat?: ChatItem }[] = [];
+  // Build render items
+  const renderItems: { type: "ball" | "chat" | "over-summary"; ball?: BallBlock; chat?: ChatItem; overSummary?: OverSummaryData }[] = [];
+  
+  // Add initial system chats (parentBallId === 0)
+  chats.filter(c => c.parentBallId === 0).forEach(chat => {
+    renderItems.push({ type: "chat", chat });
+  });
+
   balls.forEach(ball => {
     renderItems.push({ type: "ball", ball });
     chats.filter(c => c.parentBallId === ball.id).forEach(chat => {
       renderItems.push({ type: "chat", chat });
     });
+    // Check for over summary after this ball
+    const summary = overSummaries.find(s => s.afterBallId === ball.id);
+    if (summary) {
+      renderItems.push({ type: "over-summary", overSummary: summary.data });
+    }
   });
 
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
       <div ref={scrollRef} className="flex-1 overflow-y-auto pb-2">
         <AnimatePresence initial={false}>
-          {renderItems.map((item) => {
+          {renderItems.map((item, idx) => {
             if (item.type === "ball" && item.ball) {
               const b = item.ball;
               return (
@@ -359,9 +434,14 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
               );
             }
 
+            if (item.type === "over-summary" && item.overSummary) {
+              return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} />;
+            }
+
             if (item.type === "chat" && item.chat) {
               const c = item.chat;
               const isYou = c.user === "You";
+              const isSystem = c.isSystem;
               return (
                 <motion.div
                   key={`chat-${c.id}`}
@@ -371,13 +451,17 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
                   className="px-5 py-1"
                 >
                   <div className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary text-[11px] flex-shrink-0">
+                    <div className={`w-7 h-7 flex items-center justify-center rounded-full text-[11px] flex-shrink-0 ${
+                      isSystem ? "bg-primary/15" : "bg-secondary"
+                    }`}>
                       {c.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-[12px] font-semibold ${isYou ? "text-primary" : "text-foreground"}`}>{c.user}</span>
-                        {!isYou && userScores[c.user]?.total > 0 && (
+                        <span className={`text-[12px] font-semibold ${
+                          isSystem ? "text-primary" : isYou ? "text-primary" : "text-foreground"
+                        }`}>{c.user}</span>
+                        {!isYou && !isSystem && userScores[c.user]?.total > 0 && (
                           <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
                             {userScores[c.user].wins}/{userScores[c.user].total}
                           </span>
@@ -386,7 +470,9 @@ const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFrien
                           {c.timestamp}
                         </span>
                       </div>
-                      <p className="text-[14px] mt-0.5 leading-relaxed text-foreground">{c.text}</p>
+                      <p className={`text-[14px] mt-0.5 leading-relaxed ${
+                        isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
+                      }`}>{c.text}</p>
                     </div>
                   </div>
                 </motion.div>
