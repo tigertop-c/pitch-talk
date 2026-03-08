@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Share2 } from "lucide-react";
+import ShareableReceipt, { type ReceiptData, type PredictionRecord } from "./ShareableReceipt";
 
 interface ShameCard {
   id: number;
@@ -21,57 +22,79 @@ const SHAME_DATA: ShameCard[] = [
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 const handleShare = (card: ShameCard) => {
-  const text = `🏏 THE SLEDGE - Wall of Shame ${card.emoji}\n\n${card.user} said: "${card.claim}"\n→ Result: ${card.result}\n\nGet rekt. 💀`;
+  const text = `🏏 PitchTalk - Wall of Shame ${card.emoji}\n\n${card.user} said: "${card.claim}"\n→ Result: ${card.result}\n\nGet rekt. 💀`;
   const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url, "_blank");
 };
 
-const ReceiptsScreen = () => {
+interface ReceiptsScreenProps {
+  receiptData?: ReceiptData;
+}
+
+const ReceiptsScreen = ({ receiptData }: ReceiptsScreenProps) => {
   return (
-    <div className="flex-1 overflow-y-auto p-4">
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold text-foreground tracking-tight">
-          🏆 Wall of Shame
-        </h2>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Where bad takes live forever
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {SHAME_DATA.map((card, i) => (
-          <motion.div
-            key={card.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...spring, delay: i * 0.08 }}
-            className="ios-card p-4"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-[12px] font-semibold text-primary">
-                {card.user} said:
-              </span>
-              <span className="text-2xl">{card.emoji}</span>
-            </div>
-
-            <p className="text-[15px] font-semibold text-foreground mb-1.5 italic">
-              "{card.claim}"
+    <div className="flex-1 overflow-y-auto pb-2">
+      {/* Your Scorecard */}
+      {receiptData && receiptData.totalBalls > 0 && (
+        <div className="pt-4">
+          <div className="px-4 mb-3">
+            <h2 className="text-lg font-bold text-foreground tracking-tight">
+              📊 Your Scorecard
+            </h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Share your prediction receipts
             </p>
+          </div>
+          <ShareableReceipt data={receiptData} />
+        </div>
+      )}
 
-            <div className="flex items-center gap-2 mb-3.5">
-              <span className="text-[12px] text-muted-foreground">→ Result:</span>
-              <span className="text-[12px] font-semibold text-neon">{card.result}</span>
-            </div>
+      {/* Wall of Shame */}
+      <div className="px-4 pt-2">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-foreground tracking-tight">
+            💀 Wall of Shame
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Where bad takes live forever
+          </p>
+        </div>
 
-            <button
-              onClick={() => handleShare(card)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-semibold text-[13px] rounded-xl transition-transform duration-150 active:scale-[0.97]"
+        <div className="space-y-3">
+          {SHAME_DATA.map((card, i) => (
+            <motion.div
+              key={card.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...spring, delay: i * 0.08 }}
+              className="ios-card p-4"
             >
-              <Share2 size={15} />
-              Share to WhatsApp
-            </button>
-          </motion.div>
-        ))}
+              <div className="flex items-start justify-between mb-2">
+                <span className="text-[12px] font-semibold text-primary">
+                  {card.user} said:
+                </span>
+                <span className="text-2xl">{card.emoji}</span>
+              </div>
+
+              <p className="text-[14px] font-semibold text-foreground mb-1.5 italic">
+                "{card.claim}"
+              </p>
+
+              <div className="flex items-center gap-2 mb-3.5">
+                <span className="text-[11px] text-muted-foreground">→ Result:</span>
+                <span className="text-[11px] font-semibold text-neon">{card.result}</span>
+              </div>
+
+              <button
+                onClick={() => handleShare(card)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-semibold text-[12px] rounded-xl transition-transform duration-150 active:scale-[0.97]"
+              >
+                <Share2 size={14} />
+                Share to WhatsApp
+              </button>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );
