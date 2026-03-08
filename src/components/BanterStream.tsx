@@ -105,9 +105,12 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
         const updatedPicks = b.friendPicks.map(fp => ({
           ...fp,
           won: (fp.pick === "Dot" && event.result === "dot") ||
-               (fp.pick === "Boundary" && (event.result === "four" || event.result === "six")) ||
+               (fp.pick === "Boundary" && event.result === "four") ||
+               (fp.pick === "Six" && event.result === "six") ||
                (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
-               (fp.pick === "Wicket" && event.result === "wicket"),
+               (fp.pick === "Wicket" && event.result === "wicket") ||
+               (fp.pick === "Wide" && event.result === "wide") ||
+               (fp.pick === "No Ball" && event.result === "noball"),
         }));
         return { ...b, predictionState: "resolved" as PredictionState, result, friendPicks: updatedPicks };
       }
