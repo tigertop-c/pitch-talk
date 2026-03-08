@@ -14,7 +14,7 @@ interface PreGameIntroProps {
   roomId: string;
 }
 
-type Stage = "welcome" | "team-pick" | "toss" | "target" | "starting";
+type Stage = "welcome" | "toss" | "target" | "starting";
 
 const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
@@ -38,7 +38,6 @@ function useCountdown(targetDate: Date) {
 const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId }: PreGameIntroProps) => {
   const [stage, setStage] = useState<Stage>("welcome");
   const [userTeam, setUserTeam] = useState<TeamId | null>(null);
-  const [matchWinner, setMatchWinner] = useState<string | null>(null);
   const [tossWinner, setTossWinner] = useState<string | null>(null);
   const [tossResult, setTossResult] = useState<string | null>(null);
   const [runTarget, setRunTarget] = useState<string | null>(null);
@@ -48,14 +47,9 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
 
+  // After team pick + toss pick, animate the toss
   useEffect(() => {
-    if (userTeam && stage === "welcome") {
-      setStage("team-pick");
-    }
-  }, [userTeam, stage]);
-
-  useEffect(() => {
-    if (matchWinner && tossWinner && stage === "team-pick") {
+    if (userTeam && tossWinner && stage === "welcome") {
       const timer = setTimeout(() => {
         const winner = Math.random() > 0.5 ? team1.name : team2.name;
         setTossResult(winner);
@@ -63,7 +57,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [matchWinner, tossWinner, stage, team1.name, team2.name]);
+  }, [userTeam, tossWinner, stage, team1.name, team2.name]);
 
   useEffect(() => {
     if (runTarget && stage === "toss") {
@@ -101,13 +95,13 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   }, [stage]);
 
   const handleInviteWhatsApp = () => {
-    const text = `🏏 Join my PitchTalk room for ${team1.short} vs ${team2.short}! Predict every ball, talk trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
+    const text = `🗣️ Join my Sledge room for ${team1.short} vs ${team2.short}! Predict every ball, talk maximum trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const PickButton = ({
-    label, selected, onPick, accent = false,
-  }: { label: string; selected: boolean; onPick: () => void; accent?: boolean }) => (
+    label, selected, onPick,
+  }: { label: string; selected: boolean; onPick: () => void }) => (
     <motion.button
       whileTap={{ scale: 0.96 }}
       onClick={onPick}
@@ -160,7 +154,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
             IPL 2025 • Match {matchNumber}
           </motion.p>
 
-          {/* Countdown to match */}
+          {/* Countdown */}
           <motion.div
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -200,7 +194,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
         >
           {[
             { emoji: "🎯", text: "Predict every ball" },
-            { emoji: "👀", text: "Compete with friends" },
+            { emoji: "🗣️", text: "Sledge your mates" },
             { emoji: "🧾", text: "Keep the receipts" },
           ].map((s, i) => (
             <div key={i} className="flex-1 py-3 px-2 ios-card">
@@ -212,7 +206,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
 
         {/* Stages */}
         <AnimatePresence mode="wait">
-          {(stage === "welcome" || stage === "team-pick") && (
+          {stage === "welcome" && (
             <motion.div
               key="welcome"
               initial={{ opacity: 0, y: 20 }}
@@ -223,8 +217,8 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
             >
               {/* Team selection */}
               <div className="p-4 ios-card">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Your Team</p>
-                <p className="text-[15px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Pick Your Side</p>
+                <p className="text-[15px] font-semibold text-foreground mb-3">Who are you sledging for?</p>
                 <div className="grid grid-cols-2 gap-2">
                   <motion.button
                     whileTap={{ scale: 0.96 }}
@@ -258,41 +252,13 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                     transition={spring}
                     className="text-[11px] text-primary mt-2.5 text-center font-medium"
                   >
-                    {userTeam === "DC" ? `💙 ${team1.short} fan locked in!` : `💙 ${team2.short} fan locked in!`}
+                    {userTeam === "DC" ? `💙 ${team1.short} gang locked in!` : `💙 ${team2.short} gang locked in!`}
                   </motion.p>
                 )}
               </div>
 
-              {/* Match winner */}
+              {/* Toss prediction — shows after team pick */}
               {userTeam && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={spring}
-                  className="p-4 ios-card"
-                >
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏆 Pre-match</p>
-                  <p className="text-[15px] font-semibold text-foreground mb-3">Who wins today?</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {TEAMS.map(t => (
-                      <PickButton key={t} label={t} selected={matchWinner === t} onPick={() => setMatchWinner(t)} accent />
-                    ))}
-                  </div>
-                  {matchWinner && (
-                    <motion.p
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={spring}
-                      className="text-[11px] text-primary mt-2.5 text-center font-medium"
-                    >
-                      Locked in ✓
-                    </motion.p>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Toss */}
-              {userTeam && matchWinner && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -354,7 +320,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                     transition={{ ...spring, delay: 0.2 }}
                     className="inline-block mt-2.5 text-[11px] font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full"
                   >
-                    You called it! 🔥
+                    You called it! Receipt kept 🧾🔥
                   </motion.span>
                 )}
               </div>
@@ -371,7 +337,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {RUN_TARGETS.map(t => (
-                    <PickButton key={t} label={t} selected={runTarget === t} onPick={() => setRunTarget(t)} accent />
+                    <PickButton key={t} label={t} selected={runTarget === t} onPick={() => setRunTarget(t)} />
                   ))}
                 </div>
               </motion.div>
@@ -390,9 +356,9 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                 animate={{ scale: [1, 1.08, 1] }}
                 transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
                 className="text-5xl"
-              >🔥</motion.div>
+              >🗣️</motion.div>
               <p className="text-xl font-bold text-foreground tracking-tight">
-                Match starting...
+                Sledging starts NOW...
               </p>
               <motion.div
                 key={countdown}
@@ -433,7 +399,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               className="w-full py-3 px-4 bg-secondary rounded-2xl text-[13px] font-semibold text-muted-foreground flex items-center justify-center gap-2 active:bg-muted transition-all duration-200"
             >
               <Users size={15} />
-              Invite more friends
+              Invite more sledgers
               <ChevronRight size={13} className={`transition-transform duration-300 ${showInvite ? "rotate-90" : ""}`} />
             </button>
 
