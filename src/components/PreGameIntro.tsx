@@ -129,15 +129,15 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.2 }}
             className="flex items-center justify-center gap-4 mb-3"
           >
-            <img src={dcLogo} alt="Delhi Capitals" className="w-14 h-14 object-contain" />
-            <span className="text-xl font-black text-muted-foreground tracking-tight">vs</span>
-            <img src={miLogo} alt="Mumbai Indians" className="w-14 h-14 object-contain" />
+            <img src={dcLogo} alt="Delhi Capitals" className="w-20 h-20 object-contain" />
+            <span className="text-2xl font-black text-muted-foreground tracking-tight">vs</span>
+            <img src={miLogo} alt="Mumbai Indians" className="w-20 h-20 object-contain" />
           </motion.div>
           <motion.h1
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ ...spring, delay: 0.3 }}
-            className="text-2xl font-bold tracking-tight text-foreground"
+            className="text-3xl font-black tracking-tight text-foreground"
           >
             DC vs MI
           </motion.h1>
