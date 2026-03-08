@@ -94,32 +94,85 @@ const WAITING_MESSAGES: Record<string, { emoji: string; messages: string[] }> = 
   overBreak: { emoji: "🔄", messages: ["Field changing ends...", "New bowler getting the ball...", "Drinks being carried out 🥤", "Strategic timeout chat happening...", "Captain setting the field..."] },
 };
 
-// Ravi Shastri / Sidhu style one-liner commentary
+// Multi-style commentary — inspired by iconic broadcasting traditions
 const COMMENTARY_LINES: Record<string, string[]> = {
   six: [
-    "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! — Ravi Shastri energy",
-    "🎙️ Six runs, and the crowd goes absolutely BERSERK! Like a tracer bullet! 🚀",
-    "🎙️ A six is like a smile — it lights up the whole ground! — Sidhu vibes ☀️",
+    // Excitable Indian style
+    "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! Absolutely ENORMOUS! 🚀",
+    "🎙️ Like a tracer bullet into the stands! The crowd is BERSERK!",
+    "🎙️ A six is like a smile — it lights up the whole ground! ☀️",
     "🎙️ That ball didn't just cross the rope, it left the ZIP CODE! 📮",
+    // Understated British style
+    "🎙️ Oh my word. That is simply… extraordinary. Into row Z, I believe. 🫖",
+    "🎙️ Well, that's been dispatched with utter contempt. Quite magnificent.",
+    "🎙️ He's picked that up off middle stump and deposited it into the car park. Dear oh dear.",
+    "🎙️ That, ladies and gentlemen, is what we call agricultural… but rather effective. 🌾",
+    // Aussie style
+    "🎙️ BANG! That's been absolutely TONKED! See ya later! 🏏💥",
+    "🎙️ That's out of the ground, mate! Grab yer passports, that ball's TRAVELLING!",
+    "🎙️ Flat bat, full face, gone like a rocket. You BEAUTY! 🇦🇺",
+    "🎙️ That's not cricket, that's DEMOLITION! The bowler needs a cuddle after that one.",
+    // West Indies style
+    "🎙️ OH YESSS! Into the PEOPLE dem! That's CALYPSO cricket, baby! 🎶",
+    "🎙️ Big man hit BIG shot! The ball gone clear outta di stadium! 🌴",
+    "🎙️ That's ENTERTAINMENT! The crowd on their feet, music in the air! 🥁",
   ],
   four: [
+    // Indian style
     "🎙️ SHOT! That's gone like a tracer bullet to the boundary! 🔥",
     "🎙️ Timing so sweet, even the bowler had to admire that one!",
-    "🎙️ A good shot is like poetry — and that was Shakespeare! — Sidhu vibes 📖",
-    "🎙️ The ball hit the bat and said GOODBYE! Glorious stroke! ✨",
+    "🎙️ A good shot is like poetry — and that was Shakespeare! 📖",
+    "🎙️ The ball kissed the bat and said GOODBYE! Glorious stroke! ✨",
+    // British style
+    "🎙️ Exquisitely done. Threaded through the covers like silk. Lovely. 🧵",
+    "🎙️ That is a PROPER cricket shot. Textbook. Coaching manual stuff.",
+    "🎙️ Oh, how pleasing to the eye. The fielder didn't even bother chasing.",
+    "🎙️ Played with soft hands and gorgeous wrists. Just delightful. ☕",
+    // Aussie style
+    "🎙️ CRACKED to the fence! No messing about, that's four all day! 💪",
+    "🎙️ Mate, the fielder just watched that go by like a bus! 🚌",
+    "🎙️ Punched off the back foot with AUTHORITY. That's class, right there.",
+    // West Indies style
+    "🎙️ LASH through the covers! Style, elegance, POWER! 🔥",
+    "🎙️ That's a FLICK of the wrists and four runs! Make it look easy, nah! 💫",
   ],
   wicket: [
+    // Indian style
     "🎙️ HE'S GONE! And the bowler is PUMPED! That's the moment of the match!",
-    "🎙️ Wickets fall like autumn leaves when the pressure mounts! — Sidhu wisdom 🍂",
+    "🎙️ Wickets fall like autumn leaves when the pressure mounts! 🍂",
     "🎙️ CLEANED HIM UP! The stumps are doing cartwheels! 🎯",
-    "🎙️ That's the end of the road for the batsman. Long walk back. Cricket is CRUEL! 😈",
+    "🎙️ That's the end of the road. Long walk back. Cricket is CRUEL! 😈",
+    // British style
+    "🎙️ Oh, he's gone. And he knows it. That was a terrible shot, really. 😬",
+    "🎙️ Bowled 'im! What a JAFFA! Absolute peach of a delivery. 🍑",
+    "🎙️ Well, that's rather ruined his afternoon, hasn't it? Off you pop.",
+    "🎙️ Stone dead. Even the batsman started walking. Nothing to see here.",
+    // Aussie style
+    "🎙️ SEE YA LATER, MATE! That's absolutely PLUMB! Walk of shame! 🚶",
+    "🎙️ Got 'im! The bowler's giving him a SEND-OFF! Love the aggression! 🔥",
+    "🎙️ RIPPED through the gate! That's knocked back middle stump, you RIPPER!",
+    // West Indies style
+    "🎙️ HE GONE! Pack yuh bags! The bowler ROARING! 🦁",
+    "🎙️ Timber! Stumps flying everywhere like Carnival decorations! 🎊",
   ],
   dot: [
-    "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! — Sidhu 😤",
+    // Indian style
+    "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! 😤",
+    "🎙️ Nothing doing! The bowler is on TOP here!",
+    // British style
+    "🎙️ Defended solidly. Nothing on offer there. Good, disciplined bowling.",
+    "🎙️ Dot ball. The squeeze is ON. Scoreboard pressure is a real thing, you know.",
+    // Aussie style
+    "🎙️ NOTHING! Can't lay bat on ball! The pressure is ON, mate! 🔒",
+    // West Indies style
+    "🎙️ Nuttin' doin'! The bowler got him TIED UP in knots! 🪢",
   ],
   noball: [
     "🎙️ NO BALL! And it's a FREE HIT! The crowd smells BLOOD! 🩸",
     "🎙️ Overstepped! That's a gift wrapped with a bow! 🎁",
+    "🎙️ Oh no no no, he's overstepped! FREE HIT coming up and the batsman is LICKING his lips! 😋",
+    "🎙️ That's sloppy, very sloppy. And now it's a free hit. The batsman will fancy this.",
+    "🎙️ NO BALL, mate! That's a freebie! Bowler's done his hammy AND overstepped! 🤦",
   ],
 };
 
