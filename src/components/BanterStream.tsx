@@ -410,6 +410,7 @@ const BanterStream = ({
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
         onOverComplete?.(overNum, { ...overParticipation.current });
+        isOverBreak.current = true;
 
         legalBallsThisOver.current = 0;
         overFriendResults.current = {};
