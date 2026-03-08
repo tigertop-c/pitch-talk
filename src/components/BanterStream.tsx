@@ -443,7 +443,7 @@ const BanterStream = ({
             }
 
             if (item.type === "over-summary" && item.overSummary) {
-              return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} />;
+              return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} onInvite={onInvite} />;
             }
 
             if (item.type === "chat" && item.chat) {
