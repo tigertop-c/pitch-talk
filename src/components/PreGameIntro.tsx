@@ -25,7 +25,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   const [showInvite, setShowInvite] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  const inviteLink = "pitchtalk.app/join/IND-vs-AUS";
+  const inviteLink = "pitchtalk.app/join/DC-vs-MI";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Join me on PitchTalk! Predict every ball live 🏏🔥 ${inviteLink}`);
