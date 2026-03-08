@@ -96,6 +96,13 @@ const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
     const event = onNextBall();
     ballCountRef.current += 1;
 
+    // Play bat sound on every ball result
+    try {
+      const audio = new Audio("/sounds/cricket_bat.mp3");
+      audio.volume = 0.5;
+      audio.play();
+    } catch (e) { /* audio not supported */ }
+
     const result: BallResult = { label: event.label, type: event.result };
 
     if (event.result === "wicket" || event.result === "six" || event.result === "four") {
