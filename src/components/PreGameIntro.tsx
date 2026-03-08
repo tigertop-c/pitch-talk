@@ -95,7 +95,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   }, [stage]);
 
   const handleInviteWhatsApp = () => {
-    const text = `🏏 Join my Pitch Talk room for ${team1.short} vs ${team2.short}! Predict every ball, banter with the squad 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
+    const text = `🏏 Join my Pitch Talk room for ${team1.short} vs ${team2.short}! Predict every ball, play with the squad 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -194,7 +194,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
         >
           {[
             { emoji: "🎯", text: "Predict every ball" },
-            { emoji: "🗣️", text: "Banter with your squad" },
+            { emoji: "🗣️", text: "Play with your squad" },
             { emoji: "📊", text: "Track your record" },
           ].map((s, i) => (
             <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">

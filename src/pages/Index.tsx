@@ -149,7 +149,7 @@ const Index = () => {
     }
 
     const matchLabel = selectedMatch ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}` : "DC vs MI";
-    const text = `🏏 Join my Pitch Talk room for ${matchLabel}! Predict every ball, banter with the squad 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
+    const text = `🏏 Join my Pitch Talk room for ${matchLabel}! Predict every ball, play with the squad 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }, [friends, selectedMatch, roomId]);
 

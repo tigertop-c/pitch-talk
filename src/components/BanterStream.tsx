@@ -4,7 +4,7 @@ import { ChevronDown, Reply } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
 import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
-import ChatInput, { type TeamId } from "./ChatInput";
+import ChatInput, { type TeamId, type UserChatStyle } from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
 import { isSoundMuted } from "@/lib/sounds";
 
@@ -28,6 +28,14 @@ interface ChatItem {
   isSystem?: boolean;
   replyTo?: { user: string; text: string };
   team?: TeamId;
+  isCommentaryGuess?: boolean;
+  commentaryGuessData?: {
+    correctStyle: string;
+    options: string[];
+    answered: boolean;
+    wasCorrect: boolean | null;
+    selectedOption: string | null;
+  };
 }
 
 export interface FriendDef {
@@ -38,24 +46,25 @@ export interface FriendDef {
 
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
 
-const BANTER_BY_RESULT: Record<string, string[]> = {
-  dot: ["Dot ball! Batsman's frozen 🥶", "Can't lay bat on ball 💀", "BORING! Hit something 🥱", "That's some hostile bowling 🎯"],
-  single: ["Just a single? My nan runs faster 👵", "Rotating strike, at least they're trying 😂", "Smart cricket... said no one ever 🙄"],
-  double: ["Quick two! Decent hustle 🏃‍♂️", "Running like their dinner's getting cold 🍽️"],
-  triple: ["THREE! That's proper running between wickets 🏃‍♂️💨", "Even the camera couldn't keep up!"],
-  four: ["BOUNDARY! Slapped into the covers 💥", "That ball had a family! 🔥", "Tracer bullet! Bowler's in shambles 💀"],
-  six: ["SIX! INTO THE STANDS! Get the stretcher for the bowler 🚑", "That's OUTTA HERE! 🚀", "MONSTER hit! Bowler questioning his career 😭"],
-  wicket: ["OUT! WALK OF SHAME! 🚶💀", "SEE YA! Pack your bags! 👋", "TIMBER! That's embarrassing 😂", "Bowler's absolutely buzzing 🤩"],
-  wide: ["WIDE! Can't even bowl straight 💀", "That's going to the next pitch 😂", "My 5-year-old bowls better 👶"],
-  noball: ["NO BALL! Free hit! Bowler's having a MARE 🤡", "Overstepped! Absolute clown moment 🎪", "FREE HIT! Bowler in the mud 😤"],
+// Friendly squad reactions (not toxic banter)
+const SQUAD_REACTIONS: Record<string, string[]> = {
+  dot: ["Dot ball! Keep it tight 🎯", "Pressure building! 🔒", "Nothing doing there 🏏", "Good bowling, tough to score 💪"],
+  single: ["Tick it over! Smart running 🏃", "Rotating the strike 🔄", "Every run matters here 👌"],
+  double: ["Quick two! Hustling 🏃‍♂️💨", "Great running between wickets!", "Pushed for two, good call 🙌"],
+  triple: ["THREE! What running! 🏃‍♂️💨💨", "Great hustle, that's quality cricket!"],
+  four: ["SHOT! To the boundary! 💥", "Class act right there 🔥", "Beautiful timing! ⚡", "What placement! 👏"],
+  six: ["SIX! HUGE! Into the crowd! 🚀", "That's OUT OF HERE! 🏟️", "MASSIVE hit! What power! 💪🔥"],
+  wicket: ["GONE! Big wicket! 🎯", "What a delivery! That changes things 🔴", "Huge moment in the match! ⚡", "That's the breakthrough! 👏"],
+  wide: ["Wide ball! Free runs 🎁", "Loose delivery, need to tighten up 🎯", "Extras leaking here 😬"],
+  noball: ["NO BALL! Free hit coming up! 🎯", "Overstepped! Gifted delivery 🎁", "FREE HIT! This is exciting! ⚡"],
 };
 
 // Smart reply suggestions based on what the original message says
 const REPLY_SUGGESTIONS: Record<string, string[]> = {
-  positive: ["Dream on 😂", "Relax, it's one ball", "Sure buddy 🙄", "Easy there 😏"],
-  negative: ["Cope harder 💀", "Stay salty 😂", "Tears incoming 🥲", "Rent free 😎"],
-  neutral: ["Facts though", "No cap 🧢", "Hmm debatable", "Fair point 🤝"],
-  cheeky: ["That's rich coming from you 😂", "Bold talk, weak team", "Screenshot this for later 📸", "Say that again when you're winning 😏"],
+  positive: ["Haha jinx it 😂", "Keep that energy!", "Agreed! 🔥", "Let's see 😏"],
+  negative: ["Relax, long game 🏏", "It's one ball!", "Still early 🙌", "Wait and watch 😎"],
+  neutral: ["Facts 💯", "Good point 🤝", "Hmm maybe 🤔", "True that 👌"],
+  cheeky: ["Bold prediction 😂", "Saving this for later 📸", "We'll see about that 😏", "Talk is cheap! 🏏"],
 };
 
 function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamId): string[] {
@@ -64,16 +73,13 @@ function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamI
   
   if (text.includes("six") || text.includes("shot") || text.includes("boundary") || text.includes("🚀") || text.includes("💥")) {
     return isRivalTeam 
-      ? ["Lucky shot, won't happen again 🙄", "One swallow doesn't make a summer", "Calm down it's one ball 😂"]
-      : ["YESSS! More of that please! 🔥", "That's what we came for!", "Take a bow! 🙌"];
+      ? ["One ball at a time 😏", "Respect the shot 👏", "Wait for next over 🏏"]
+      : ["YESSS! More please! 🔥", "That's what we came for!", "Take a bow! 🙌"];
   }
   if (text.includes("wicket") || text.includes("out") || text.includes("gone") || text.includes("💀") || text.includes("👋")) {
     return isRivalTeam
-      ? ["Your whole team's next 💀", "That's just the start 😈", "Wicket merchant activated 🎯"]
-      : ["Ugh, we'll come back stronger 💪", "Still got this!", "One wicket doesn't change anything 😤"];
-  }
-  if (text.includes("clown") || text.includes("embarrass") || text.includes("shame") || text.includes("🤡")) {
-    return ["Keep that energy for later 📸", "We'll see who's laughing at the end 😏", "Bold words, weak team 😂"];
+      ? ["Big moment! 🎯", "Game changer ⚡", "More of that please 🙏"]
+      : ["We'll come back stronger 💪", "Still believe!", "Long game 🏏"];
   }
   
   return isRivalTeam 
@@ -94,89 +100,91 @@ const WAITING_MESSAGES: Record<string, { emoji: string; messages: string[] }> = 
   overBreak: { emoji: "🔄", messages: ["Field changing ends...", "New bowler getting the ball...", "Drinks being carried out 🥤", "Strategic timeout chat happening...", "Captain setting the field..."] },
 };
 
-// Multi-style commentary — inspired by iconic broadcasting traditions
-const COMMENTARY_LINES: Record<string, string[]> = {
+// Commentary lines tagged with style for the guessing game
+type CommentaryStyle = "british" | "aussie" | "windies" | "indian";
+interface CommentaryLine { text: string; style: CommentaryStyle; }
+
+const COMMENTARY_LINES: Record<string, CommentaryLine[]> = {
   six: [
-    // Excitable Indian style
-    "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! Absolutely ENORMOUS! 🚀",
-    "🎙️ Like a tracer bullet into the stands! The crowd is BERSERK!",
-    "🎙️ A six is like a smile — it lights up the whole ground! ☀️",
-    "🎙️ That ball didn't just cross the rope, it left the ZIP CODE! 📮",
-    // Understated British style
-    "🎙️ Oh my word. That is simply… extraordinary. Into row Z, I believe. 🫖",
-    "🎙️ Well, that's been dispatched with utter contempt. Quite magnificent.",
-    "🎙️ He's picked that up off middle stump and deposited it into the car park. Dear oh dear.",
-    "🎙️ That, ladies and gentlemen, is what we call agricultural… but rather effective. 🌾",
-    // Aussie style
-    "🎙️ BANG! That's been absolutely TONKED! See ya later! 🏏💥",
-    "🎙️ That's out of the ground, mate! Grab yer passports, that ball's TRAVELLING!",
-    "🎙️ Flat bat, full face, gone like a rocket. You BEAUTY! 🇦🇺",
-    "🎙️ That's not cricket, that's DEMOLITION! The bowler needs a cuddle after that one.",
-    // West Indies style
-    "🎙️ OH YESSS! Into the PEOPLE dem! That's CALYPSO cricket, baby! 🎶",
-    "🎙️ Big man hit BIG shot! The ball gone clear outta di stadium! 🌴",
-    "🎙️ That's ENTERTAINMENT! The crowd on their feet, music in the air! 🥁",
+    { text: "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! Absolutely ENORMOUS! 🚀", style: "indian" },
+    { text: "🎙️ Like a tracer bullet into the stands! The crowd is BERSERK!", style: "indian" },
+    { text: "🎙️ A six is like a smile — it lights up the whole ground! ☀️", style: "indian" },
+    { text: "🎙️ That ball didn't just cross the rope, it left the ZIP CODE! 📮", style: "indian" },
+    { text: "🎙️ Oh my word. That is simply… extraordinary. Into row Z, I believe. 🫖", style: "british" },
+    { text: "🎙️ Well, that's been dispatched with utter contempt. Quite magnificent.", style: "british" },
+    { text: "🎙️ He's picked that up off middle stump and deposited it into the car park. Dear oh dear.", style: "british" },
+    { text: "🎙️ That, ladies and gentlemen, is what we call agricultural… but rather effective. 🌾", style: "british" },
+    { text: "🎙️ BANG! That's been absolutely TONKED! See ya later! 🏏💥", style: "aussie" },
+    { text: "🎙️ That's out of the ground, mate! Grab yer passports, that ball's TRAVELLING!", style: "aussie" },
+    { text: "🎙️ Flat bat, full face, gone like a rocket. You BEAUTY! 🇦🇺", style: "aussie" },
+    { text: "🎙️ That's not cricket, that's DEMOLITION! The bowler needs a cuddle after that one.", style: "aussie" },
+    { text: "🎙️ OH YESSS! Into the PEOPLE dem! That's CALYPSO cricket, baby! 🎶", style: "windies" },
+    { text: "🎙️ Big man hit BIG shot! The ball gone clear outta di stadium! 🌴", style: "windies" },
+    { text: "🎙️ That's ENTERTAINMENT! The crowd on their feet, music in the air! 🥁", style: "windies" },
   ],
   four: [
-    // Indian style
-    "🎙️ SHOT! That's gone like a tracer bullet to the boundary! 🔥",
-    "🎙️ Timing so sweet, even the bowler had to admire that one!",
-    "🎙️ A good shot is like poetry — and that was Shakespeare! 📖",
-    "🎙️ The ball kissed the bat and said GOODBYE! Glorious stroke! ✨",
-    // British style
-    "🎙️ Exquisitely done. Threaded through the covers like silk. Lovely. 🧵",
-    "🎙️ That is a PROPER cricket shot. Textbook. Coaching manual stuff.",
-    "🎙️ Oh, how pleasing to the eye. The fielder didn't even bother chasing.",
-    "🎙️ Played with soft hands and gorgeous wrists. Just delightful. ☕",
-    // Aussie style
-    "🎙️ CRACKED to the fence! No messing about, that's four all day! 💪",
-    "🎙️ Mate, the fielder just watched that go by like a bus! 🚌",
-    "🎙️ Punched off the back foot with AUTHORITY. That's class, right there.",
-    // West Indies style
-    "🎙️ LASH through the covers! Style, elegance, POWER! 🔥",
-    "🎙️ That's a FLICK of the wrists and four runs! Make it look easy, nah! 💫",
+    { text: "🎙️ SHOT! That's gone like a tracer bullet to the boundary! 🔥", style: "indian" },
+    { text: "🎙️ Timing so sweet, even the bowler had to admire that one!", style: "indian" },
+    { text: "🎙️ A good shot is like poetry — and that was Shakespeare! 📖", style: "indian" },
+    { text: "🎙️ The ball kissed the bat and said GOODBYE! Glorious stroke! ✨", style: "indian" },
+    { text: "🎙️ Exquisitely done. Threaded through the covers like silk. Lovely. 🧵", style: "british" },
+    { text: "🎙️ That is a PROPER cricket shot. Textbook. Coaching manual stuff.", style: "british" },
+    { text: "🎙️ Oh, how pleasing to the eye. The fielder didn't even bother chasing.", style: "british" },
+    { text: "🎙️ Played with soft hands and gorgeous wrists. Just delightful. ☕", style: "british" },
+    { text: "🎙️ CRACKED to the fence! No messing about, that's four all day! 💪", style: "aussie" },
+    { text: "🎙️ Mate, the fielder just watched that go by like a bus! 🚌", style: "aussie" },
+    { text: "🎙️ Punched off the back foot with AUTHORITY. That's class, right there.", style: "aussie" },
+    { text: "🎙️ LASH through the covers! Style, elegance, POWER! 🔥", style: "windies" },
+    { text: "🎙️ That's a FLICK of the wrists and four runs! Make it look easy, nah! 💫", style: "windies" },
   ],
   wicket: [
-    // Indian style
-    "🎙️ HE'S GONE! And the bowler is PUMPED! That's the moment of the match!",
-    "🎙️ Wickets fall like autumn leaves when the pressure mounts! 🍂",
-    "🎙️ CLEANED HIM UP! The stumps are doing cartwheels! 🎯",
-    "🎙️ That's the end of the road. Long walk back. Cricket is CRUEL! 😈",
-    // British style
-    "🎙️ Oh, he's gone. And he knows it. That was a terrible shot, really. 😬",
-    "🎙️ Bowled 'im! What a JAFFA! Absolute peach of a delivery. 🍑",
-    "🎙️ Well, that's rather ruined his afternoon, hasn't it? Off you pop.",
-    "🎙️ Stone dead. Even the batsman started walking. Nothing to see here.",
-    // Aussie style
-    "🎙️ SEE YA LATER, MATE! That's absolutely PLUMB! Walk of shame! 🚶",
-    "🎙️ Got 'im! The bowler's giving him a SEND-OFF! Love the aggression! 🔥",
-    "🎙️ RIPPED through the gate! That's knocked back middle stump, you RIPPER!",
-    // West Indies style
-    "🎙️ HE GONE! Pack yuh bags! The bowler ROARING! 🦁",
-    "🎙️ Timber! Stumps flying everywhere like Carnival decorations! 🎊",
+    { text: "🎙️ HE'S GONE! And the bowler is PUMPED! That's the moment of the match!", style: "indian" },
+    { text: "🎙️ Wickets fall like autumn leaves when the pressure mounts! 🍂", style: "indian" },
+    { text: "🎙️ CLEANED HIM UP! The stumps are doing cartwheels! 🎯", style: "indian" },
+    { text: "🎙️ That's the end of the road. Long walk back. Cricket is CRUEL! 😈", style: "indian" },
+    { text: "🎙️ Oh, he's gone. And he knows it. That was a terrible shot, really. 😬", style: "british" },
+    { text: "🎙️ Bowled 'im! What a JAFFA! Absolute peach of a delivery. 🍑", style: "british" },
+    { text: "🎙️ Well, that's rather ruined his afternoon, hasn't it? Off you pop.", style: "british" },
+    { text: "🎙️ Stone dead. Even the batsman started walking. Nothing to see here.", style: "british" },
+    { text: "🎙️ SEE YA LATER, MATE! That's absolutely PLUMB! Walk of shame! 🚶", style: "aussie" },
+    { text: "🎙️ Got 'im! The bowler's giving him a SEND-OFF! Love the aggression! 🔥", style: "aussie" },
+    { text: "🎙️ RIPPED through the gate! That's knocked back middle stump, you RIPPER!", style: "aussie" },
+    { text: "🎙️ HE GONE! Pack yuh bags! The bowler ROARING! 🦁", style: "windies" },
+    { text: "🎙️ Timber! Stumps flying everywhere like Carnival decorations! 🎊", style: "windies" },
   ],
   dot: [
-    // Indian style
-    "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! 😤",
-    "🎙️ Nothing doing! The bowler is on TOP here!",
-    // British style
-    "🎙️ Defended solidly. Nothing on offer there. Good, disciplined bowling.",
-    "🎙️ Dot ball. The squeeze is ON. Scoreboard pressure is a real thing, you know.",
-    // Aussie style
-    "🎙️ NOTHING! Can't lay bat on ball! The pressure is ON, mate! 🔒",
-    // West Indies style
-    "🎙️ Nuttin' doin'! The bowler got him TIED UP in knots! 🪢",
+    { text: "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! 😤", style: "indian" },
+    { text: "🎙️ Nothing doing! The bowler is on TOP here!", style: "indian" },
+    { text: "🎙️ Defended solidly. Nothing on offer there. Good, disciplined bowling.", style: "british" },
+    { text: "🎙️ Dot ball. The squeeze is ON. Scoreboard pressure is a real thing, you know.", style: "british" },
+    { text: "🎙️ NOTHING! Can't lay bat on ball! The pressure is ON, mate! 🔒", style: "aussie" },
+    { text: "🎙️ Nuttin' doin'! The bowler got him TIED UP in knots! 🪢", style: "windies" },
   ],
   noball: [
-    "🎙️ NO BALL! And it's a FREE HIT! The crowd smells BLOOD! 🩸",
-    "🎙️ Overstepped! That's a gift wrapped with a bow! 🎁",
-    "🎙️ Oh no no no, he's overstepped! FREE HIT coming up and the batsman is LICKING his lips! 😋",
-    "🎙️ That's sloppy, very sloppy. And now it's a free hit. The batsman will fancy this.",
-    "🎙️ NO BALL, mate! That's a freebie! Bowler's done his hammy AND overstepped! 🤦",
+    { text: "🎙️ NO BALL! And it's a FREE HIT! The crowd smells BLOOD! 🩸", style: "indian" },
+    { text: "🎙️ Overstepped! That's a gift wrapped with a bow! 🎁", style: "indian" },
+    { text: "🎙️ Oh no no no, he's overstepped! FREE HIT coming up and the batsman is LICKING his lips! 😋", style: "indian" },
+    { text: "🎙️ That's sloppy, very sloppy. And now it's a free hit. The batsman will fancy this.", style: "british" },
+    { text: "🎙️ NO BALL, mate! That's a freebie! Bowler's done his hammy AND overstepped! 🤦", style: "aussie" },
   ],
 };
 
-const LOCK_TIME = 15;
+const STYLE_LABELS: Record<CommentaryStyle, string> = {
+  british: "British 🫖",
+  aussie: "Aussie 🦘",
+  windies: "Caribbean 🌴",
+  indian: "Indian 🇮🇳",
+};
+
+const ALL_STYLES: CommentaryStyle[] = ["british", "aussie", "windies", "indian"];
+
+function getCommentaryOptions(correct: CommentaryStyle): string[] {
+  const others = ALL_STYLES.filter(s => s !== correct).sort(() => Math.random() - 0.5).slice(0, 2);
+  const options = [STYLE_LABELS[correct], ...others.map(s => STYLE_LABELS[s])];
+  return options.sort(() => Math.random() - 0.5);
+}
+
+const LOCK_TIME = 10;
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 interface BanterStreamProps {
@@ -216,6 +224,12 @@ const BanterStream = ({
   );
   const [replyingTo, setReplyingTo] = useState<ChatItem | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [commentaryScore, setCommentaryScore] = useState({ correct: 0, total: 0 });
+  const [userChatStyle, setUserChatStyle] = useState<UserChatStyle>("neutral");
+  const [totalUserPredictions, setTotalUserPredictions] = useState(0);
+
+  // Track user message style
+  const styleCountsRef = useRef<Record<UserChatStyle, number>>({ hype: 0, expert: 0, troll: 0, neutral: 0 });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
@@ -234,6 +248,28 @@ const BanterStream = ({
   const overWicketsRef = useRef(0);
   const overBoundariesRef = useRef(0);
   const overExtrasRef = useRef(0);
+
+  const detectStyle = useCallback((text: string) => {
+    const lower = text.toLowerCase();
+    if (lower.includes("🧠") || lower.includes("tactical") || lower.includes("should") || lower.includes("need to") || lower.includes("approach") || lower.includes("rotate")) {
+      styleCountsRef.current.expert += 1;
+    } else if (lower.includes("💀") || lower.includes("😂") || lower.includes("done") || lower.includes("shame") || lower.includes("meme") || lower.includes("sit down") || lower.includes("bye")) {
+      styleCountsRef.current.troll += 1;
+    } else if (lower.includes("🔥") || lower.includes("let's go") || lower.includes("yesss") || lower.includes("come on") || lower.includes("💪") || lower.includes("⚡")) {
+      styleCountsRef.current.hype += 1;
+    } else {
+      styleCountsRef.current.neutral += 1;
+    }
+
+    // Set dominant style
+    const counts = styleCountsRef.current;
+    const max = Math.max(counts.hype, counts.expert, counts.troll, counts.neutral);
+    if (max >= 2) {
+      if (counts.hype === max) setUserChatStyle("hype");
+      else if (counts.expert === max) setUserChatStyle("expert");
+      else if (counts.troll === max) setUserChatStyle("troll");
+    }
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     if (userIsScrolledUp.current) {
@@ -302,6 +338,25 @@ const BanterStream = ({
     (pick === "Wide" && result === "wide") ||
     (pick === "No Ball" && result === "noball");
 
+  const handleCommentaryGuess = useCallback((chatId: number, selectedOption: string) => {
+    setChats(prev => prev.map(c => {
+      if (c.id === chatId && c.commentaryGuessData && !c.commentaryGuessData.answered) {
+        const isCorrect = selectedOption === STYLE_LABELS[c.commentaryGuessData.correctStyle as CommentaryStyle];
+        setCommentaryScore(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
+        return {
+          ...c,
+          commentaryGuessData: {
+            ...c.commentaryGuessData,
+            answered: true,
+            wasCorrect: isCorrect,
+            selectedOption,
+          },
+        };
+      }
+      return c;
+    }));
+  }, []);
+
   const resolveBall = useCallback((ballId: number) => {
     const event = onNextBall();
     ballCountRef.current += 1;
@@ -352,6 +407,7 @@ const BanterStream = ({
       const ball = prev.find(b => b.id === ballId);
       if (ball?.selected) {
         userWon = checkPickWon(ball.selected, event.result);
+        setTotalUserPredictions(p => p + 1);
       }
       return prev;
     });
@@ -434,7 +490,6 @@ const BanterStream = ({
 
         const oversStr = `${match.overs}.${match.balls}`;
 
-        // Build team allegiances
         const team1Short = "DC";
         const team2Short = "MI";
         const team1Count = activeFriends.filter(f => f.team === team1Short).length + (userTeam === team1Short ? 1 : 0);
@@ -475,17 +530,16 @@ const BanterStream = ({
       }
     }
 
-    // Generate banter - sometimes as replies to recent chats
-    const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
+    // Generate squad reactions
+    const reactionPool = SQUAD_REACTIONS[event.result] || SQUAD_REACTIONS.dot;
     const numMessages = 1 + Math.floor(Math.random() * 2);
-    const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
+    const shuffled = [...reactionPool].sort(() => Math.random() - 0.5);
 
     for (let i = 0; i < numMessages; i++) {
       const user = activeFriends[Math.floor(Math.random() * activeFriends.length)];
       idRef.current += 1;
       const chatId = idRef.current;
       
-      // 30% chance of replying to a recent chat from a different-team friend
       const shouldReply = i === 1 && Math.random() < 0.3;
       
       setTimeout(() => {
@@ -523,22 +577,48 @@ const BanterStream = ({
       }, 500 + i * 800);
     }
 
-    // Add Ravi Shastri / Sidhu style commentary for key moments
+    // Add commentary for key moments with guess-the-style game
     const commentaryPool = COMMENTARY_LINES[event.result];
     if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5) || (event.result === "dot" && Math.random() < 0.15))) {
-      const commentaryText = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
+      const line = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
       idRef.current += 1;
       const commentaryId = idRef.current;
+      
+      // Create the guess card
+      idRef.current += 1;
+      const guessId = idRef.current;
+      const options = getCommentaryOptions(line.style);
+
       setTimeout(() => {
-        setChats(prev => [...prev, {
-          id: commentaryId,
-          parentBallId: ballId,
-          user: "Commentary Box",
-          avatar: "🎙️",
-          text: commentaryText,
-          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-          isSystem: true,
-        }]);
+        setChats(prev => [
+          ...prev,
+          {
+            id: commentaryId,
+            parentBallId: ballId,
+            user: "Commentary Box",
+            avatar: "🎙️",
+            text: line.text,
+            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            isSystem: true,
+          },
+          {
+            id: guessId,
+            parentBallId: ballId,
+            user: "Commentary Box",
+            avatar: "🎙️",
+            text: "Guess the commentary style!",
+            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            isSystem: true,
+            isCommentaryGuess: true,
+            commentaryGuessData: {
+              correctStyle: line.style,
+              options,
+              answered: false,
+              wasCorrect: null,
+              selectedOption: null,
+            },
+          },
+        ]);
         scrollToBottom();
       }, numMessages * 800 + 600);
     }
@@ -557,7 +637,7 @@ const BanterStream = ({
       setWaitingForNext(false); 
       isOverBreak.current = false;
       startNewBall(); 
-    }, numMessages * 800 + 5000);
+    }, numMessages * 800 + 8000); // ~22s total cycle: 10s lock + 1.5s pending + 2s messages + 8s wait
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom]);
 
   const startNewBall = useCallback(() => {
@@ -619,6 +699,7 @@ const BanterStream = ({
   }, [resolveBall]);
 
   const handleUserChat = useCallback((text: string) => {
+    detectStyle(text);
     idRef.current += 1;
     const currentBallId = activeBallIdRef.current || 0;
     const newChat: ChatItem = {
@@ -634,10 +715,9 @@ const BanterStream = ({
     setChats(prev => [...prev, newChat]);
     setReplyingTo(null);
     scrollToBottom();
-  }, [replyingTo, userTeam, scrollToBottom]);
+  }, [replyingTo, userTeam, scrollToBottom, detectStyle]);
 
   const handleReply = useCallback((chat: ChatItem) => {
-    // Don't allow replying to system messages or own messages
     if (chat.isSystem || chat.user === "You") return;
     setReplyingTo(chat);
   }, []);
@@ -688,7 +768,6 @@ const BanterStream = ({
     balls: match.balls,
   };
 
-  // Smart reply suggestions for the user when replying
   const replySuggestions = replyingTo
     ? getSmartReplies(replyingTo.text, userTeam, replyingTo.team)
     : [];
@@ -713,6 +792,8 @@ const BanterStream = ({
                     friendPicks={b.friendPicks}
                     userScores={userScores}
                     onPredict={(pick) => handlePredict(b.id, pick)}
+                    isFirstPrediction={ballCountRef.current === 0}
+                    totalUserPredictions={totalUserPredictions}
                   />
                 );
               }
@@ -726,6 +807,69 @@ const BanterStream = ({
                 const isYou = c.user === "You";
                 const isSystem = c.isSystem;
                 const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
+                const isCommentaryGuess = c.isCommentaryGuess && c.commentaryGuessData;
+
+                // Commentary guess card
+                if (isCommentaryGuess && c.commentaryGuessData) {
+                  const gd = c.commentaryGuessData;
+                  return (
+                    <motion.div
+                      key={`chat-${c.id}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...spring }}
+                      className="px-5 py-1.5"
+                    >
+                      <div className="ml-9 p-2.5 rounded-xl bg-primary/5 border border-primary/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[11px] font-semibold text-primary">🎙️ Guess the style!</span>
+                          {commentaryScore.total > 0 && (
+                            <span className="text-[10px] text-muted-foreground font-medium">
+                              {commentaryScore.correct}/{commentaryScore.total} correct
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-1.5">
+                          {gd.options.map(opt => {
+                            const isSelected = gd.selectedOption === opt;
+                            const isCorrectAnswer = gd.answered && opt === STYLE_LABELS[gd.correctStyle as CommentaryStyle];
+                            return (
+                              <motion.button
+                                key={opt}
+                                whileTap={gd.answered ? {} : { scale: 0.95 }}
+                                onClick={() => !gd.answered && handleCommentaryGuess(c.id, opt)}
+                                disabled={gd.answered}
+                                className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+                                  gd.answered
+                                    ? isCorrectAnswer
+                                      ? "bg-neon/15 text-neon ring-1 ring-neon/30"
+                                      : isSelected && !gd.wasCorrect
+                                      ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
+                                      : "bg-secondary/50 text-muted-foreground opacity-50"
+                                    : "bg-secondary text-foreground active:bg-muted"
+                                }`}
+                              >
+                                {opt}
+                                {gd.answered && isCorrectAnswer && " ✅"}
+                                {gd.answered && isSelected && !gd.wasCorrect && " ❌"}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                        {gd.answered && (
+                          <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className={`text-[10px] mt-1.5 font-medium ${gd.wasCorrect ? "text-neon" : "text-muted-foreground"}`}
+                          >
+                            {gd.wasCorrect ? "🎯 Nice ear! You know your commentary!" : `It was ${STYLE_LABELS[gd.correctStyle as CommentaryStyle]} style!`}
+                          </motion.p>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                }
+
                 const teamColor = c.team === "DC" ? "text-[hsl(211,100%,50%)]" : c.team === "MI" ? "text-[hsl(211,80%,40%)]" : "";
                 return (
                   <motion.div
@@ -760,7 +904,6 @@ const BanterStream = ({
                             {c.timestamp}
                           </span>
                         </div>
-                        {/* Reply context */}
                         {c.replyTo && (
                           <div className="mt-0.5 mb-0.5 pl-2 border-l-2 border-primary/30">
                             <p className="text-[10px] text-muted-foreground truncate">
@@ -785,7 +928,6 @@ const BanterStream = ({
                             isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
                           }`}>{c.text}</p>
                         )}
-                        {/* Reply button - visible on mobile too */}
                         {!isSystem && !isYou && (
                           <button
                             onClick={() => handleReply(c)}
@@ -838,7 +980,6 @@ const BanterStream = ({
           </AnimatePresence>
         </div>
 
-        {/* Scroll to bottom button */}
         <AnimatePresence>
           {showScrollButton && (
             <motion.button
@@ -874,7 +1015,6 @@ const BanterStream = ({
                 </div>
                 <button onClick={() => setReplyingTo(null)} className="text-[12px] text-muted-foreground px-1.5">✕</button>
               </div>
-              {/* Smart reply suggestions */}
               <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
                 {replySuggestions.map((reply) => (
                   <button
@@ -891,7 +1031,7 @@ const BanterStream = ({
         )}
       </AnimatePresence>
 
-      <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} />
+      <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} userStyle={userChatStyle} />
     </div>
   );
 };

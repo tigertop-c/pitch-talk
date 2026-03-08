@@ -146,11 +146,20 @@
     50% { opacity: 0.3; }
   }
 
+  @keyframes prediction-glow {
+    0%, 100% { box-shadow: 0 0 8px 2px hsl(var(--neon) / 0.3), inset 0 0 0 1.5px hsl(var(--neon) / 0.5); }
+    50% { box-shadow: 0 0 16px 4px hsl(var(--neon) / 0.5), inset 0 0 0 1.5px hsl(var(--neon) / 0.7); }
+  }
+
   .animate-shake {
     animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
   }
 
   .animate-live-pulse {
     animation: live-pulse 1.2s ease-in-out infinite;
+  }
+
+  .animate-prediction-glow {
+    animation: prediction-glow 1.5s ease-in-out infinite;
   }
 }

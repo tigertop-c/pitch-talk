@@ -27,6 +27,8 @@ interface PredictionCardProps {
   friendPicks: FriendPick[];
   userScores: Record<string, { wins: number; total: number; streak: number }>;
   onPredict: (pick: string) => void;
+  isFirstPrediction?: boolean;
+  totalUserPredictions?: number;
 }
 
 const mainOutcomes = [
@@ -58,8 +60,16 @@ const RESULT_STYLES: Record<string, string> = {
 
 const RANK_BADGES = ["👑", "🥈", "🥉"];
 
-const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, friendPicks, userScores, onPredict }: PredictionCardProps) => {
+const HINT_MESSAGES = [
+  "👆 Predict what happens next!",
+  "🎯 What's the next ball gonna be?",
+  "⚡ Quick! Lock in your prediction!",
+  "🏏 Tap to predict this delivery!",
+];
+
+const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, friendPicks, userScores, onPredict, isFirstPrediction, totalUserPredictions = 0 }: PredictionCardProps) => {
   const urgency = countdown <= 5;
+  const showHint = state === "idle" && !selected && totalUserPredictions < 3;
   const won = result && selected && (
     (selected === "Dot" && result.type === "dot") ||
     (selected === "Boundary" && result.type === "four") ||
@@ -94,6 +104,8 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
     return null;
   };
 
+  const hintText = HINT_MESSAGES[id % HINT_MESSAGES.length];
+
   return (
     <motion.div
       layout
@@ -104,7 +116,9 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
     >
       <div
         className={`p-3.5 ios-card transition-all duration-300 ${
-          state === "resolved" && won
+          state === "idle" && !selected
+            ? "animate-prediction-glow"
+            : state === "resolved" && won
             ? "ring-2 ring-neon/40"
             : state === "resolved" && selected && !won
             ? "ring-2 ring-destructive/30"
@@ -117,6 +131,15 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
             <span className="px-2.5 py-1 font-semibold text-xs bg-secondary rounded-lg">
               {ballLabel}
             </span>
+            {state === "idle" && !selected && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[10px] font-semibold text-neon"
+              >
+                YOUR TURN
+              </motion.span>
+            )}
             {state === "resolved" && result && (
               <motion.span
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -162,6 +185,17 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
             </span>
           )}
         </div>
+
+        {/* Hint for new users */}
+        {showHint && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            className="mb-2 px-3 py-1.5 rounded-lg bg-neon/10 text-neon text-[11px] font-medium text-center"
+          >
+            {hintText}
+          </motion.div>
+        )}
 
         {/* Prediction buttons */}
         {(state === "idle" || state === "locked") && (

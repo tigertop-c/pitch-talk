@@ -83,7 +83,7 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
         >
           <h1 className="text-2xl font-black tracking-tight text-foreground">🏏 Pitch Talk</h1>
           <p className="text-[12px] text-muted-foreground mt-1 font-medium">
-            Pick a match. Predict every ball. Banter with your squad.
+            Pick a match. Predict every ball. Play with your squad.
           </p>
         </motion.div>
 
