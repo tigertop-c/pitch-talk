@@ -187,6 +187,32 @@ function getQuickPicks(
   return unique.slice(0, 5);
 }
 
+function getQuickEmojis(userTeam: TeamId, ctx: MatchContext): string[] {
+  const battingTeam: TeamId = "DC";
+  const isMyTeamBatting = userTeam === battingTeam;
+  const result = ctx.lastBallResult;
+
+  if (!result) return ["🔥", "💪", "🏏"];
+
+  if (isMyTeamBatting) {
+    switch (result) {
+      case "six": return ["🙌", "🔥", "🤩"];
+      case "four": return ["🤚", "👏", "⚡"];
+      case "wicket": return ["😭", "🤦‍♂️", "💔"];
+      case "dot": return ["🥺", "🙏", "💪"];
+      default: return ["🏏", "🏃", "⚡"];
+    }
+  } else {
+    switch (result) {
+      case "six": return ["😭", "🤦‍♂️", "😡"];
+      case "four": return ["😠", "🙄", "🤐"];
+      case "wicket": return ["☝️", "🎯", "🔥"];
+      case "dot": return ["👏", "🔥", "🎯"];
+      default: return ["🏏", "👀", "🎯"];
+    }
+  }
+}
+
 const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: ChatInputProps) => {
   const [text, setText] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
@@ -201,6 +227,11 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
   const quickPicks = useMemo(
     () => getQuickPicks(userTeam, matchContext, userStyle, lastChosen),
     [userTeam, matchContext.lastBallResult, matchContext.runs, matchContext.wickets, matchContext.overs, matchContext.balls, userStyle, lastChosen]
+  );
+
+  const quickEmojis = useMemo(
+    () => getQuickEmojis(userTeam, matchContext),
+    [userTeam, matchContext.lastBallResult]
   );
 
   const handleQuickPick = useCallback((pick: string) => {
@@ -220,6 +251,16 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
     <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
       {/* Dynamic quick picks - wrapping layout for visibility */}
       <div className="flex flex-wrap gap-1.5 items-center">
+        {quickEmojis.map((emoji, idx) => (
+          <button
+            key={`emoji-${idx}`}
+            onClick={() => onSend(emoji)}
+            className="w-[34px] h-[34px] flex items-center justify-center rounded-full bg-secondary text-base hover:bg-muted active:scale-95 transition-all duration-150"
+          >
+            {emoji}
+          </button>
+        ))}
+        <div className="w-[1px] h-5 bg-border/50 mx-0.5"></div>
         {quickPicks.map((pick, idx) => (
           <button
             key={`${pick}-${idx}`}
