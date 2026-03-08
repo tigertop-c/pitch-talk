@@ -60,6 +60,10 @@ interface BanterStreamProps {
   onOverComplete?: (overNum: number, participation: Record<string, boolean>) => void;
   allPlayerStandings: OverSummaryData["standings"];
   userTeam: TeamId;
+  activePlayers: number;
+  maxPlayers: number;
+  roomId: string;
+  onInvite?: () => void;
 }
 
 const BanterStream = ({
