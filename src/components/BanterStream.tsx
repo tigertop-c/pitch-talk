@@ -491,8 +491,8 @@ const BanterStream = ({
     setChats([{
       id: idRef.current,
       parentBallId: 0,
-      user: "The Sledge",
-      avatar: "🗣️",
+      user: "Pitch Talk",
+      avatar: "🏏",
       text: "SOUND_TOGGLE",
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       isSystem: true,
