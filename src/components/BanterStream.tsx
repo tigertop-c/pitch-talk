@@ -31,7 +31,7 @@ const USERS = [
   { name: "Vikram", avatar: "🎯" },
 ];
 
-const PICK_LABELS = ["Dot", "Boundary", "Single", "Wicket"];
+const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
 
 const BANTER_BY_RESULT: Record<string, string[]> = {
   dot: ["Dot ball. Pressure building 🫣", "Tight bowling 🎯", "Batsman looked clueless 😴"],
