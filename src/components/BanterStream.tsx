@@ -336,10 +336,20 @@ const BanterStream = ({
         });
 
         const oversStr = `${match.overs}.${match.balls}`;
+
+        // Build team allegiances
+        const team1Short = "DC";
+        const team2Short = "MI";
+        const team1Count = activeFriends.filter(f => f.team === team1Short).length + (userTeam === team1Short ? 1 : 0);
+        const team2Count = activeFriends.filter(f => f.team === team2Short).length + (userTeam === team2Short ? 1 : 0);
+
         const summaryData: OverSummaryData = {
           overNumber: overNum,
           overMvp: mvp,
-          standings: allPlayerStandings,
+          standings: allPlayerStandings.map(s => ({
+            ...s,
+            team: s.name === "You" ? userTeam : activeFriends.find(f => f.name === s.name)?.team,
+          })),
           activePlayers,
           maxPlayers,
           roomId,
@@ -347,6 +357,11 @@ const BanterStream = ({
           matchWickets: match.wickets,
           matchOvers: oversStr,
           matchTarget: match.target,
+          overRuns: overRunsRef.current,
+          overWickets: overWicketsRef.current,
+          overBoundaries: overBoundariesRef.current,
+          overExtras: overExtrasRef.current,
+          teamAllegiances: (team1Count + team2Count) >= 3 ? { team1: team1Short, team1Count, team2: team2Short, team2Count } : undefined,
         };
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
@@ -355,6 +370,10 @@ const BanterStream = ({
         legalBallsThisOver.current = 0;
         overFriendResults.current = {};
         overParticipation.current = {};
+        overRunsRef.current = 0;
+        overWicketsRef.current = 0;
+        overBoundariesRef.current = 0;
+        overExtrasRef.current = 0;
       }
     }
 
