@@ -169,6 +169,11 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
                       <span className={`text-[11px] font-semibold truncate ${s.name === "You" ? "text-primary" : "text-foreground"}`}>
                         {s.name}
                       </span>
+                      {s.team && (
+                        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-secondary text-muted-foreground flex-shrink-0">
+                          {s.team}
+                        </span>
+                      )}
                       {streakBadge && (
                         <span className={`text-[7px] font-bold px-1 py-0.5 rounded-full flex-shrink-0 ${streakBadge.style}`}>
                           {streakBadge.label}
