@@ -191,82 +191,51 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
           </motion.div>
         </motion.div>
 
-        {/* How it works */}
+        {/* How it works + invite nudge */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...spring, delay: 0.5 }}
-          className="flex gap-2 text-center"
+          className="space-y-2.5"
         >
-          {[
-            { emoji: "🎯", text: "Predict every ball" },
-            { emoji: "🗣️", text: "Play with your squad" },
-            { emoji: "📊", text: "Track your record" },
-          ].map((s, i) => (
-            <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">
-              <div className="text-lg mb-0.5 text-center">{s.emoji}</div>
-              <p className="text-[10px] text-muted-foreground leading-tight font-medium text-center">{s.text}</p>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Your Squad - inline section */}
-        {stage !== "starting" && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...spring, delay: 0.55 }}
-            className="p-4 ios-card"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <Users size={14} className="text-primary" />
-                <span className="text-[13px] font-bold text-foreground">Your Squad</span>
+          <div className="flex gap-2 text-center">
+            {[
+              { emoji: "🎯", text: "Predict every ball" },
+              { emoji: "🗣️", text: "Play with your squad" },
+              { emoji: "📊", text: "Track your record" },
+            ].map((s, i) => (
+              <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">
+                <div className="text-lg mb-0.5 text-center">{s.emoji}</div>
+                <p className="text-[10px] text-muted-foreground leading-tight font-medium text-center">{s.text}</p>
               </div>
-              <span className="text-[11px] text-muted-foreground font-medium">
-                {SQUAD_MEMBERS.length} ready
-              </span>
-            </div>
-            
-            {/* Squad member list */}
-            <div className="space-y-2 mb-3">
-              {SQUAD_MEMBERS.map((member, i) => (
-                <motion.div
-                  key={member.name}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ ...spring, delay: 0.6 + i * 0.08 }}
-                  className="flex items-center gap-2.5"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-sm">
-                    {member.avatar}
-                  </div>
-                  <span className="text-[13px] font-semibold text-foreground flex-1">{member.name}</span>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                    member.status === "ready"
-                      ? "bg-neon/10 text-neon"
-                      : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {member.status === "ready" ? "✅ Ready" : "⏳ Joining..."}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
+            ))}
+          </div>
 
-            {/* Invite more - contextual, not a primary CTA */}
-            <div className="pt-2 border-t border-border">
+          {/* Compact invite nudge */}
+          {stage !== "starting" && (
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-secondary/50">
+              <div className="flex -space-x-1.5 flex-shrink-0">
+                {SQUAD_MEMBERS.slice(0, 3).map(m => (
+                  <div key={m.name} className="w-6 h-6 flex items-center justify-center rounded-full bg-card text-[10px] ring-2 ring-background">
+                    {m.avatar}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground flex-1 leading-snug">
+                <span className="font-semibold text-foreground">{SQUAD_MEMBERS.length} friends</span> are here. It's more fun together!
+              </p>
               <button
                 onClick={handleInviteWhatsApp}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-semibold text-muted-foreground bg-secondary/70 active:bg-muted transition-all"
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:bg-[hsl(142,70%,45%,0.2)] transition-all active:scale-95"
               >
-                <UserPlus size={14} />
-                Invite more friends via WhatsApp
+                <MessageCircle size={12} />
+                Invite
               </button>
             </div>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
 
-        {/* Stages */}
+        {/* Game Stages — the soul of the app */}
         <AnimatePresence mode="wait">
           {stage === "welcome" && (
             <motion.div
