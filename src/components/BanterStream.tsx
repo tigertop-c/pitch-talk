@@ -742,7 +742,11 @@ const BanterStream = ({
   }, []);
 
   // Build render items
-  const renderItems: { type: "ball" | "chat" | "over-summary"; ball?: BallBlock; chat?: ChatItem; overSummary?: OverSummaryData }[] = [];
+  // Build render items - track ball labels for chat context
+  const ballLabelMap = new Map<number, string>();
+  balls.forEach(b => ballLabelMap.set(b.id, b.ballLabel));
+
+  const renderItems: { type: "ball" | "chat" | "over-summary" | "ball-divider"; ball?: BallBlock; chat?: ChatItem; overSummary?: OverSummaryData; dividerLabel?: string }[] = [];
   
   chats.filter(c => c.parentBallId === 0).forEach(chat => {
     renderItems.push({ type: "chat", chat });
@@ -750,7 +754,11 @@ const BanterStream = ({
 
   balls.forEach(ball => {
     renderItems.push({ type: "ball", ball });
-    chats.filter(c => c.parentBallId === ball.id).forEach(chat => {
+    const ballChats = chats.filter(c => c.parentBallId === ball.id);
+    if (ballChats.length > 0 && ball.result) {
+      renderItems.push({ type: "ball-divider", dividerLabel: `${ball.ballLabel} — ${ball.result?.label || ""}` });
+    }
+    ballChats.forEach(chat => {
       renderItems.push({ type: "chat", chat });
     });
     const summary = overSummaries.find(s => s.afterBallId === ball.id);
@@ -795,6 +803,18 @@ const BanterStream = ({
                     isFirstPrediction={ballCountRef.current === 0}
                     totalUserPredictions={totalUserPredictions}
                   />
+                );
+              }
+
+              if (item.type === "ball-divider" && item.dividerLabel) {
+                return (
+                  <div key={`divider-${item.dividerLabel}`} className="flex items-center gap-2 px-5 pt-2 pb-0.5">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {item.dividerLabel}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
                 );
               }
 

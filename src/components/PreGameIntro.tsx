@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronRight, MessageCircle, Clock } from "lucide-react";
+import { Users, ChevronRight, MessageCircle, Clock, UserPlus } from "lucide-react";
 import dcLogo from "@/assets/dc-logo.png";
 import miLogo from "@/assets/mi-logo.png";
 import type { TeamId } from "./ChatInput";
@@ -19,6 +19,14 @@ type Stage = "welcome" | "toss" | "target" | "starting";
 const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
+
+const SQUAD_MEMBERS = [
+  { name: "Rahul", avatar: "🔥", status: "ready" },
+  { name: "Priya", avatar: "💅", status: "ready" },
+  { name: "Arjun", avatar: "🏏", status: "ready" },
+  { name: "Sneha", avatar: "⚡", status: "ready" },
+  { name: "Vikram", avatar: "🎯", status: "joining" },
+];
 
 function useCountdown(targetDate: Date) {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, targetDate.getTime() - Date.now()));
@@ -41,13 +49,11 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [tossWinner, setTossWinner] = useState<string | null>(null);
   const [tossResult, setTossResult] = useState<string | null>(null);
   const [runTarget, setRunTarget] = useState<string | null>(null);
-  const [showInvite, setShowInvite] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
 
-  // After team pick + toss pick, animate the toss
   useEffect(() => {
     if (userTeam && tossWinner && stage === "welcome") {
       const timer = setTimeout(() => {
@@ -118,7 +124,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-4">
 
         {/* Hero */}
         <motion.div
@@ -204,6 +210,62 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
           ))}
         </motion.div>
 
+        {/* Your Squad - inline section */}
+        {stage !== "starting" && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...spring, delay: 0.55 }}
+            className="p-4 ios-card"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5">
+                <Users size={14} className="text-primary" />
+                <span className="text-[13px] font-bold text-foreground">Your Squad</span>
+              </div>
+              <span className="text-[11px] text-muted-foreground font-medium">
+                {SQUAD_MEMBERS.length} ready
+              </span>
+            </div>
+            
+            {/* Squad member list */}
+            <div className="space-y-2 mb-3">
+              {SQUAD_MEMBERS.map((member, i) => (
+                <motion.div
+                  key={member.name}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...spring, delay: 0.6 + i * 0.08 }}
+                  className="flex items-center gap-2.5"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-secondary text-sm">
+                    {member.avatar}
+                  </div>
+                  <span className="text-[13px] font-semibold text-foreground flex-1">{member.name}</span>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                    member.status === "ready"
+                      ? "bg-neon/10 text-neon"
+                      : "bg-secondary text-muted-foreground"
+                  }`}>
+                    {member.status === "ready" ? "✅ Ready" : "⏳ Joining..."}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Invite more - contextual, not a primary CTA */}
+            <div className="pt-2 border-t border-border">
+              <button
+                onClick={handleInviteWhatsApp}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-semibold text-muted-foreground bg-secondary/70 active:bg-muted transition-all"
+              >
+                <UserPlus size={14} />
+                Invite more friends via WhatsApp
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Stages */}
         <AnimatePresence mode="wait">
           {stage === "welcome" && (
@@ -257,7 +319,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                 )}
               </div>
 
-              {/* Toss prediction — shows after team pick */}
+              {/* Toss prediction */}
               {userTeam && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
@@ -377,30 +439,6 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
         </AnimatePresence>
 
       </div>
-
-      {/* Sticky bottom invite bar */}
-      {stage !== "starting" && (
-        <div className="absolute bottom-0 left-0 right-0 ios-glass px-5 py-3 space-y-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
-          <div className="flex items-center justify-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-neon opacity-75 animate-live-pulse" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-neon" />
-            </span>
-            <span className="text-[12px] text-muted-foreground font-medium">
-              5 friends already here
-            </span>
-          </div>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleInviteWhatsApp}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-[13px] text-primary-foreground"
-            style={{ backgroundColor: "hsl(142, 70%, 45%)" }}
-          >
-            <MessageCircle size={16} />
-            Invite friends on WhatsApp
-          </motion.button>
-        </div>
-      )}
     </div>
   );
 };

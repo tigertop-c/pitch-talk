@@ -129,9 +129,9 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
     <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
       {/* Dynamic quick picks - wrapping layout for visibility */}
       <div className="flex flex-wrap gap-1.5 items-center">
-        {quickPicks.map((pick) => (
+        {quickPicks.map((pick, idx) => (
           <button
-            key={pick}
+            key={`${pick}-${idx}`}
             onClick={() => onSend(pick)}
             className="px-3.5 py-2 rounded-full bg-secondary text-foreground text-[12px] font-semibold hover:bg-muted active:scale-95 transition-all duration-150 leading-tight"
           >
