@@ -8,6 +8,13 @@ export interface BallEvent {
   label: string;
 }
 
+export interface Batsman {
+  name: string;
+  runs: number;
+  balls: number;
+  isOnStrike: boolean;
+}
+
 export interface MatchState {
   runs: number;
   wickets: number;
@@ -15,6 +22,8 @@ export interface MatchState {
   balls: number;
   currentBowler: string;
   ballEvents: BallEvent[];
+  batsmen: [Batsman, Batsman];
+  target: number | null;
 }
 
 const BOWLERS = ["Bumrah", "Starc", "Cummins", "Hazlewood", "Zampa"];
