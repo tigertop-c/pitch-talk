@@ -34,7 +34,7 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
 
   const { title, color } = getTitle(data.accuracy);
 
-  const shareText = `🏏 PitchTalk — ${data.matchTitle}\n\n🎯 ${data.correctPicks}/${data.totalBalls} predictions correct (${data.accuracy}%)\n🔥 Best streak: ${data.bestStreak}\n🏆 Title: ${title}\n\nThink you can do better? Try PitchTalk!`;
+  const shareText = `🗣️ The Sledge — ${data.matchTitle}\n\n🎯 ${data.correctPicks}/${data.totalBalls} predictions correct (${data.accuracy}%)\n🔥 Best streak: ${data.bestStreak}\n🏆 Title: ${title}\n\nThink you can do better? Join The Sledge!`;
 
   const shareUrl = window.location.origin;
 
