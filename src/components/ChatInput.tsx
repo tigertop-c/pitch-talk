@@ -96,11 +96,20 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext, style: UserChatStyle
       if (rrr > 12 && !isMyTeamBatting) picks.push("Rate's climbing! 📈😏");
     }
 
-    // Add one from a different style for variety
-    const otherStyle = style === "hype" ? "expert" : style === "expert" ? "hype" : "neutral";
-    const otherPicks = STYLE_PICKS[otherStyle];
-    const otherKey = result === "wicket" ? (isMyTeamBatting ? "wicket_my" : "wicket_opp") : result;
-    if (otherPicks[otherKey]) picks.push(otherPicks[otherKey][0]);
+    // Add from different styles for variety
+    const styles: UserChatStyle[] = ["hype", "expert", "troll", "neutral"];
+    const otherStyles = styles.filter(s => s !== style);
+    
+    // Add 2 picks from other styles
+    otherStyles.slice(0, 2).forEach(otherStyle => {
+      const otherPicks = STYLE_PICKS[otherStyle];
+      const otherKey = result === "wicket" ? (isMyTeamBatting ? "wicket_my" : "wicket_opp") : result;
+      if (otherPicks[otherKey]) {
+        // Pick a random message from the other style
+        const randIdx = Math.floor(Math.random() * otherPicks[otherKey].length);
+        picks.push(otherPicks[otherKey][randIdx]);
+      }
+    });
   }
 
   // Deduplicate and cap at 5
