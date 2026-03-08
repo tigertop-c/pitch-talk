@@ -109,6 +109,28 @@ const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
       onHype?.(event.result as "four" | "six" | "wicket");
+
+      // Play IPL horn for 3 seconds with gradual fade
+      try {
+        const horn = new Audio("/sounds/ipl_horn.mp3");
+        horn.volume = 0.6;
+        horn.play();
+        const fadeStart = 2000;
+        const fadeDuration = 1000;
+        const fadeSteps = 20;
+        setTimeout(() => {
+          let step = 0;
+          const interval = setInterval(() => {
+            step++;
+            horn.volume = Math.max(0, 0.6 * (1 - step / fadeSteps));
+            if (step >= fadeSteps) {
+              clearInterval(interval);
+              horn.pause();
+              horn.currentTime = 0;
+            }
+          }, fadeDuration / fadeSteps);
+        }, fadeStart);
+      } catch (e) { /* audio not supported */ }
     }
 
     setBalls(prev => prev.map(b => {
