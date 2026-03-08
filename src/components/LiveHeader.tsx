@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Volume2, VolumeX } from "lucide-react";
 import { type MatchState, type Batsman, formatBall } from "@/hooks/useMatchState";
 import dcLogo from "@/assets/dc-logo.png";
 import miLogo from "@/assets/mi-logo.png";
@@ -6,9 +7,11 @@ import miLogo from "@/assets/mi-logo.png";
 interface LiveHeaderProps {
   match: MatchState;
   crr: string;
+  soundMuted: boolean;
+  onToggleSound: () => void;
 }
 
-const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
+const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) => {
   const totalOvers = match.overs + match.balls / 6;
   const remainingOvers = 20 - totalOvers;
   const remainingRuns = match.target ? match.target - match.runs : null;
@@ -36,7 +39,7 @@ const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
       transition={{ type: "spring", damping: 20, stiffness: 300 }}
       className="sticky top-0 z-50 ios-glass ios-separator px-4 pt-2 pb-3"
     >
-      {/* Row 1: Live badge + match info */}
+      {/* Row 1: Live badge + match info + mute button */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
@@ -50,6 +53,17 @@ const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
           <span className="text-[13px] text-foreground font-semibold">DC vs MI</span>
           <img src={miLogo} alt="MI" className="w-7 h-7 object-contain" />
           <span className="text-[10px] text-muted-foreground">• IPL 2025</span>
+          {/* Sound toggle */}
+          <motion.button
+            whileTap={{ scale: 0.85 }}
+            onClick={onToggleSound}
+            className={`ml-1 w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+              soundMuted ? "bg-destructive/15 text-destructive" : "bg-secondary text-muted-foreground"
+            }`}
+            title={soundMuted ? "Unmute sounds" : "Mute sounds"}
+          >
+            {soundMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+          </motion.button>
         </div>
       </div>
 
