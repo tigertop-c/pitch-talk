@@ -81,6 +81,48 @@ function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamI
     : REPLY_SUGGESTIONS.neutral.slice(0, 3);
 }
 
+// Context-aware waiting messages based on last ball result
+const WAITING_MESSAGES: Record<string, { emoji: string; messages: string[] }> = {
+  six: { emoji: "🏟️", messages: ["Searching for the ball in Row Z...", "Fan keeping the souvenir 🎁", "That ball's in the parking lot!", "Ball boy climbing the stands..."] },
+  four: { emoji: "🏃", messages: ["Fielder chasing it to the rope...", "Ball racing to the boundary 💨", "Sweeper cover retrieving the ball...", "Outfield collecting that one..."] },
+  wicket: { emoji: "🚶", messages: ["New batsman taking guard...", "Long walk back to the pavilion 😔", "Dressing room door opening...", "Batsman reviewing life choices..."] },
+  dot: { emoji: "🏏", messages: ["Bowler walking back...", "Keeper tossing the ball around...", "Field adjustments happening...", "Captain having a word with the bowler..."] },
+  single: { emoji: "🔄", messages: ["Strike rotated, fielders resetting...", "Bowler back to the mark...", "Quick chat between the batsmen...", "Umpire signaling one run..."] },
+  double: { emoji: "🏃‍♂️", messages: ["Good running between the wickets!", "Batsmen catching their breath...", "Fielder's throw just missed!", "Quick two, fielders reshuffling..."] },
+  wide: { emoji: "😤", messages: ["Captain's not happy with that!", "Bowler wiping the ball on his trousers...", "Keeper fetching the wide one...", "Extra run gifted, pressure on..."] },
+  noball: { emoji: "⚠️", messages: ["Free hit coming up! 🎯", "Batsman licking his lips...", "Bowler checking his run-up...", "Stadium buzzing for the free hit!"] },
+  overBreak: { emoji: "🔄", messages: ["Field changing ends...", "New bowler getting the ball...", "Drinks being carried out 🥤", "Strategic timeout chat happening...", "Captain setting the field..."] },
+};
+
+// Ravi Shastri / Sidhu style one-liner commentary
+const COMMENTARY_LINES: Record<string, string[]> = {
+  six: [
+    "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! — Ravi Shastri energy",
+    "🎙️ Six runs, and the crowd goes absolutely BERSERK! Like a tracer bullet! 🚀",
+    "🎙️ A six is like a smile — it lights up the whole ground! — Sidhu vibes ☀️",
+    "🎙️ That ball didn't just cross the rope, it left the ZIP CODE! 📮",
+  ],
+  four: [
+    "🎙️ SHOT! That's gone like a tracer bullet to the boundary! 🔥",
+    "🎙️ Timing so sweet, even the bowler had to admire that one!",
+    "🎙️ A good shot is like poetry — and that was Shakespeare! — Sidhu vibes 📖",
+    "🎙️ The ball hit the bat and said GOODBYE! Glorious stroke! ✨",
+  ],
+  wicket: [
+    "🎙️ HE'S GONE! And the bowler is PUMPED! That's the moment of the match!",
+    "🎙️ Wickets fall like autumn leaves when the pressure mounts! — Sidhu wisdom 🍂",
+    "🎙️ CLEANED HIM UP! The stumps are doing cartwheels! 🎯",
+    "🎙️ That's the end of the road for the batsman. Long walk back. Cricket is CRUEL! 😈",
+  ],
+  dot: [
+    "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! — Sidhu 😤",
+  ],
+  noball: [
+    "🎙️ NO BALL! And it's a FREE HIT! The crowd smells BLOOD! 🩸",
+    "🎙️ Overstepped! That's a gift wrapped with a bow! 🎁",
+  ],
+};
+
 const LOCK_TIME = 15;
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
@@ -112,8 +154,10 @@ const BanterStream = ({
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
+  const [waitingMessage, setWaitingMessage] = useState<{ emoji: string; text: string }>({ emoji: "🏏", text: "Bowler walking back..." });
   const [overSummaries, setOverSummaries] = useState<{ afterBallId: number; data: OverSummaryData }[]>([]);
   const [lastBallResult, setLastBallResult] = useState<string | null>(null);
+  const isOverBreak = useRef(false);
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
@@ -366,6 +410,7 @@ const BanterStream = ({
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
         onOverComplete?.(overNum, { ...overParticipation.current });
+        isOverBreak.current = true;
 
         legalBallsThisOver.current = 0;
         overFriendResults.current = {};
@@ -425,8 +470,41 @@ const BanterStream = ({
       }, 500 + i * 800);
     }
 
-    setTimeout(() => { setWaitingForNext(true); scrollToBottom(); }, numMessages * 800 + 1500);
-    setTimeout(() => { setWaitingForNext(false); startNewBall(); }, numMessages * 800 + 5000);
+    // Add Ravi Shastri / Sidhu style commentary for key moments
+    const commentaryPool = COMMENTARY_LINES[event.result];
+    if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5) || (event.result === "dot" && Math.random() < 0.15))) {
+      const commentaryText = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
+      idRef.current += 1;
+      const commentaryId = idRef.current;
+      setTimeout(() => {
+        setChats(prev => [...prev, {
+          id: commentaryId,
+          parentBallId: ballId,
+          user: "Commentary Box",
+          avatar: "🎙️",
+          text: commentaryText,
+          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          isSystem: true,
+        }]);
+        scrollToBottom();
+      }, numMessages * 800 + 600);
+    }
+
+    // Set contextual waiting message
+    const resultKey = isOverBreak.current ? "overBreak" : (event.result as string);
+    const msgPool = WAITING_MESSAGES[resultKey] || WAITING_MESSAGES.dot;
+    const pickedMsg = msgPool.messages[Math.floor(Math.random() * msgPool.messages.length)];
+
+    setTimeout(() => { 
+      setWaitingMessage({ emoji: msgPool.emoji, text: pickedMsg });
+      setWaitingForNext(true); 
+      scrollToBottom(); 
+    }, numMessages * 800 + 1500);
+    setTimeout(() => { 
+      setWaitingForNext(false); 
+      isOverBreak.current = false;
+      startNewBall(); 
+    }, numMessages * 800 + 5000);
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom]);
 
   const startNewBall = useCallback(() => {
@@ -687,9 +765,9 @@ const BanterStream = ({
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                     className="text-sm"
-                  >🏏</motion.span>
+                  >{waitingMessage.emoji}</motion.span>
                   <span className="text-[12px] text-muted-foreground font-medium">
-                    Bowler walking back...
+                    {waitingMessage.text}
                   </span>
                   <motion.span
                     className="flex gap-1"
