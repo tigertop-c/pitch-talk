@@ -161,6 +161,35 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       }, 500 + i * 800);
     }
 
+    // Update user scores
+    setBalls(prev => {
+      const ball = prev.find(b => b.id === ballId);
+      if (ball) {
+        const scoreUpdates: Record<string, { won: boolean }> = {};
+        ball.friendPicks.forEach(fp => {
+          const won = (fp.pick === "Dot" && event.result === "dot") ||
+                      (fp.pick === "Boundary" && (event.result === "four" || event.result === "six")) ||
+                      (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
+                      (fp.pick === "Wicket" && event.result === "wicket");
+          scoreUpdates[fp.name] = { won };
+        });
+        setUserScores(prev => {
+          const next = { ...prev };
+          Object.entries(scoreUpdates).forEach(([name, { won }]) => {
+            if (next[name]) {
+              next[name] = {
+                wins: next[name].wins + (won ? 1 : 0),
+                total: next[name].total + 1,
+                streak: won ? next[name].streak + 1 : 0,
+              };
+            }
+          });
+          return next;
+        });
+      }
+      return prev;
+    });
+
     // Add friend result chats
     setTimeout(() => {
       setBalls(prev => {
