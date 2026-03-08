@@ -27,7 +27,7 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
 
   if (!result) {
     return isMyTeamBatting
-      ? ["Let's go DC! 💙", "Time to sledge 🗣️", "🔥", "DC supremacy!", "Bring it on!"]
+      ? ["Let's go DC! 💙", "Bring the heat 🗣️", "🔥", "DC supremacy!", "Bring it on!"]
       : ["MI owns this 💙", "Let's gooo! 🔥", "Paltan! 💪", "Time to bully 😤"];
   }
 
