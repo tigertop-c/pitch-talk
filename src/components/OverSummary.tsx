@@ -39,9 +39,9 @@ const getTitle = (accuracy: number, total: number) => {
   if (total < 2) return null;
   if (accuracy >= 80) return { title: "Nostradamus 🔮", style: "text-neon" };
   if (accuracy >= 60) return { title: "Cricket Brain 🧠", style: "text-primary" };
-  if (accuracy >= 40) return { title: "Decent Read", style: "text-muted-foreground" };
-  if (accuracy >= 20) return { title: "Village Cricketer", style: "text-muted-foreground" };
-  return { title: "Certified Clown 🤡", style: "text-destructive" };
+  if (accuracy >= 40) return { title: "Decent Read 👌", style: "text-muted-foreground" };
+  if (accuracy >= 20) return { title: "Still Learning 📚", style: "text-muted-foreground" };
+  return { title: "Bold Guesser 🎲", style: "text-muted-foreground" };
 };
 
 const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
