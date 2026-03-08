@@ -654,11 +654,11 @@ const BanterStream = ({
                             isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
                           }`}>{c.text}</p>
                         )}
-                        {/* Reply button - only for non-system, non-self messages */}
+                        {/* Reply button - visible on mobile too */}
                         {!isSystem && !isYou && (
                           <button
                             onClick={() => handleReply(c)}
-                            className="opacity-0 group-hover:opacity-100 mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-all"
+                            className="mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground active:text-primary transition-all"
                           >
                             <Reply size={10} />
                             Reply

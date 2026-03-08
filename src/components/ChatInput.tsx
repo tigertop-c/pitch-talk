@@ -27,60 +27,69 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
 
   if (!result) {
     return isMyTeamBatting
-      ? ["Let's go DC! 💙", "Bring the heat 🗣️", "🔥", "DC supremacy!", "Bring it on!"]
-      : ["MI owns this 💙", "Let's gooo! 🔥", "Paltan! 💪", "Time to bully 😤"];
+      ? ["Let's go DC! 💙", "Come on boys! 🔥", "Feeling good about this 🙌", "DC all the way!", "Positive vibes only ✨"]
+      : ["MI all the way! 💙", "Let's gooo! 🔥", "Paltan energy! 💪", "Good feelings! 🙌"];
   }
 
   switch (result) {
     case "six":
       if (isMyTeamBatting) {
-        picks.push("SIX! Sit down! 🪑", "BOOM! Where's your bowler? 💀", "DC DC DC! 🚀", "That's GONE! 🏟️");
+        // Positive first
+        picks.push("YESSS! What a hit! 🚀", "That's what we came for! 🔥", "INTO THE STANDS! 🏟️");
         // Armchair expert
-        picks.push("Told you, play the lofted shot 🧠", "This is textbook T20 batting");
+        picks.push("Told you, play the lofted shot 🧠", "Textbook T20 batting right there");
+        // Teasy
+        picks.push("Sit down! Your bowler's done 🪑");
       } else {
-        picks.push("Lucky! Your batsman can't do that again 🙄", "One six doesn't win matches 😏", "Bowler set him up, relax 🎣", "Ugh, curse that bowler 🤬");
+        picks.push("Good hit, credit where it's due 👏", "One six won't decide the match 🧠", "Bowler set him up, watch next ball 🎣");
       }
       break;
     case "four":
       if (isMyTeamBatting) {
-        picks.push("SHOT! 🏏💥", "Too easy! 😎", "Your bowler's getting schooled!", "CLASS! 🔥");
-        picks.push("Gap ball, should've packed the off side 🧠");
+        picks.push("Beautiful shot! 🏏🔥", "CLASS! Love to see it 😍", "What timing! ⚡");
+        picks.push("Found the gap perfectly, reading the field 🧠");
+        picks.push("Your bowler's getting a lesson 😏");
       } else {
-        picks.push("Bad line, bad length 🤦", "Won't save them from losing", "Even I could've hit that 🥱", "Your bowler's cooked 😤");
+        picks.push("Nice shot, but one boundary won't save them 🧠", "Bad line, needs adjustment 🤔", "Credit to the batsman on that one 👌");
       }
       break;
     case "wicket":
       if (isMyTeamBatting) {
-        picks.push("Ugh come on! 😤", "Still got this 💪", "Next one's gonna smash it", "Whatever, we're still winning 😤");
-        picks.push("Should've left that alone, bad shot selection");
+        picks.push("We'll bounce back! 💪", "Still got this, loads of batting left 🙌", "Next one will fire 🔥");
+        picks.push("Bad shot selection, should've left that 🧠");
+        picks.push("Just one wicket, relax everyone 😤");
       } else {
-        picks.push("YESSS GET OUT! 👋💀", "BYE BYE! Walk of shame! 🚶", "Pack your bags! 😂", "Your team's FINISHED! 💀");
-        picks.push("Bowler's been setting that up for 3 balls 🧠");
+        picks.push("YESSS! Massive wicket! 🎯🔥", "What a delivery! Deserved that! 👏", "Bowler's been planning that for 3 balls 🧠");
+        picks.push("Bye bye! 👋😂");
       }
       break;
     case "dot":
       if (isMyTeamBatting) {
-        picks.push("Play some shots! 😤", "Stop parking the bus 🚌", "Rotate strike at least!", "This is painful 💀");
-        picks.push("Need to target the shorter boundary 🧠");
+        picks.push("Keep going, build pressure your way 💪", "It's okay, find the gaps next ball 🙌", "Patience pays 🧘");
+        picks.push("Need to target the shorter boundary side 🧠");
+        picks.push("Rotate the strike at least! 😤");
       } else {
-        picks.push("Can't even score? 😂", "Dot ball merchant! 💀", "Pressure mounting! Love it 😈", "Your batsman's scared 🫣");
+        picks.push("Great bowling! Building pressure 🎯", "Love the discipline! 💪", "Tight line and length 🧠");
+        picks.push("Can't score off that? Levels 😂");
       }
       break;
     case "wide":
     case "noball":
       if (isMyTeamBatting) {
-        picks.push("Free runs LMAO 😂", "Thanks for the gift 🎁", "Can't even bowl straight 💀", "More of this please! 😂");
-        picks.push("Smart to leave that, take the free runs");
+        picks.push("Free runs, we'll take it! 🎁", "Every run counts! 👌", "Smart to leave that 🧠");
+        picks.push("Thanks for the gift 😂");
       } else {
-        picks.push("What is our bowler doing?! 🤬", "GET HIM OFF! 😤", "My grandma bowls better 👵", "This is embarrassing 🤦");
-        picks.push("Need to adjust the line, bowling too wide");
+        picks.push("Come on bowler, tighten up! 💪", "Needs to adjust the line 🧠", "It's okay, next ball 🙌");
+        picks.push("That's embarrassing though 🤦");
       }
       break;
     default: // single, double, triple
       if (isMyTeamBatting) {
-        picks.push("Smart cricket 🧠", "Ticking along nicely", "Good placement 👌", "Building the innings");
+        picks.push("Smart cricket! 🧠", "Good running! Ticking along nicely 🙌", "Nice placement 👌");
+        picks.push("Building a solid foundation 🏗️");
       } else {
-        picks.push("Singles won't save you 😏", "Running like scared cats 🐱", "Is that all you got? 🥱", "Tick tick... BOOM soon 💣");
+        picks.push("Singles won't win it, need more than that 🧠", "Good bowling, keep them quiet 🎯", "Pressure building! 💪");
+        picks.push("Is that all they've got? 😏");
       }
   }
 

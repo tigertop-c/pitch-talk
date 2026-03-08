@@ -252,7 +252,7 @@ const Index = () => {
         <div className="flex flex-col h-full relative overflow-hidden sm:pt-[2px]">
           <HypeOverlay type={hypeType} />
           {(selectedMatch || gameStarted) && (
-            <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} />
+            <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
           )}
           {!selectedMatch ? (
             <GamePicker onSelectMatch={handleSelectMatch} />

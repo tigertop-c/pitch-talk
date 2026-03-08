@@ -376,60 +376,31 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
           )}
         </AnimatePresence>
 
-        {/* Social + invite */}
-        {stage !== "starting" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="space-y-2.5"
-          >
-            <div className="flex items-center justify-center gap-2 py-2.5 px-4 bg-secondary/50 rounded-2xl">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-neon opacity-75 animate-live-pulse" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-neon" />
-              </span>
-              <span className="text-[12px] text-muted-foreground font-medium">
-                5 friends already here
-              </span>
-            </div>
-
-            <button
-              onClick={() => setShowInvite(!showInvite)}
-              className="w-full py-3 px-4 bg-secondary rounded-2xl text-[13px] font-semibold text-muted-foreground flex items-center justify-center gap-2 active:bg-muted transition-all duration-200"
-            >
-              <Users size={15} />
-              Invite friends
-              <ChevronRight size={13} className={`transition-transform duration-300 ${showInvite ? "rotate-90" : ""}`} />
-            </button>
-
-            <AnimatePresence>
-              {showInvite && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="overflow-hidden"
-                >
-                  <div className="p-4 ios-card space-y-2">
-                    <p className="text-[12px] text-muted-foreground mb-1 font-medium">Share via WhatsApp 👇</p>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleInviteWhatsApp}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-[13px] text-primary-foreground"
-                      style={{ backgroundColor: "hsl(142, 70%, 45%)" }}
-                    >
-                      <MessageCircle size={16} />
-                      Invite on WhatsApp
-                    </motion.button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
       </div>
+
+      {/* Sticky bottom invite bar */}
+      {stage !== "starting" && (
+        <div className="absolute bottom-0 left-0 right-0 ios-glass px-5 py-3 space-y-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
+          <div className="flex items-center justify-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-neon opacity-75 animate-live-pulse" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-neon" />
+            </span>
+            <span className="text-[12px] text-muted-foreground font-medium">
+              5 friends already here
+            </span>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleInviteWhatsApp}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-[13px] text-primary-foreground"
+            style={{ backgroundColor: "hsl(142, 70%, 45%)" }}
+          >
+            <MessageCircle size={16} />
+            Invite friends on WhatsApp
+          </motion.button>
+        </div>
+      )}
     </div>
   );
 };

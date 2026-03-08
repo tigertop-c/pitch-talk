@@ -112,8 +112,8 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
         </div>
       </div>
 
-      {/* Row 3: Target info */}
-      {match.target && remainingRuns !== null && remainingRuns > 0 && (
+      {/* Row 3: Target info - only show during chase */}
+      {isChasing && match.target && remainingRuns !== null && remainingRuns > 0 && (
         <div className="mt-1 text-[11px] text-muted-foreground">
           Need <span className="text-foreground font-semibold">{remainingRuns}</span> off{" "}
           <span className="text-foreground font-semibold">{Math.ceil(remainingOvers * 6)}</span> balls
