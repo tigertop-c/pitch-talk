@@ -1,6 +1,12 @@
 import { motion } from "framer-motion";
+import { type MatchState, formatBall } from "@/hooks/useMatchState";
 
-const LiveHeader = () => {
+interface LiveHeaderProps {
+  match: MatchState;
+  crr: string;
+}
+
+const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
   return (
     <motion.div
       initial={{ y: -50, opacity: 0 }}
@@ -20,13 +26,27 @@ const LiveHeader = () => {
 
       <div className="flex items-baseline justify-between">
         <div>
-          <span className="text-3xl font-bold font-mono tracking-tight text-foreground">184</span>
-          <span className="text-xl font-mono text-muted-foreground">/4</span>
-          <span className="ml-3 text-sm font-mono text-neon font-semibold">(18.2)</span>
+          <motion.span
+            key={match.runs}
+            initial={{ scale: 1.2, color: "hsl(78 100% 50%)" }}
+            animate={{ scale: 1, color: "hsl(0 0% 95%)" }}
+            className="text-3xl font-bold font-mono tracking-tight"
+          >
+            {match.runs}
+          </motion.span>
+          <span className="text-xl font-mono text-muted-foreground">/{match.wickets}</span>
+          <motion.span
+            key={formatBall(match.overs, match.balls)}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="ml-3 text-sm font-mono text-neon font-semibold"
+          >
+            ({formatBall(match.overs, match.balls)})
+          </motion.span>
         </div>
         <div className="text-right">
           <div className="text-xs text-muted-foreground font-mono">CRR</div>
-          <div className="text-lg font-bold font-mono text-primary">10.05</div>
+          <div className="text-lg font-bold font-mono text-primary">{crr}</div>
         </div>
       </div>
 
@@ -35,7 +55,7 @@ const LiveHeader = () => {
         <div className="h-full bg-neon rounded-full animate-run-up" />
       </div>
       <div className="flex justify-between mt-1">
-        <span className="text-[10px] font-mono text-muted-foreground">Bumrah bowling</span>
+        <span className="text-[10px] font-mono text-muted-foreground">{match.currentBowler} bowling</span>
         <span className="text-[10px] font-mono text-neon">Next ball</span>
       </div>
     </motion.div>
