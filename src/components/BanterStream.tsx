@@ -37,6 +37,7 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   dot: ["Dot ball. Pressure building 🫣", "Tight bowling 🎯", "Batsman looked clueless 😴"],
   single: ["Rotating strike, smart cricket", "Keep the board ticking", "Good running 🏃"],
   double: ["Quick two! 🏃‍♂️", "Placed it perfectly for two"],
+  triple: ["THREE RUNS! Great running 🏃‍♂️🏃‍♂️", "Pushing hard for three!", "That's excellent hustle"],
   four: ["SHOT! Boundary 💥", "Creamed through covers! 🔥", "Tracer bullet 🚀"],
   six: ["INTO THE STANDS! 🏟️", "That's out of the ground! 🚀", "MENTAL 🤯"],
   wicket: ["GONE! 💀", "TIMBER! 🔥", "HUGE WICKET!", "The celebration says it all 🎉"],
@@ -108,7 +109,9 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
           won: (fp.pick === "Dot" && event.result === "dot") ||
                (fp.pick === "Boundary" && event.result === "four") ||
                (fp.pick === "Six" && event.result === "six") ||
-               (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
+               (fp.pick === "Single" && event.result === "single") ||
+               (fp.pick === "Two" && event.result === "double") ||
+               (fp.pick === "Three" && event.result === "triple") ||
                (fp.pick === "Wicket" && event.result === "wicket") ||
                (fp.pick === "Wide" && event.result === "wide") ||
                (fp.pick === "No Ball" && event.result === "noball"),
@@ -127,7 +130,9 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
           const won = (fp.pick === "Dot" && event.result === "dot") ||
                       (fp.pick === "Boundary" && event.result === "four") ||
                       (fp.pick === "Six" && event.result === "six") ||
-                      (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
+                      (fp.pick === "Single" && event.result === "single") ||
+                      (fp.pick === "Two" && event.result === "double") ||
+                      (fp.pick === "Three" && event.result === "triple") ||
                       (fp.pick === "Wicket" && event.result === "wicket") ||
                       (fp.pick === "Wide" && event.result === "wide") ||
                       (fp.pick === "No Ball" && event.result === "noball");

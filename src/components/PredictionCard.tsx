@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Target, Zap, CircleDot, AlertTriangle, Clock, Sparkles, ArrowRight, Ban } from "lucide-react";
+import { Target, Zap, CircleDot, AlertTriangle, Clock, Sparkles, ArrowRight, Ban, RotateCcw } from "lucide-react";
 import { playWinSound, playFailSound, playClickSound } from "@/lib/sounds";
 
 export type PredictionState = "idle" | "locked" | "pending" | "resolved";
 
 export interface BallResult {
   label: string;
-  type: "dot" | "single" | "double" | "four" | "six" | "wicket" | "wide" | "noball";
+  type: "dot" | "single" | "double" | "triple" | "four" | "six" | "wicket" | "wide" | "noball";
 }
 
 export interface FriendPick {
@@ -38,6 +38,8 @@ const mainOutcomes = [
 ];
 
 const secondaryOutcomes = [
+  { label: "Two", icon: RotateCcw, color: "bg-muted text-foreground border-foreground" },
+  { label: "Three", icon: RotateCcw, color: "bg-muted text-foreground border-foreground" },
   { label: "Wide", icon: ArrowRight, color: "bg-muted text-foreground border-foreground" },
   { label: "No Ball", icon: Ban, color: "bg-muted text-foreground border-foreground" },
 ];
@@ -46,6 +48,7 @@ const RESULT_STYLES: Record<string, string> = {
   dot: "bg-muted text-muted-foreground",
   single: "bg-surface-elevated text-foreground",
   double: "bg-surface-elevated text-foreground",
+  triple: "bg-surface-elevated text-foreground",
   four: "bg-primary text-primary-foreground",
   six: "bg-neon text-neon-foreground",
   wicket: "bg-destructive text-destructive-foreground",
@@ -61,7 +64,9 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
     (selected === "Dot" && result.type === "dot") ||
     (selected === "Boundary" && result.type === "four") ||
     (selected === "Six" && result.type === "six") ||
-    (selected === "Single" && (result.type === "single" || result.type === "double")) ||
+    (selected === "Single" && result.type === "single") ||
+    (selected === "Two" && result.type === "double") ||
+    (selected === "Three" && result.type === "triple") ||
     (selected === "Wicket" && result.type === "wicket") ||
     (selected === "Wide" && result.type === "wide") ||
     (selected === "No Ball" && result.type === "noball")

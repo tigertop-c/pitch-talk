@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from "react";
 export interface BallEvent {
   over: number;
   ball: number;
-  result: "dot" | "single" | "double" | "four" | "six" | "wicket" | "wide" | "noball";
+  result: "dot" | "single" | "double" | "triple" | "four" | "six" | "wicket" | "wide" | "noball";
   runs: number;
   label: string;
 }
@@ -22,7 +22,8 @@ const BOWLERS = ["Bumrah", "Starc", "Cummins", "Hazlewood", "Zampa"];
 const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number; legal: boolean }[] = [
   { result: "dot", runs: 0, label: "DOT BALL", weight: 32, legal: true },
   { result: "single", runs: 1, label: "SINGLE", weight: 23, legal: true },
-  { result: "double", runs: 2, label: "TWO RUNS", weight: 10, legal: true },
+  { result: "double", runs: 2, label: "TWO RUNS", weight: 8, legal: true },
+  { result: "triple", runs: 3, label: "THREE RUNS", weight: 2, legal: true },
   { result: "four", runs: 4, label: "FOUR! 🟢", weight: 14, legal: true },
   { result: "six", runs: 6, label: "SIX! 🔵", weight: 8, legal: true },
   { result: "wicket", runs: 0, label: "WICKET! 🔴", weight: 5, legal: true },
