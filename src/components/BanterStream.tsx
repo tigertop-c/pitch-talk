@@ -373,8 +373,19 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
                       {c.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold font-mono text-neon">{c.user}</span>
+                        {getRankBadge(c.user) && (
+                          <span className="text-[10px]">{getRankBadge(c.user)}</span>
+                        )}
+                        {getStreakIcon(c.user) && (
+                          <span className="text-[10px]">{getStreakIcon(c.user)}</span>
+                        )}
+                        {getScoreText(c.user) && (
+                          <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-muted border border-border text-muted-foreground">
+                            {getScoreText(c.user)}
+                          </span>
+                        )}
                         <span className="text-[10px] font-mono text-muted-foreground ml-auto flex-shrink-0">
                           {c.timestamp}
                         </span>
