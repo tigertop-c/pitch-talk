@@ -199,8 +199,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
                 <PredictionCard
                   key={item.id}
                   id={item.id}
-                  user={item.user || ""}
-                  event="What happens next ball?"
+                  ballLabel={item.nextBallLabel || "?"}
                 />
               );
             }
