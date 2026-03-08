@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, ChevronRight, MessageCircle, Clock, UserPlus } from "lucide-react";
 import dcLogo from "@/assets/dc-logo.png";
