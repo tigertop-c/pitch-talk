@@ -5,9 +5,9 @@ interface HypeOverlayProps {
 }
 
 const HYPE: Record<string, { emoji: string; text: string; color: string }> = {
-  four: { emoji: "💥", text: "FOUR!", color: "from-primary/30 to-transparent" },
-  six: { emoji: "🚀", text: "SIX!", color: "from-neon/30 to-transparent" },
-  wicket: { emoji: "💀", text: "WICKET!", color: "from-destructive/30 to-transparent" },
+  four: { emoji: "🤚", text: "FOUR!", color: "from-primary/30 to-transparent" },
+  six: { emoji: "🙌", text: "SIX!", color: "from-neon/30 to-transparent" },
+  wicket: { emoji: "☝️", text: "WICKET!", color: "from-destructive/30 to-transparent" },
 };
 
 const HypeOverlay = ({ type }: HypeOverlayProps) => {

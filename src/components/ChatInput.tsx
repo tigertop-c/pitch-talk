@@ -229,6 +229,11 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
     [userTeam, matchContext.lastBallResult, matchContext.runs, matchContext.wickets, matchContext.overs, matchContext.balls, userStyle, lastChosen]
   );
 
+  const quickEmojis = useMemo(
+    () => getQuickEmojis(userTeam, matchContext),
+    [userTeam, matchContext.lastBallResult]
+  );
+
   const handleQuickPick = useCallback((pick: string) => {
     setLastChosen(pick);
     onSend(pick);
@@ -246,6 +251,16 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
     <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
       {/* Dynamic quick picks - wrapping layout for visibility */}
       <div className="flex flex-wrap gap-1.5 items-center">
+        {quickEmojis.map((emoji, idx) => (
+          <button
+            key={`emoji-${idx}`}
+            onClick={() => onSend(emoji)}
+            className="w-[34px] h-[34px] flex items-center justify-center rounded-full bg-secondary text-base hover:bg-muted active:scale-95 transition-all duration-150"
+          >
+            {emoji}
+          </button>
+        ))}
+        <div className="w-[1px] h-5 bg-border/50 mx-0.5"></div>
         {quickPicks.map((pick, idx) => (
           <button
             key={`${pick}-${idx}`}
