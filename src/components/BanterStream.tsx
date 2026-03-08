@@ -78,10 +78,10 @@ const BanterStream = () => {
 
   useEffect(() => {
     // Seed initial messages
-    for (let i = 0; i < 6; i++) {
-      setTimeout(() => addMessage(), i * 200);
+    for (let i = 0; i < 4; i++) {
+      setTimeout(() => addMessage(), i * 300);
     }
-    const interval = setInterval(addMessage, 4000);
+    const interval = setInterval(addMessage, 30000);
     return () => clearInterval(interval);
   }, [addMessage]);
 

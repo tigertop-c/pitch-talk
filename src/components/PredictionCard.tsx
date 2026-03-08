@@ -25,6 +25,7 @@ const PredictionCard = ({ id, user, event }: PredictionCardProps) => {
 
   const handlePredict = (label: string) => {
     if (state !== "idle") return;
+    playClickSound();
     setSelected(label);
     setState("pending");
 
@@ -32,6 +33,8 @@ const PredictionCard = ({ id, user, event }: PredictionCardProps) => {
       const won = Math.random() > 0.5;
       setState(won ? "winner" : "failed");
       setResult(won ? "winner" : "failed");
+      if (won) playWinSound();
+      else playFailSound();
     }, 2000);
   };
 
