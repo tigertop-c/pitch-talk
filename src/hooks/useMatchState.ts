@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from "react";
 export interface BallEvent {
   over: number;
   ball: number;
-  result: "dot" | "single" | "double" | "four" | "six" | "wicket";
+  result: "dot" | "single" | "double" | "four" | "six" | "wicket" | "wide" | "noball";
   runs: number;
   label: string;
 }
