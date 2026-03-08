@@ -60,16 +60,28 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0) {
-      // Play IPL horn sound when game starts
-      try {
-        const horn = new Audio("/sounds/ipl_horn.mp3");
-        horn.volume = 0.7;
-        horn.play();
-      } catch (e) { /* audio not supported */ }
       const t = setTimeout(onStart, 400);
       return () => clearTimeout(t);
     }
   }, [stage, countdown, onStart]);
+
+  // Play horn when countdown starts, stop before first ball
+  useEffect(() => {
+    if (stage === "starting") {
+      let horn: HTMLAudioElement | null = null;
+      try {
+        horn = new Audio("/sounds/ipl_horn.mp3");
+        horn.volume = 0.7;
+        horn.play();
+      } catch (e) { /* audio not supported */ }
+      return () => {
+        if (horn) {
+          horn.pause();
+          horn.currentTime = 0;
+        }
+      };
+    }
+  }, [stage]);
 
   const PickButton = ({
     label,
