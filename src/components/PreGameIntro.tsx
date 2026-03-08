@@ -301,6 +301,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               {/* Toss prediction */}
               {userTeam && (
                 <motion.div
+                  ref={tossRef}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={spring}
