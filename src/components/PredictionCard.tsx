@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Zap, CircleDot, AlertTriangle } from "lucide-react";
+import { playWinSound, playFailSound, playClickSound } from "@/lib/sounds";
 
 type PredictionState = "idle" | "pending" | "winner" | "failed";
 
