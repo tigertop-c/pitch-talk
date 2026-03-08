@@ -29,11 +29,17 @@ interface PredictionCardProps {
   onPredict: (pick: string) => void;
 }
 
-const outcomes = [
+const mainOutcomes = [
   { label: "Dot", icon: CircleDot, color: "bg-muted text-foreground border-foreground" },
-  { label: "Boundary", icon: Zap, color: "bg-primary text-primary-foreground border-foreground" },
   { label: "Single", icon: Target, color: "bg-surface-elevated text-foreground border-foreground" },
+  { label: "Boundary", icon: Zap, color: "bg-primary text-primary-foreground border-foreground" },
+  { label: "Six", icon: Sparkles, color: "bg-neon text-neon-foreground border-foreground" },
   { label: "Wicket", icon: AlertTriangle, color: "bg-destructive text-destructive-foreground border-foreground" },
+];
+
+const secondaryOutcomes = [
+  { label: "Wide", icon: ArrowRight, color: "bg-muted text-foreground border-foreground" },
+  { label: "No Ball", icon: Ban, color: "bg-muted text-foreground border-foreground" },
 ];
 
 const RESULT_STYLES: Record<string, string> = {
