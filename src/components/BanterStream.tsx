@@ -37,6 +37,7 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   dot: ["Dot ball. Pressure building 🫣", "Tight bowling 🎯", "Batsman looked clueless 😴"],
   single: ["Rotating strike, smart cricket", "Keep the board ticking", "Good running 🏃"],
   double: ["Quick two! 🏃‍♂️", "Placed it perfectly for two"],
+  triple: ["THREE RUNS! Great running 🏃‍♂️🏃‍♂️", "Pushing hard for three!", "That's excellent hustle"],
   four: ["SHOT! Boundary 💥", "Creamed through covers! 🔥", "Tracer bullet 🚀"],
   six: ["INTO THE STANDS! 🏟️", "That's out of the ground! 🚀", "MENTAL 🤯"],
   wicket: ["GONE! 💀", "TIMBER! 🔥", "HUGE WICKET!", "The celebration says it all 🎉"],
