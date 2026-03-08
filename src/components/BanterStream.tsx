@@ -44,7 +44,7 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   noball: ["NO BALL! Free hit coming 🎁", "Overstepped! 😤", "That's sloppy bowling"],
 };
 
-const LOCK_TIME = 10;
+const LOCK_TIME = 15;
 
 interface BanterStreamProps {
   match: MatchState;
