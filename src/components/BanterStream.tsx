@@ -70,7 +70,7 @@ interface BanterStreamProps {
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
-  activePlayers, maxPlayers, roomId, onInvite,
+  activePlayers, maxPlayers, roomId, onInvite, onToggleSound,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
