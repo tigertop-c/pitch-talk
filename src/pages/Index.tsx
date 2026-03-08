@@ -11,6 +11,7 @@ import HypeOverlay from "@/components/HypeOverlay";
 import { useMatchState } from "@/hooks/useMatchState";
 import { type PredictionRecord, type ReceiptData } from "@/components/ShareableReceipt";
 import { setSoundMuted } from "@/lib/sounds";
+import type { TeamId } from "@/components/ChatInput";
 
 const MAX_PLAYERS = 10;
 
@@ -40,6 +41,7 @@ interface FriendState {
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("arena");
   const [gameStarted, setGameStarted] = useState(false);
+  const [userTeam, setUserTeam] = useState<TeamId>("DC");
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
   const { match, nextBall, crr } = useMatchState();
 
@@ -74,6 +76,11 @@ const Index = () => {
     setTimeout(() => setHypeType(null), 2500);
   };
 
+  const handleGameStart = useCallback((team: TeamId) => {
+    setUserTeam(team);
+    setGameStarted(true);
+  }, []);
+
   const handlePredictionResolved = useCallback((record: PredictionRecord) => {
     setPredictions(prev => [...prev, record]);
     if (record.won === true) {
@@ -100,7 +107,6 @@ const Index = () => {
     });
   }, []);
 
-  // Inactivity tracking: called at end of each over
   const handleOverComplete = useCallback((overNum: number, participation: Record<string, boolean>) => {
     setFriends(prev => {
       return prev.map(f => {
@@ -109,15 +115,12 @@ const Index = () => {
         const lastActive = participated ? overNum : f.lastActiveOver;
         const oversInactive = overNum - lastActive;
 
-        // Drop after 3 overs inactive (warned for 2, then 1 more)
         if (f.warned && oversInactive >= 3) {
           return { ...f, active: false, warned: false };
         }
-        // Warn after 2 overs inactive
         if (oversInactive >= 2 && !f.warned) {
           return { ...f, warned: true, lastActiveOver: lastActive };
         }
-        // Clear warning if they participated
         if (participated && f.warned) {
           return { ...f, warned: false, lastActiveOver: lastActive };
         }
@@ -126,26 +129,22 @@ const Index = () => {
     });
   }, []);
 
-  // Invite via WhatsApp
   const handleInvite = useCallback(() => {
     const activeFriendCount = friends.filter(f => f.active).length;
     if (activeFriendCount >= MAX_PLAYERS) return;
 
-    // Simulate adding a friend from pool
     if (invitePoolRef.current.length > 0) {
       const newFriend = invitePoolRef.current.shift()!;
       setFriends(prev => [...prev, { friend: newFriend, active: true, warned: false, lastActiveOver: 0 }]);
       setFriendScores(prev => ({ ...prev, [newFriend.name]: { wins: 0, total: 0, streak: 0, bestStreak: 0 } }));
     }
 
-    // Open WhatsApp invite
     const text = "🏏 Join me on PitchTalk! Predict every ball, talk trash, and see who's the real cricket brain 🧠🔥\n\n" + window.location.origin;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }, [friends]);
 
   const activeFriends = friends.filter(f => f.active).map(f => f.friend);
 
-  // Game board players
   const gameBoardPlayers: GameBoardPlayer[] = [
     {
       name: "You",
@@ -170,7 +169,7 @@ const Index = () => {
     })),
   ];
 
-  // All player standings for over summaries
+  // All player standings for over summaries (now includes streak data)
   const allPlayerStandings = [
     {
       name: "You",
@@ -180,6 +179,8 @@ const Index = () => {
       accuracy: predictions.filter(p => p.won !== null).length > 0
         ? Math.round((predictions.filter(p => p.won === true).length / predictions.filter(p => p.won !== null).length) * 100)
         : 0,
+      streak: currentStreak,
+      bestStreak,
     },
     ...activeFriends.map(f => ({
       name: f.name,
@@ -189,6 +190,8 @@ const Index = () => {
       accuracy: friendScores[f.name]?.total > 0
         ? Math.round((friendScores[f.name].wins / friendScores[f.name].total) * 100)
         : 0,
+      streak: friendScores[f.name]?.streak || 0,
+      bestStreak: friendScores[f.name]?.bestStreak || 0,
     })),
   ];
 
@@ -233,7 +236,7 @@ const Index = () => {
           <HypeOverlay type={hypeType} />
           <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} />
           {!gameStarted ? (
-            <PreGameIntro onStart={() => setGameStarted(true)} />
+            <PreGameIntro onStart={handleGameStart} />
           ) : activeTab === "arena" ? (
             <>
               <GameBoard
@@ -251,6 +254,7 @@ const Index = () => {
                 activeFriends={activeFriends}
                 onOverComplete={handleOverComplete}
                 allPlayerStandings={allPlayerStandings}
+                userTeam={userTeam}
               />
             </>
           ) : activeTab === "receipts" ? (

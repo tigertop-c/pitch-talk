@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
 import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
-import ChatInput from "./ChatInput";
+import ChatInput, { type TeamId } from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
 import { isSoundMuted } from "@/lib/sounds";
 
@@ -58,18 +58,20 @@ interface BanterStreamProps {
   soundMuted: boolean;
   activeFriends: FriendDef[];
   onOverComplete?: (overNum: number, participation: Record<string, boolean>) => void;
-  allPlayerStandings: { name: string; avatar: string; wins: number; total: number; accuracy: number }[];
+  allPlayerStandings: OverSummaryData["standings"];
+  userTeam: TeamId;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
-  soundMuted, activeFriends, onOverComplete, allPlayerStandings,
+  soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
   const [overSummaries, setOverSummaries] = useState<{ afterBallId: number; data: OverSummaryData }[]>([]);
+  const [lastBallResult, setLastBallResult] = useState<string | null>(null);
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
@@ -92,7 +94,6 @@ const BanterStream = ({
     }, 100);
   };
 
-  // Update userScores when new friends join
   useEffect(() => {
     setUserScores(prev => {
       const next = { ...prev };
@@ -137,7 +138,8 @@ const BanterStream = ({
     ballCountRef.current += 1;
     const isLegal = event.result !== "wide" && event.result !== "noball";
 
-    // Play bat sound (respects mute)
+    setLastBallResult(event.result);
+
     if (!isSoundMuted()) {
       try {
         const audio = new Audio("/sounds/cricket_bat.mp3");
@@ -170,7 +172,6 @@ const BanterStream = ({
       }
     }
 
-    // Determine user's pick result
     let userWon: boolean | null = null;
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
@@ -180,7 +181,6 @@ const BanterStream = ({
       return prev;
     });
 
-    // Resolve all picks
     setBalls(prev => prev.map(b => {
       if (b.id === ballId) {
         const updatedPicks = b.friendPicks.map(fp => ({
@@ -192,7 +192,6 @@ const BanterStream = ({
       return b;
     }));
 
-    // Update friend scores + over tracking
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       if (ball) {
@@ -200,7 +199,6 @@ const BanterStream = ({
         ball.friendPicks.forEach(fp => {
           const won = checkPickWon(fp.pick, event.result);
           scoreUpdates[fp.name] = { won };
-          // Track over results
           if (!overFriendResults.current[fp.name]) {
             overFriendResults.current[fp.name] = { correct: 0, total: 0 };
           }
@@ -225,7 +223,6 @@ const BanterStream = ({
       return prev;
     });
 
-    // Report prediction to parent
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       onPredictionResolved?.({
@@ -238,14 +235,12 @@ const BanterStream = ({
       return prev;
     });
 
-    // Check end of over
     if (isLegal) {
       legalBallsThisOver.current += 1;
       if (legalBallsThisOver.current >= 6) {
         currentOverNum.current += 1;
         const overNum = currentOverNum.current;
 
-        // Find over MVP (among friends who participated)
         const friendResults = { ...overFriendResults.current };
         let mvp: OverSummaryData["overMvp"] = null;
         let maxCorrect = 0;
@@ -257,7 +252,6 @@ const BanterStream = ({
           }
         });
 
-        // Create over summary
         const summaryData: OverSummaryData = {
           overNumber: overNum,
           overMvp: mvp,
@@ -265,25 +259,20 @@ const BanterStream = ({
         };
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
-
-        // Report participation to parent for inactivity tracking
         onOverComplete?.(overNum, { ...overParticipation.current });
 
-        // Reset over tracking
         legalBallsThisOver.current = 0;
         overFriendResults.current = {};
         overParticipation.current = {};
       }
     }
 
-    // Banter messages
     const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
 
-    const friendsList = activeFriends;
     for (let i = 0; i < numMessages; i++) {
-      const user = friendsList[Math.floor(Math.random() * friendsList.length)];
+      const user = activeFriends[Math.floor(Math.random() * activeFriends.length)];
       idRef.current += 1;
       const chatId = idRef.current;
       setTimeout(() => {
@@ -376,7 +365,6 @@ const BanterStream = ({
   }, []);
 
   useEffect(() => {
-    // Initial system message about sounds
     idRef.current += 1;
     setChats([{
       id: idRef.current,
@@ -394,7 +382,6 @@ const BanterStream = ({
   // Build render items
   const renderItems: { type: "ball" | "chat" | "over-summary"; ball?: BallBlock; chat?: ChatItem; overSummary?: OverSummaryData }[] = [];
   
-  // Add initial system chats (parentBallId === 0)
   chats.filter(c => c.parentBallId === 0).forEach(chat => {
     renderItems.push({ type: "chat", chat });
   });
@@ -404,18 +391,26 @@ const BanterStream = ({
     chats.filter(c => c.parentBallId === ball.id).forEach(chat => {
       renderItems.push({ type: "chat", chat });
     });
-    // Check for over summary after this ball
     const summary = overSummaries.find(s => s.afterBallId === ball.id);
     if (summary) {
       renderItems.push({ type: "over-summary", overSummary: summary.data });
     }
   });
 
+  const matchContext = {
+    lastBallResult: lastBallResult,
+    runs: match.runs,
+    wickets: match.wickets,
+    target: match.target,
+    overs: match.overs,
+    balls: match.balls,
+  };
+
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
       <div ref={scrollRef} className="flex-1 overflow-y-auto pb-2">
         <AnimatePresence initial={false}>
-          {renderItems.map((item, idx) => {
+          {renderItems.map((item) => {
             if (item.type === "ball" && item.ball) {
               const b = item.ball;
               return (
@@ -515,7 +510,7 @@ const BanterStream = ({
           )}
         </AnimatePresence>
       </div>
-      <ChatInput onSend={handleUserChat} />
+      <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} />
     </div>
   );
 };
