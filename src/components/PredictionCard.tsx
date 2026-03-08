@@ -57,9 +57,12 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
   const urgency = countdown <= 5;
   const won = result && selected && (
     (selected === "Dot" && result.type === "dot") ||
-    (selected === "Boundary" && (result.type === "four" || result.type === "six")) ||
+    (selected === "Boundary" && result.type === "four") ||
+    (selected === "Six" && result.type === "six") ||
     (selected === "Single" && (result.type === "single" || result.type === "double")) ||
-    (selected === "Wicket" && result.type === "wicket")
+    (selected === "Wicket" && result.type === "wicket") ||
+    (selected === "Wide" && result.type === "wide") ||
+    (selected === "No Ball" && result.type === "noball")
   );
 
   useEffect(() => {
