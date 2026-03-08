@@ -30,30 +30,30 @@ interface PredictionCardProps {
 }
 
 const mainOutcomes = [
-  { label: "Dot", icon: CircleDot, color: "bg-muted text-foreground border-foreground" },
-  { label: "Single", icon: Target, color: "bg-surface-elevated text-foreground border-foreground" },
-  { label: "Boundary", icon: Zap, color: "bg-primary text-primary-foreground border-foreground" },
-  { label: "Six", icon: Sparkles, color: "bg-neon text-neon-foreground border-foreground" },
-  { label: "Wicket", icon: AlertTriangle, color: "bg-destructive text-destructive-foreground border-foreground" },
+  { label: "Dot", icon: CircleDot, color: "bg-secondary text-foreground" },
+  { label: "Single", icon: Target, color: "bg-secondary text-foreground" },
+  { label: "Boundary", icon: Zap, color: "bg-primary/10 text-primary" },
+  { label: "Six", icon: Sparkles, color: "bg-neon/10 text-neon" },
+  { label: "Wicket", icon: AlertTriangle, color: "bg-destructive/10 text-destructive" },
 ];
 
 const secondaryOutcomes = [
-  { label: "Two", icon: RotateCcw, color: "bg-muted text-foreground border-foreground" },
-  { label: "Three", icon: RotateCcw, color: "bg-muted text-foreground border-foreground" },
-  { label: "Wide", icon: ArrowRight, color: "bg-muted text-foreground border-foreground" },
-  { label: "No Ball", icon: Ban, color: "bg-muted text-foreground border-foreground" },
+  { label: "Two", icon: RotateCcw, color: "bg-secondary text-muted-foreground" },
+  { label: "Three", icon: RotateCcw, color: "bg-secondary text-muted-foreground" },
+  { label: "Wide", icon: ArrowRight, color: "bg-secondary text-muted-foreground" },
+  { label: "No Ball", icon: Ban, color: "bg-secondary text-muted-foreground" },
 ];
 
 const RESULT_STYLES: Record<string, string> = {
-  dot: "bg-muted text-muted-foreground",
-  single: "bg-surface-elevated text-foreground",
-  double: "bg-surface-elevated text-foreground",
-  triple: "bg-surface-elevated text-foreground",
-  four: "bg-primary text-primary-foreground",
-  six: "bg-neon text-neon-foreground",
-  wicket: "bg-destructive text-destructive-foreground",
-  wide: "bg-muted text-muted-foreground",
-  noball: "bg-muted text-muted-foreground",
+  dot: "bg-secondary text-muted-foreground",
+  single: "bg-secondary text-foreground",
+  double: "bg-secondary text-foreground",
+  triple: "bg-secondary text-foreground",
+  four: "bg-primary/15 text-primary",
+  six: "bg-neon/15 text-neon",
+  wicket: "bg-destructive/15 text-destructive",
+  wide: "bg-secondary text-muted-foreground",
+  noball: "bg-secondary text-muted-foreground",
 };
 
 const RANK_BADGES = ["👑", "🥈", "🥉"];
@@ -85,7 +85,6 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
     onPredict(label);
   };
 
-  // Rank users by wins for badge display
   const ranked = Object.entries(userScores)
     .map(([name, s]) => ({ name, ...s }))
     .sort((a, b) => b.wins - a.wins || b.streak - a.streak);
@@ -98,59 +97,62 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="mx-4 my-1"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", damping: 25, stiffness: 350 }}
+      className="mx-4 my-1.5"
     >
       <div
-        className={`p-3 bg-card border-[3px] border-foreground rounded-lg ${urgency && state === "idle" ? "animate-glow-pulse" : ""}`}
-        style={{
-          boxShadow:
-            state === "resolved" && won
-              ? "4px 4px 0px hsl(78 100% 50%), 0 0 20px hsl(78 100% 50% / 0.3)"
-              : state === "resolved" && selected && !won
-              ? "4px 4px 0px hsl(0 72% 51%)"
-              : "4px 4px 0px hsl(0 0% 0%)",
-        }}
+        className={`p-3.5 ios-card transition-all duration-300 ${
+          state === "resolved" && won
+            ? "ring-2 ring-neon/40"
+            : state === "resolved" && selected && !won
+            ? "ring-2 ring-destructive/30"
+            : ""
+        } ${urgency && state === "idle" ? "ring-2 ring-destructive/20" : ""}`}
       >
-        {/* Header: ball label + timer/result */}
-        <div className="flex items-center justify-between mb-2">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 font-mono font-bold text-sm bg-muted border-2 border-foreground rounded-md"
-              style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
-            >
+            <span className="px-2.5 py-1 font-semibold text-xs bg-secondary rounded-lg">
               {ballLabel}
             </span>
             {state === "resolved" && result && (
-              <span className={`px-2 py-0.5 font-mono font-bold text-xs rounded-md border-2 border-foreground ${RESULT_STYLES[result.type]}`}
-                style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
+              <motion.span
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", damping: 15 }}
+                className={`px-2.5 py-1 font-semibold text-xs rounded-lg ${RESULT_STYLES[result.type]}`}
               >
                 {result.label}
-              </span>
+              </motion.span>
             )}
             {state === "resolved" && selected && (
-              <span className={`text-xs font-mono font-bold ${won ? "text-neon" : "text-destructive"}`}>
-                {won ? "🎯 WON" : "💀 MISS"}
-              </span>
+              <motion.span
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", damping: 12, delay: 0.1 }}
+                className={`text-xs font-semibold ${won ? "text-neon" : "text-destructive"}`}
+              >
+                {won ? "🎯 Nailed it" : "💀 Miss"}
+              </motion.span>
             )}
           </div>
           {state === "idle" && (
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border-2 font-mono text-xs font-bold ${
-              urgency 
-                ? "border-destructive bg-destructive/20 text-destructive" 
-                : "border-foreground bg-muted text-foreground"
+            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+              urgency ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"
             }`}>
               <Clock size={10} />
               <span>{countdown}s</span>
             </div>
           )}
           {state === "locked" && (
-            <span className="text-xs font-mono text-neon font-bold px-2 py-0.5 bg-neon/10 rounded-md border border-neon/30">
+            <span className="text-xs font-medium text-primary px-2.5 py-1 bg-primary/10 rounded-full">
               🔒 Locked
             </span>
           )}
           {state === "pending" && (
-            <span className="text-xs font-mono text-muted-foreground font-bold px-2 py-0.5">
+            <span className="text-xs text-muted-foreground font-medium px-2.5 py-1">
               <motion.span
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -161,29 +163,29 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
           )}
         </div>
 
-        {/* Prediction buttons - only show when idle or locked */}
+        {/* Prediction buttons */}
         {(state === "idle" || state === "locked") && (
           <>
             <div className="grid grid-cols-5 gap-1.5 mb-1.5">
               {mainOutcomes.map((o) => {
                 const isSelected = selected === o.label;
                 return (
-                  <button
+                  <motion.button
                     key={o.label}
+                    whileTap={{ scale: 0.92 }}
                     onClick={() => handleClick(o.label)}
                     disabled={state === "locked"}
-                    className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-md border-2 border-foreground text-[10px] font-bold font-mono uppercase transition-all ${
+                    className={`flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-xl text-[10px] font-semibold uppercase transition-all duration-200 ${
                       isSelected
-                        ? "bg-neon text-neon-foreground scale-105 ring-2 ring-neon"
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-[1.02]"
                         : state === "locked"
-                        ? "opacity-40 " + o.color
-                        : o.color + " active:scale-95 hover:scale-105"
+                        ? "opacity-35 " + o.color
+                        : o.color + " active:bg-muted"
                     }`}
-                    style={{ boxShadow: isSelected ? "2px 2px 0px hsl(78 100% 40%)" : "2px 2px 0px hsl(0 0% 0%)" }}
                   >
-                    <o.icon size={14} />
+                    <o.icon size={15} strokeWidth={1.8} />
                     {o.label}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -191,53 +193,55 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
               {secondaryOutcomes.map((o) => {
                 const isSelected = selected === o.label;
                 return (
-                  <button
+                  <motion.button
                     key={o.label}
+                    whileTap={{ scale: 0.92 }}
                     onClick={() => handleClick(o.label)}
                     disabled={state === "locked"}
-                    className={`flex items-center gap-1 py-1 px-2 rounded-md border border-border text-[9px] font-bold font-mono uppercase transition-all ${
+                    className={`flex items-center gap-1 py-1.5 px-2.5 rounded-lg text-[9px] font-semibold uppercase transition-all duration-200 ${
                       isSelected
-                        ? "bg-neon text-neon-foreground ring-1 ring-neon"
+                        ? "bg-primary text-primary-foreground"
                         : state === "locked"
-                        ? "opacity-40 bg-muted text-muted-foreground"
-                        : "bg-muted/50 text-muted-foreground hover:text-foreground active:scale-95"
+                        ? "opacity-35 bg-secondary text-muted-foreground"
+                        : "bg-secondary/60 text-muted-foreground active:bg-muted"
                     }`}
                   >
                     <o.icon size={10} />
                     {o.label}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
           </>
         )}
 
-        {/* Condensed friend picks inside the card */}
+        {/* Friend picks */}
         {friendPicks.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1.5">
             {friendPicks.map((fp, i) => (
               <motion.div
                 key={`${fp.name}-${i}`}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border ${
+                transition={{ type: "spring", damping: 20 }}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium ${
                   state === "resolved" && fp.won !== undefined
                     ? fp.won 
-                      ? "border-neon/40 bg-neon/10 text-neon" 
-                      : "border-destructive/40 bg-destructive/10 text-destructive"
-                    : "border-border bg-muted/50 text-muted-foreground"
+                      ? "bg-neon/10 text-neon" 
+                      : "bg-destructive/10 text-destructive"
+                    : "bg-secondary text-muted-foreground"
                 }`}
               >
                 <span>{fp.avatar}</span>
                 {getRankBadge(fp.name) && <span className="text-[8px]">{getRankBadge(fp.name)}</span>}
-                <span className="font-bold">{fp.name}</span>
-                <span className="opacity-70">→</span>
-                <span className="font-bold">{fp.pick}</span>
+                <span className="font-semibold">{fp.name}</span>
+                <span className="opacity-50">→</span>
+                <span className="font-semibold">{fp.pick}</span>
                 {state === "resolved" && fp.won !== undefined && (
                   <span>{fp.won ? "✅" : "❌"}</span>
                 )}
                 {userScores[fp.name]?.total > 0 && (
-                  <span className="text-[8px] opacity-60">{userScores[fp.name].wins}/{userScores[fp.name].total}</span>
+                  <span className="text-[8px] opacity-50">{userScores[fp.name].wins}/{userScores[fp.name].total}</span>
                 )}
               </motion.div>
             ))}

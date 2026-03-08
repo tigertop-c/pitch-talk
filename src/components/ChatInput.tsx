@@ -18,15 +18,14 @@ const ChatInput = ({ onSend }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t-[3px] border-foreground bg-card px-3 py-2">
+    <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
       {/* Quick picks */}
       <div className="flex gap-1.5 mb-2 overflow-x-auto no-scrollbar">
         {QUICK_PICKS.map((pick) => (
           <button
             key={pick}
             onClick={() => onSend(pick)}
-            className="flex-shrink-0 px-2.5 py-1 rounded-md border-2 border-foreground bg-muted text-foreground text-xs font-mono font-bold hover:bg-neon hover:text-neon-foreground active:scale-95 transition-all"
-            style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-muted active:scale-95 transition-all duration-150"
           >
             {pick}
           </button>
@@ -40,13 +39,11 @@ const ChatInput = ({ onSend }: ChatInputProps) => {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="Drop your take..."
-          className="flex-1 px-3 py-2 rounded-md border-2 border-foreground bg-muted text-foreground text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-neon"
-          style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
+          className="flex-1 px-4 py-2 rounded-full bg-secondary text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
         />
         <button
           onClick={handleSend}
-          className="px-3 py-2 rounded-md border-2 border-foreground bg-neon text-neon-foreground font-bold active:scale-95 transition-all"
-          style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform duration-150"
         >
           <Send size={16} />
         </button>

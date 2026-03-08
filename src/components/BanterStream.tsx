@@ -47,6 +47,8 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
 
 const LOCK_TIME = 15;
 
+const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
+
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
@@ -72,7 +74,6 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     }, 100);
   };
 
-  // Add friend picks (stored on ball, NOT as chat)
   const addFriendPicks = useCallback((ballId: number) => {
     const shuffledUsers = [...USERS].sort(() => Math.random() - 0.5).slice(0, 3 + Math.floor(Math.random() * 2));
     const delays = [1500, 3000, 5000, 7000, 8500];
@@ -101,7 +102,6 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       setTimeout(() => setShakeScreen(false), 600);
     }
 
-    // Update ball to resolved + determine friend results
     setBalls(prev => prev.map(b => {
       if (b.id === ballId) {
         const updatedPicks = b.friendPicks.map(fp => ({
@@ -121,7 +121,6 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       return b;
     }));
 
-    // Update scores
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       if (ball) {
@@ -155,7 +154,6 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       return prev;
     });
 
-    // Add banter chats (reactions only, not picks)
     const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
@@ -177,7 +175,6 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       }, 500 + i * 800);
     }
 
-    // Show waiting indicator, then start next ball
     setTimeout(() => {
       setWaitingForNext(true);
       scrollToBottom();
@@ -266,7 +263,6 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     return () => clearInterval(countdownRef.current);
   }, []);
 
-  // Build interleaved render list
   const renderItems: { type: "ball" | "chat"; ball?: BallBlock; chat?: ChatItem }[] = [];
   balls.forEach(ball => {
     renderItems.push({ type: "ball", ball });
@@ -304,30 +300,28 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
               return (
                 <motion.div
                   key={`chat-${c.id}`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="px-4 py-1"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...spring }}
+                  className="px-5 py-1"
                 >
-                  <div className="flex items-start gap-2">
-                    <div className="w-6 h-6 flex items-center justify-center rounded-md bg-muted border-2 border-foreground text-[10px] flex-shrink-0"
-                      style={{ boxShadow: "1px 1px 0px hsl(0 0% 0%)" }}
-                    >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary text-[11px] flex-shrink-0">
                       {c.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-xs font-bold font-mono ${isYou ? "text-electric" : "text-neon"}`}>{c.user}</span>
+                        <span className={`text-[12px] font-semibold ${isYou ? "text-primary" : "text-foreground"}`}>{c.user}</span>
                         {!isYou && userScores[c.user]?.total > 0 && (
-                          <span className="text-[8px] font-mono px-1 py-0.5 rounded bg-muted border border-border text-muted-foreground">
+                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
                             {userScores[c.user].wins}/{userScores[c.user].total}
                           </span>
                         )}
-                        <span className="text-[9px] font-mono text-muted-foreground ml-auto flex-shrink-0">
+                        <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
                           {c.timestamp}
                         </span>
                       </div>
-                      <p className="text-sm mt-0.5 leading-relaxed text-foreground">{c.text}</p>
+                      <p className="text-[14px] mt-0.5 leading-relaxed text-foreground">{c.text}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -337,26 +331,26 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
           })}
         </AnimatePresence>
 
-        {/* Subtle waiting-for-next-ball indicator */}
         <AnimatePresence>
           {waitingForNext && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
-              className="flex items-center justify-center gap-2 py-3 px-4"
+              transition={{ duration: 0.3 }}
+              className="flex items-center justify-center gap-2 py-4 px-4"
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
                   transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                   className="text-sm"
                 >🏏</motion.span>
-                <span className="text-[11px] font-mono text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground font-medium">
                   Bowler walking back...
                 </span>
                 <motion.span
-                  className="flex gap-0.5"
+                  className="flex gap-1"
                   initial={{ opacity: 0.4 }}
                   animate={{ opacity: [0.4, 1, 0.4] }}
                   transition={{ repeat: Infinity, duration: 1.5 }}

@@ -11,57 +11,59 @@ const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
     <motion.div
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="sticky top-0 z-50 bg-card border-b-[3px] border-foreground px-4 py-3"
+      transition={{ type: "spring", damping: 20, stiffness: 300 }}
+      className="sticky top-0 z-50 ios-glass ios-separator px-4 pt-2 pb-3"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
+          <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full rounded-full bg-live opacity-75 animate-live-pulse" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-live" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-live" />
           </span>
-          <span className="text-xs font-mono uppercase tracking-widest text-live font-semibold">Live</span>
+          <span className="text-[11px] uppercase tracking-wider text-live font-semibold">Live</span>
         </div>
-        <span className="text-xs font-mono text-muted-foreground">IND vs AUS • 2nd T20I</span>
+        <span className="text-[11px] text-muted-foreground font-medium">IND vs AUS • 2nd T20I</span>
       </div>
 
       <div className="flex items-baseline justify-between">
         <div>
           <motion.span
             key={match.runs}
-            initial={{ scale: 1.2, color: "hsl(78 100% 50%)" }}
-            animate={{ scale: 1, color: "hsl(0 0% 95%)" }}
-            className="text-3xl font-bold font-mono tracking-tight"
+            initial={{ scale: 1.15, color: "hsl(211 100% 50%)" }}
+            animate={{ scale: 1, color: "hsl(var(--foreground))" }}
+            transition={{ type: "spring", damping: 15 }}
+            className="text-3xl font-bold tracking-tight"
           >
             {match.runs}
           </motion.span>
-          <span className="text-xl font-mono text-muted-foreground">/{match.wickets}</span>
+          <span className="text-xl text-muted-foreground font-light">/{match.wickets}</span>
           <motion.span
             key={formatBall(match.overs, match.balls)}
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="ml-3 text-sm font-mono text-neon font-semibold"
+            transition={{ type: "spring", damping: 20 }}
+            className="ml-3 text-sm text-primary font-semibold"
           >
             ({formatBall(match.overs, match.balls)})
           </motion.span>
         </div>
         <div className="text-right">
-          <div className="text-xs text-muted-foreground font-mono">CRR</div>
-          <div className="text-lg font-bold font-mono text-primary">{crr}</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">CRR</div>
+          <div className="text-lg font-bold text-primary">{crr}</div>
         </div>
       </div>
 
-      {/* Last 6 balls mini strip */}
       {match.ballEvents.length > 0 && (
-        <div className="mt-2 flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-muted-foreground mr-1">{match.currentBowler}</span>
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground mr-1 font-medium">{match.currentBowler}</span>
           {match.ballEvents.slice(-6).map((e, i) => {
-            const bg =
+            const style =
               e.result === "four" ? "bg-primary text-primary-foreground" :
               e.result === "six" ? "bg-neon text-neon-foreground" :
               e.result === "wicket" ? "bg-destructive text-destructive-foreground" :
-              "bg-muted text-muted-foreground";
+              "bg-secondary text-muted-foreground";
             return (
-              <span key={i} className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-mono font-bold ${bg}`}>
+              <span key={i} className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-semibold ${style}`}>
                 {e.result === "wicket" ? "W" : e.runs}
               </span>
             );
