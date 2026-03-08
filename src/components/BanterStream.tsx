@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
+import { type PredictionRecord } from "./ShareableReceipt";
 import ChatInput from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
 
