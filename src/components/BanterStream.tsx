@@ -40,6 +40,8 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   four: ["SHOT! Boundary 💥", "Creamed through covers! 🔥", "Tracer bullet 🚀"],
   six: ["INTO THE STANDS! 🏟️", "That's out of the ground! 🚀", "MENTAL 🤯"],
   wicket: ["GONE! 💀", "TIMBER! 🔥", "HUGE WICKET!", "The celebration says it all 🎉"],
+  wide: ["Wide! Free runs 😅", "That's going down leg", "Bowler losing his line"],
+  noball: ["NO BALL! Free hit coming 🎁", "Overstepped! 😤", "That's sloppy bowling"],
 };
 
 const LOCK_TIME = 10;
