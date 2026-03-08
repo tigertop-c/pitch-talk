@@ -455,6 +455,7 @@ const BanterStream = ({
               const c = item.chat;
               const isYou = c.user === "You";
               const isSystem = c.isSystem;
+              const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
               return (
                 <motion.div
                   key={`chat-${c.id}`}
@@ -483,9 +484,23 @@ const BanterStream = ({
                           {c.timestamp}
                         </span>
                       </div>
-                      <p className={`text-[14px] mt-0.5 leading-relaxed ${
-                        isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
-                      }`}>{c.text}</p>
+                      {isSoundToggle ? (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[12px] text-muted-foreground italic">
+                            {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — sledge louder!"}
+                          </p>
+                          <button
+                            onClick={handleToggleSound}
+                            className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-foreground active:scale-95 transition-transform"
+                          >
+                            {soundMuted ? "🔊 Turn On" : "🔇 Mute"}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className={`text-[14px] mt-0.5 leading-relaxed ${
+                          isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
+                        }`}>{c.text}</p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
