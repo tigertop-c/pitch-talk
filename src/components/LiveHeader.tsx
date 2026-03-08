@@ -9,9 +9,11 @@ interface LiveHeaderProps {
   crr: string;
   soundMuted: boolean;
   onToggleSound: () => void;
+  battingTeam?: string;
+  isChasing?: boolean;
 }
 
-const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) => {
+const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing }: LiveHeaderProps) => {
   const totalOvers = match.overs + match.balls / 6;
   const remainingOvers = 20 - totalOvers;
   const remainingRuns = match.target ? match.target - match.runs : null;
@@ -69,7 +71,11 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) 
 
       {/* Row 2: Big score + overs + run rates */}
       <div className="flex items-end justify-between">
-        <div className="flex items-baseline gap-1">
+        <div className="flex flex-col">
+          {battingTeam && (
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{battingTeam} batting</span>
+          )}
+          <div className="flex items-baseline gap-1">
           <motion.span
             key={match.runs}
             initial={{ scale: 1.15, color: "hsl(211 100% 50%)" }}
@@ -89,6 +95,7 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) 
           >
             ({formatBall(match.overs, match.balls)})
           </motion.span>
+          </div>
         </div>
 
         <div className="flex gap-4 items-end">
@@ -96,7 +103,7 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) 
             <div className="text-[9px] text-muted-foreground uppercase tracking-wide">CRR</div>
             <div className="text-base font-bold text-primary leading-tight">{crr}</div>
           </div>
-          {rrr && (
+          {isChasing && rrr && (
             <div className="text-right">
               <div className="text-[9px] text-muted-foreground uppercase tracking-wide">RRR</div>
               <div className="text-base font-bold text-destructive leading-tight">{rrr}</div>
@@ -105,8 +112,8 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) 
         </div>
       </div>
 
-      {/* Row 3: Target info */}
-      {match.target && remainingRuns !== null && remainingRuns > 0 && (
+      {/* Row 3: Target info - only show during chase */}
+      {isChasing && match.target && remainingRuns !== null && remainingRuns > 0 && (
         <div className="mt-1 text-[11px] text-muted-foreground">
           Need <span className="text-foreground font-semibold">{remainingRuns}</span> off{" "}
           <span className="text-foreground font-semibold">{Math.ceil(remainingOvers * 6)}</span> balls

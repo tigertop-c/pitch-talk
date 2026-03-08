@@ -12,6 +12,7 @@ export interface OverSummaryData {
     accuracy: number;
     streak: number;
     bestStreak: number;
+    team?: string;
   }[];
   activePlayers: number;
   maxPlayers: number;
@@ -20,6 +21,11 @@ export interface OverSummaryData {
   matchWickets: number;
   matchOvers: string;
   matchTarget: number | null;
+  overRuns?: number;
+  overWickets?: number;
+  overBoundaries?: number;
+  overExtras?: number;
+  teamAllegiances?: { team1: string; team1Count: number; team2: string; team2Count: number };
 }
 
 interface OverSummaryProps {
@@ -39,9 +45,9 @@ const getTitle = (accuracy: number, total: number) => {
   if (total < 2) return null;
   if (accuracy >= 80) return { title: "Nostradamus 🔮", style: "text-neon" };
   if (accuracy >= 60) return { title: "Cricket Brain 🧠", style: "text-primary" };
-  if (accuracy >= 40) return { title: "Decent Read", style: "text-muted-foreground" };
-  if (accuracy >= 20) return { title: "Village Cricketer", style: "text-muted-foreground" };
-  return { title: "Certified Clown 🤡", style: "text-destructive" };
+  if (accuracy >= 40) return { title: "Decent Read 👌", style: "text-muted-foreground" };
+  if (accuracy >= 20) return { title: "Still Learning 📚", style: "text-muted-foreground" };
+  return { title: "Bold Guesser 🎲", style: "text-muted-foreground" };
 };
 
 const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
@@ -77,10 +83,49 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
           </span>
         </div>
 
-        {/* Match score line */}
-        <div className="px-2 py-1.5 mb-3 rounded-lg bg-secondary/60 text-center">
+        {/* Match score + over highlights */}
+        <div className="px-2 py-1.5 mb-2 rounded-lg bg-secondary/60 text-center">
           <span className="text-[11px] font-semibold text-foreground">{matchSummary}</span>
         </div>
+
+        {/* Over highlights - hype stats */}
+        <div className="flex gap-1.5 mb-3">
+          {(data.overRuns !== undefined && data.overRuns > 0) && (
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+              data.overRuns >= 15 ? "bg-neon/15 text-neon" : data.overRuns >= 10 ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
+            }`}>
+              {data.overRuns >= 15 ? "🔥" : "🏏"} {data.overRuns} runs
+            </span>
+          )}
+          {(data.overWickets !== undefined && data.overWickets > 0) && (
+            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-destructive/15 text-destructive">
+              💀 {data.overWickets} wicket{data.overWickets > 1 ? "s" : ""}
+            </span>
+          )}
+          {(data.overBoundaries !== undefined && data.overBoundaries > 0) && (
+            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/15 text-primary">
+              💥 {data.overBoundaries} boundar{data.overBoundaries > 1 ? "ies" : "y"}
+            </span>
+          )}
+          {(data.overExtras !== undefined && data.overExtras > 0) && (
+            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-muted text-muted-foreground">
+              😬 {data.overExtras} extra{data.overExtras > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {/* Team allegiances */}
+        {data.teamAllegiances && (
+          <div className="flex items-center justify-center gap-3 mb-3 px-2 py-1.5 rounded-lg bg-secondary/40">
+            <span className="text-[10px] font-bold text-primary">
+              {data.teamAllegiances.team1} 💙 ×{data.teamAllegiances.team1Count}
+            </span>
+            <span className="text-[10px] text-muted-foreground">vs</span>
+            <span className="text-[10px] font-bold text-primary">
+              {data.teamAllegiances.team2} 💙 ×{data.teamAllegiances.team2Count}
+            </span>
+          </div>
+        )}
 
         {/* Over MVP */}
         {data.overMvp && data.overMvp.correct > 0 && (

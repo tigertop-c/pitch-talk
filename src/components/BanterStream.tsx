@@ -133,6 +133,10 @@ const BanterStream = ({
   const currentOverNum = useRef(0);
   const overFriendResults = useRef<Record<string, { correct: number; total: number }>>({});
   const overParticipation = useRef<Record<string, boolean>>({});
+  const overRunsRef = useRef(0);
+  const overWicketsRef = useRef(0);
+  const overBoundariesRef = useRef(0);
+  const overExtrasRef = useRef(0);
 
   const scrollToBottom = useCallback(() => {
     if (userIsScrolledUp.current) {
@@ -207,6 +211,12 @@ const BanterStream = ({
     const isLegal = event.result !== "wide" && event.result !== "noball";
 
     setLastBallResult(event.result);
+
+    // Track over stats
+    overRunsRef.current += event.runs;
+    if (event.result === "wicket") overWicketsRef.current += 1;
+    if (event.result === "four" || event.result === "six") overBoundariesRef.current += 1;
+    if (event.result === "wide" || event.result === "noball") overExtrasRef.current += 1;
 
     if (!isSoundMuted()) {
       try {
@@ -326,10 +336,20 @@ const BanterStream = ({
         });
 
         const oversStr = `${match.overs}.${match.balls}`;
+
+        // Build team allegiances
+        const team1Short = "DC";
+        const team2Short = "MI";
+        const team1Count = activeFriends.filter(f => f.team === team1Short).length + (userTeam === team1Short ? 1 : 0);
+        const team2Count = activeFriends.filter(f => f.team === team2Short).length + (userTeam === team2Short ? 1 : 0);
+
         const summaryData: OverSummaryData = {
           overNumber: overNum,
           overMvp: mvp,
-          standings: allPlayerStandings,
+          standings: allPlayerStandings.map(s => ({
+            ...s,
+            team: s.name === "You" ? userTeam : activeFriends.find(f => f.name === s.name)?.team,
+          })),
           activePlayers,
           maxPlayers,
           roomId,
@@ -337,6 +357,11 @@ const BanterStream = ({
           matchWickets: match.wickets,
           matchOvers: oversStr,
           matchTarget: match.target,
+          overRuns: overRunsRef.current,
+          overWickets: overWicketsRef.current,
+          overBoundaries: overBoundariesRef.current,
+          overExtras: overExtrasRef.current,
+          teamAllegiances: (team1Count + team2Count) >= 3 ? { team1: team1Short, team1Count, team2: team2Short, team2Count } : undefined,
         };
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
@@ -345,6 +370,10 @@ const BanterStream = ({
         legalBallsThisOver.current = 0;
         overFriendResults.current = {};
         overParticipation.current = {};
+        overRunsRef.current = 0;
+        overWicketsRef.current = 0;
+        overBoundariesRef.current = 0;
+        overExtrasRef.current = 0;
       }
     }
 
@@ -625,11 +654,11 @@ const BanterStream = ({
                             isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
                           }`}>{c.text}</p>
                         )}
-                        {/* Reply button - only for non-system, non-self messages */}
+                        {/* Reply button - visible on mobile too */}
                         {!isSystem && !isYou && (
                           <button
                             onClick={() => handleReply(c)}
-                            className="opacity-0 group-hover:opacity-100 mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-all"
+                            className="mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground active:text-primary transition-all"
                           >
                             <Reply size={10} />
                             Reply
