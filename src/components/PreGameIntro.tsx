@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Copy, Check, ChevronRight } from "lucide-react";
+import dcLogo from "@/assets/dc-logo.png";
+import miLogo from "@/assets/mi-logo.png";
 
 interface PreGameIntroProps {
   onStart: () => void;
