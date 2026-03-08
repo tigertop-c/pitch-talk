@@ -50,14 +50,24 @@ const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
         </div>
       </div>
 
-      {/* Bowler run-up progress */}
-      <div className="mt-2 h-1 w-full bg-muted rounded-full overflow-hidden">
-        <div className="h-full bg-neon rounded-full animate-run-up" />
-      </div>
-      <div className="flex justify-between mt-1">
-        <span className="text-[10px] font-mono text-muted-foreground">{match.currentBowler} bowling</span>
-        <span className="text-[10px] font-mono text-neon">Next ball</span>
-      </div>
+      {/* Last 6 balls mini strip */}
+      {match.ballEvents.length > 0 && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-muted-foreground mr-1">{match.currentBowler}</span>
+          {match.ballEvents.slice(-6).map((e, i) => {
+            const bg =
+              e.result === "four" ? "bg-primary text-primary-foreground" :
+              e.result === "six" ? "bg-neon text-neon-foreground" :
+              e.result === "wicket" ? "bg-destructive text-destructive-foreground" :
+              "bg-muted text-muted-foreground";
+            return (
+              <span key={i} className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-mono font-bold ${bg}`}>
+                {e.result === "wicket" ? "W" : e.runs}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </motion.div>
   );
 };

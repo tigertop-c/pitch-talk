@@ -6,15 +6,14 @@ import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchSta
 interface StreamItem {
   id: number;
   type: "ball-header" | "chat" | "prediction";
-  // ball-header fields
   ballLabel?: string;
   ballResult?: string;
   ballResultType?: BallEvent["result"];
-  // chat fields
   user?: string;
   avatar?: string;
   text?: string;
   timestamp?: string;
+  nextBallLabel?: string;
 }
 
 const USERS = [
@@ -132,14 +131,17 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       });
     }
 
-    // Every 3rd ball, add a prediction card
+    // Every 3rd ball, add a prediction card for the NEXT ball
     if (ballCountRef.current % 3 === 0) {
-      const user = USERS[Math.floor(Math.random() * USERS.length)];
       idRef.current += 1;
+      // Compute next ball label
+      const nextBallNum = adjustedBall + 1;
+      const nextOver = nextBallNum > 6 ? adjustedOver + 1 : adjustedOver;
+      const nextBall = nextBallNum > 6 ? 1 : nextBallNum;
       newItems.push({
         id: idRef.current,
         type: "prediction",
-        user: user.name,
+        nextBallLabel: formatBall(nextOver, nextBall),
       });
     }
 
@@ -197,8 +199,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
                 <PredictionCard
                   key={item.id}
                   id={item.id}
-                  user={item.user || ""}
-                  event="What happens next ball?"
+                  ballLabel={item.nextBallLabel || "?"}
                 />
               );
             }
