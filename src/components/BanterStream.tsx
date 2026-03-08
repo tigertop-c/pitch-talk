@@ -35,15 +35,15 @@ export interface FriendDef {
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
 
 const BANTER_BY_RESULT: Record<string, string[]> = {
-  dot: ["Dot ball. Pressure building 🫣", "Tight bowling 🎯", "Batsman looked clueless 😴"],
-  single: ["Rotating strike, smart cricket", "Keep the board ticking", "Good running 🏃"],
-  double: ["Quick two! 🏃‍♂️", "Placed it perfectly for two"],
-  triple: ["THREE RUNS! Great running 🏃‍♂️🏃‍♂️", "Pushing hard for three!", "That's excellent hustle"],
-  four: ["SHOT! Boundary 💥", "Creamed through covers! 🔥", "Tracer bullet 🚀"],
-  six: ["INTO THE STANDS! 🏟️", "That's out of the ground! 🚀", "MENTAL 🤯"],
-  wicket: ["GONE! 💀", "TIMBER! 🔥", "HUGE WICKET!", "The celebration says it all 🎉"],
-  wide: ["Wide! Free runs 😅", "That's going down leg", "Bowler losing his line"],
-  noball: ["NO BALL! Free hit coming 🎁", "Overstepped! 😤", "That's sloppy bowling"],
+  dot: ["Dot ball! Batsman's frozen 🥶", "Can't lay bat on ball 💀", "BORING! Hit something 🥱", "That's some hostile bowling 🎯"],
+  single: ["Just a single? My nan runs faster 👵", "Rotating strike, at least they're trying 😂", "Smart cricket... said no one ever 🙄"],
+  double: ["Quick two! Decent hustle 🏃‍♂️", "Running like their dinner's getting cold 🍽️"],
+  triple: ["THREE! That's proper running between wickets 🏃‍♂️💨", "Even the camera couldn't keep up!"],
+  four: ["BOUNDARY! Slapped into the covers 💥", "That ball had a family! 🔥", "Tracer bullet! Bowler's in shambles 💀"],
+  six: ["SIX! INTO THE STANDS! Get the stretcher for the bowler 🚑", "That's OUTTA HERE! 🚀", "MONSTER hit! Bowler questioning his career 😭"],
+  wicket: ["OUT! WALK OF SHAME! 🚶💀", "SEE YA! Pack your bags! 👋", "TIMBER! That's embarrassing 😂", "Bowler's absolutely buzzing 🤩"],
+  wide: ["WIDE! Can't even bowl straight 💀", "That's going to the next pitch 😂", "My 5-year-old bowls better 👶"],
+  noball: ["NO BALL! Free hit! Bowler's having a MARE 🤡", "Overstepped! Absolute clown moment 🎪", "FREE HIT! Bowler in the mud 😤"],
 };
 
 const LOCK_TIME = 15;
@@ -64,12 +64,13 @@ interface BanterStreamProps {
   maxPlayers: number;
   roomId: string;
   onInvite?: () => void;
+  onToggleSound?: () => void;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
-  activePlayers, maxPlayers, roomId, onInvite,
+  activePlayers, maxPlayers, roomId, onInvite, onToggleSound,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -377,14 +378,18 @@ const BanterStream = ({
     scrollToBottom();
   }, []);
 
+  const handleToggleSound = useCallback(() => {
+    onToggleSound?.();
+  }, [onToggleSound]);
+
   useEffect(() => {
     idRef.current += 1;
     setChats([{
       id: idRef.current,
       parentBallId: 0,
-      user: "PitchTalk",
-      avatar: "🏏",
-      text: "🔊 Sound effects are ON! Use the 🔇 button in the header to mute anytime.",
+      user: "The Sledge",
+      avatar: "🗣️",
+      text: "SOUND_TOGGLE",
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       isSystem: true,
     }]);
@@ -450,6 +455,7 @@ const BanterStream = ({
               const c = item.chat;
               const isYou = c.user === "You";
               const isSystem = c.isSystem;
+              const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
               return (
                 <motion.div
                   key={`chat-${c.id}`}
@@ -478,9 +484,23 @@ const BanterStream = ({
                           {c.timestamp}
                         </span>
                       </div>
-                      <p className={`text-[14px] mt-0.5 leading-relaxed ${
-                        isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
-                      }`}>{c.text}</p>
+                      {isSoundToggle ? (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[12px] text-muted-foreground italic">
+                            {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — sledge louder!"}
+                          </p>
+                          <button
+                            onClick={handleToggleSound}
+                            className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-foreground active:scale-95 transition-transform"
+                          >
+                            {soundMuted ? "🔊 Turn On" : "🔇 Mute"}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className={`text-[14px] mt-0.5 leading-relaxed ${
+                          isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
+                        }`}>{c.text}</p>
+                      )}
                     </div>
                   </div>
                 </motion.div>

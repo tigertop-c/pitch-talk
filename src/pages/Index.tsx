@@ -149,7 +149,7 @@ const Index = () => {
     }
 
     const matchLabel = selectedMatch ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}` : "DC vs MI";
-    const text = `🏏 Join my PitchTalk room for ${matchLabel}! Predict every ball, talk trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
+    const text = `🗣️ Join my Sledge room for ${matchLabel}! Predict every ball, talk maximum trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }, [friends, selectedMatch, roomId]);
 
@@ -286,6 +286,7 @@ const Index = () => {
                 maxPlayers={MAX_PLAYERS}
                 roomId={roomId}
                 onInvite={handleInvite}
+                onToggleSound={toggleSound}
               />
             </>
           ) : activeTab === "receipts" ? (
