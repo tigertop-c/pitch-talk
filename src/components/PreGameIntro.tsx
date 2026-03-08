@@ -51,6 +51,16 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 
+  const tossRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (userTeam && tossRef.current) {
+      setTimeout(() => {
+        tossRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    }
+  }, [userTeam]);
+
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
 
