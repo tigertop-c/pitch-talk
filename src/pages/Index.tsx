@@ -15,7 +15,7 @@ const Index = () => {
 
   const handleHype = (type: "four" | "six" | "wicket") => {
     setHypeType(type);
-    setTimeout(() => setHypeType(null), 1200);
+    setTimeout(() => setHypeType(null), 2500);
   };
 
   return (

@@ -57,8 +57,16 @@ export function useMatchState() {
 
   const ballIdRef = useRef(0);
 
+  const SCRIPTED_BALLS: { result: BallEvent["result"]; runs: number; label: string }[] = [
+    { result: "six", runs: 6, label: "SIX! 🔵" },
+    { result: "four", runs: 4, label: "FOUR! 🟢" },
+    { result: "wicket", runs: 0, label: "WICKET! 🔴" },
+  ];
+
   const nextBall = useCallback((): BallEvent => {
-    const outcome = weightedRandom();
+    const outcome = ballIdRef.current < SCRIPTED_BALLS.length
+      ? SCRIPTED_BALLS[ballIdRef.current]
+      : weightedRandom();
     ballIdRef.current += 1;
 
     setMatch((prev) => {

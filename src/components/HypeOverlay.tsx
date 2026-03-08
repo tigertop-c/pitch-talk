@@ -21,7 +21,7 @@ const HypeOverlay = ({ type }: HypeOverlayProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: 0.25 }}
           className={`absolute inset-0 z-[100] pointer-events-none flex flex-col items-center justify-center bg-gradient-to-b ${data.color}`}
           style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
         >
