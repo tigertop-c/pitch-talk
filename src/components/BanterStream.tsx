@@ -298,6 +298,29 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     return () => clearInterval(countdownRef.current);
   }, []);
 
+  // Compute ranked leaderboard
+  const ranked = Object.entries(userScores)
+    .map(([name, s]) => ({ name, ...s }))
+    .sort((a, b) => b.wins - a.wins || b.streak - a.streak);
+  const getRankBadge = (name: string) => {
+    const idx = ranked.findIndex(r => r.name === name);
+    if (idx < 3 && ranked[idx]?.wins > 0) return RANK_BADGES[idx];
+    return null;
+  };
+  const getStreakIcon = (name: string) => {
+    const score = userScores[name];
+    if (!score) return null;
+    for (const t of STREAK_THRESHOLDS) {
+      if (score.streak >= t.min) return t.icon;
+    }
+    return null;
+  };
+  const getScoreText = (name: string) => {
+    const score = userScores[name];
+    if (!score || score.total === 0) return null;
+    return `${score.wins}/${score.total}`;
+  };
+
   // Build interleaved render list
   const renderItems: { type: "ball" | "chat"; ball?: BallBlock; chat?: ChatItem }[] = [];
   const ballOrder = balls.map(b => b.id);
