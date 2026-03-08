@@ -156,29 +156,53 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
 
         {/* Prediction buttons - only show when idle or locked */}
         {(state === "idle" || state === "locked") && (
-          <div className="grid grid-cols-4 gap-1.5 mb-2">
-            {outcomes.map((o) => {
-              const isSelected = selected === o.label;
-              return (
-                <button
-                  key={o.label}
-                  onClick={() => handleClick(o.label)}
-                  disabled={state === "locked"}
-                  className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-md border-2 border-foreground text-[10px] font-bold font-mono uppercase transition-all ${
-                    isSelected
-                      ? "bg-neon text-neon-foreground scale-105 ring-2 ring-neon"
-                      : state === "locked"
-                      ? "opacity-40 " + o.color
-                      : o.color + " active:scale-95 hover:scale-105"
-                  }`}
-                  style={{ boxShadow: isSelected ? "2px 2px 0px hsl(78 100% 40%)" : "2px 2px 0px hsl(0 0% 0%)" }}
-                >
-                  <o.icon size={16} />
-                  {o.label}
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-5 gap-1.5 mb-1.5">
+              {mainOutcomes.map((o) => {
+                const isSelected = selected === o.label;
+                return (
+                  <button
+                    key={o.label}
+                    onClick={() => handleClick(o.label)}
+                    disabled={state === "locked"}
+                    className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-md border-2 border-foreground text-[10px] font-bold font-mono uppercase transition-all ${
+                      isSelected
+                        ? "bg-neon text-neon-foreground scale-105 ring-2 ring-neon"
+                        : state === "locked"
+                        ? "opacity-40 " + o.color
+                        : o.color + " active:scale-95 hover:scale-105"
+                    }`}
+                    style={{ boxShadow: isSelected ? "2px 2px 0px hsl(78 100% 40%)" : "2px 2px 0px hsl(0 0% 0%)" }}
+                  >
+                    <o.icon size={14} />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-1.5 mb-2">
+              {secondaryOutcomes.map((o) => {
+                const isSelected = selected === o.label;
+                return (
+                  <button
+                    key={o.label}
+                    onClick={() => handleClick(o.label)}
+                    disabled={state === "locked"}
+                    className={`flex items-center gap-1 py-1 px-2 rounded-md border border-border text-[9px] font-bold font-mono uppercase transition-all ${
+                      isSelected
+                        ? "bg-neon text-neon-foreground ring-1 ring-neon"
+                        : state === "locked"
+                        ? "opacity-40 bg-muted text-muted-foreground"
+                        : "bg-muted/50 text-muted-foreground hover:text-foreground active:scale-95"
+                    }`}
+                  >
+                    <o.icon size={10} />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Condensed friend picks inside the card */}

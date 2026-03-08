@@ -61,7 +61,9 @@ export function useMatchState() {
     ballIdRef.current += 1;
 
     setMatch((prev) => {
-      let newBalls = prev.balls + 1;
+      // Wide and no-ball don't count as legal deliveries
+      const isLegal = outcome.result !== "wide" && outcome.result !== "noball";
+      let newBalls = isLegal ? prev.balls + 1 : prev.balls;
       let newOvers = prev.overs;
       let newBowler = prev.currentBowler;
 
