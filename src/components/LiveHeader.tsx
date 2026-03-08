@@ -9,6 +9,8 @@ interface LiveHeaderProps {
   crr: string;
   soundMuted: boolean;
   onToggleSound: () => void;
+  battingTeam?: string;
+  isChasing?: boolean;
 }
 
 const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) => {
