@@ -54,9 +54,11 @@ interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
   onHype?: (type: "four" | "six" | "wicket") => void;
+  onPredictionResolved?: (record: PredictionRecord) => void;
+  onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number }>) => void;
 }
 
-const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
+const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
