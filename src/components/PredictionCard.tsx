@@ -63,7 +63,9 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
     (selected === "Dot" && result.type === "dot") ||
     (selected === "Boundary" && result.type === "four") ||
     (selected === "Six" && result.type === "six") ||
-    (selected === "Single" && (result.type === "single" || result.type === "double")) ||
+    (selected === "Single" && result.type === "single") ||
+    (selected === "Two" && result.type === "double") ||
+    (selected === "Three" && result.type === "triple") ||
     (selected === "Wicket" && result.type === "wicket") ||
     (selected === "Wide" && result.type === "wide") ||
     (selected === "No Ball" && result.type === "noball")
