@@ -49,6 +49,8 @@ const RESULT_STYLES: Record<string, string> = {
   four: "bg-primary text-primary-foreground",
   six: "bg-neon text-neon-foreground",
   wicket: "bg-destructive text-destructive-foreground",
+  wide: "bg-muted text-muted-foreground",
+  noball: "bg-muted text-muted-foreground",
 };
 
 const RANK_BADGES = ["👑", "🥈", "🥉"];
