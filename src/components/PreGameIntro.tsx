@@ -194,7 +194,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
         >
           {[
             { emoji: "🎯", text: "Predict every ball" },
-            { emoji: "🗣️", text: "Banter with your squad" },
+            { emoji: "🗣️", text: "Play with your squad" },
             { emoji: "📊", text: "Track your record" },
           ].map((s, i) => (
             <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">
