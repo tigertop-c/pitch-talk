@@ -71,7 +71,11 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
 
       {/* Row 2: Big score + overs + run rates */}
       <div className="flex items-end justify-between">
-        <div className="flex items-baseline gap-1">
+        <div className="flex flex-col">
+          {battingTeam && (
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{battingTeam} batting</span>
+          )}
+          <div className="flex items-baseline gap-1">
           <motion.span
             key={match.runs}
             initial={{ scale: 1.15, color: "hsl(211 100% 50%)" }}
