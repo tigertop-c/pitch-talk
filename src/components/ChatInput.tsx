@@ -120,6 +120,7 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
 
 const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
   const [text, setText] = useState("");
+  const [showTextInput, setShowTextInput] = useState(false);
 
   const quickPicks = useMemo(
     () => getQuickPicks(userTeam, matchContext),
@@ -131,12 +132,13 @@ const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
     if (!trimmed) return;
     onSend(trimmed);
     setText("");
+    setShowTextInput(false);
   };
 
   return (
     <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
       {/* Dynamic quick picks */}
-      <div className="flex gap-1.5 mb-2 overflow-x-auto no-scrollbar">
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar items-center">
         {quickPicks.map((pick) => (
           <button
             key={pick}
@@ -146,24 +148,42 @@ const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
             {pick}
           </button>
         ))}
+        {/* Expand to type */}
+        {!showTextInput && (
+          <button
+            onClick={() => setShowTextInput(true)}
+            className="flex-shrink-0 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium active:scale-95 transition-all duration-150"
+          >
+            ✏️ Type
+          </button>
+        )}
       </div>
-      {/* Text input */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Say something..."
-          className="flex-1 px-4 py-2 rounded-full bg-secondary text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
-        />
-        <button
-          onClick={handleSend}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform duration-150"
-        >
-          <Send size={16} />
-        </button>
-      </div>
+      {/* Text input - only when expanded */}
+      {showTextInput && (
+        <div className="flex gap-2 mt-2">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Say something..."
+            autoFocus
+            className="flex-1 px-4 py-2 rounded-full bg-secondary text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
+          />
+          <button
+            onClick={handleSend}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform duration-150"
+          >
+            <Send size={16} />
+          </button>
+          <button
+            onClick={() => { setShowTextInput(false); setText(""); }}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-secondary text-muted-foreground active:scale-90 transition-transform duration-150"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 };
