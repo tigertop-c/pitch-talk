@@ -1,1 +1,4 @@
 project_id = "tyzvubkcecoawejgohyv"
+
+[functions.cricket-matches]
+verify_jwt = false
