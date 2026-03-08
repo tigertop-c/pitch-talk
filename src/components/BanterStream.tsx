@@ -611,7 +611,7 @@ const BanterStream = ({
                         {isSoundToggle ? (
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-[12px] text-muted-foreground italic">
-                              {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — sledge louder!"}
+                              {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — enjoy the vibe!"}
                             </p>
                             <button
                               onClick={handleToggleSound}

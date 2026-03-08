@@ -172,7 +172,7 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
           transition={{ delay: 0.8 }}
           className="text-center text-[11px] text-muted-foreground py-2"
         >
-          Tap a match to create or join a sledge room
+          Tap a match to create or join a room
         </motion.p>
       </div>
     </div>

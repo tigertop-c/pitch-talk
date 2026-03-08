@@ -399,7 +399,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               className="w-full py-3 px-4 bg-secondary rounded-2xl text-[13px] font-semibold text-muted-foreground flex items-center justify-center gap-2 active:bg-muted transition-all duration-200"
             >
               <Users size={15} />
-              Invite more sledgers
+              Invite friends
               <ChevronRight size={13} className={`transition-transform duration-300 ${showInvite ? "rotate-90" : ""}`} />
             </button>
 

@@ -145,7 +145,7 @@ const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Drop your sledge..."
+          placeholder="Say something..."
           className="flex-1 px-4 py-2 rounded-full bg-secondary text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
         />
         <button
