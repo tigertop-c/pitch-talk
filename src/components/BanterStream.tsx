@@ -765,9 +765,9 @@ const BanterStream = ({
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
                     className="text-sm"
-                  >🏏</motion.span>
+                  >{waitingMessage.emoji}</motion.span>
                   <span className="text-[12px] text-muted-foreground font-medium">
-                    Bowler walking back...
+                    {waitingMessage.text}
                   </span>
                   <motion.span
                     className="flex gap-1"
