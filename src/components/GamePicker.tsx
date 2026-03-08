@@ -1,7 +1,15 @@
 import { motion } from "framer-motion";
 import { Clock, ChevronRight, Users } from "lucide-react";
-import dcLogo from "@/assets/dc-logo.png";
-import miLogo from "@/assets/mi-logo.png";
+import cskLogo from "@/assets/teams/csk.png";
+import dcLogo from "@/assets/teams/dc.png";
+import gtLogo from "@/assets/teams/gt.png";
+import kkrLogo from "@/assets/teams/kkr.png";
+import lsgLogo from "@/assets/teams/lsg.png";
+import miLogo from "@/assets/teams/mi.png";
+import pbksLogo from "@/assets/teams/pbks.png";
+import rrLogo from "@/assets/teams/rr.png";
+import rcbLogo from "@/assets/teams/rcb.png";
+import srhLogo from "@/assets/teams/srh.png";
 
 export interface UpcomingMatch {
   id: string;
@@ -20,25 +28,25 @@ const UPCOMING_MATCHES: UpcomingMatch[] = [
     id: "dc-mi-32",
     team1: { name: "Delhi Capitals", short: "DC", logo: dcLogo },
     team2: { name: "Mumbai Indians", short: "MI", logo: miLogo },
-    startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
+    startTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
     venue: "Arun Jaitley Stadium, Delhi",
     matchNumber: 32,
     liveRooms: 12,
   },
   {
     id: "csk-rcb-33",
-    team1: { name: "Chennai Super Kings", short: "CSK", logo: dcLogo },
-    team2: { name: "Royal Challengers", short: "RCB", logo: miLogo },
-    startTime: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
+    team1: { name: "Chennai Super Kings", short: "CSK", logo: cskLogo },
+    team2: { name: "Royal Challengers Bengaluru", short: "RCB", logo: rcbLogo },
+    startTime: new Date(Date.now() + 6 * 60 * 60 * 1000),
     venue: "M.A. Chidambaram Stadium",
     matchNumber: 33,
     liveRooms: 5,
   },
   {
     id: "kkr-srh-34",
-    team1: { name: "Kolkata Knight Riders", short: "KKR", logo: dcLogo },
-    team2: { name: "Sunrisers Hyderabad", short: "SRH", logo: miLogo },
-    startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+    team1: { name: "Kolkata Knight Riders", short: "KKR", logo: kkrLogo },
+    team2: { name: "Sunrisers Hyderabad", short: "SRH", logo: srhLogo },
+    startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
     venue: "Eden Gardens, Kolkata",
     matchNumber: 34,
     liveRooms: 0,
