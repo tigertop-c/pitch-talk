@@ -257,10 +257,18 @@ const BanterStream = ({
           }
         });
 
+        const oversStr = `${match.overs}.${match.balls}`;
         const summaryData: OverSummaryData = {
           overNumber: overNum,
           overMvp: mvp,
           standings: allPlayerStandings,
+          activePlayers,
+          maxPlayers,
+          roomId,
+          matchRuns: match.runs,
+          matchWickets: match.wickets,
+          matchOvers: oversStr,
+          matchTarget: match.target,
         };
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
