@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, ChevronRight, MessageCircle, Clock, UserPlus } from "lucide-react";
 import dcLogo from "@/assets/dc-logo.png";
@@ -50,6 +50,16 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [tossResult, setTossResult] = useState<string | null>(null);
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
+
+  const tossRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (userTeam && tossRef.current) {
+      setTimeout(() => {
+        tossRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    }
+  }, [userTeam]);
 
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
@@ -291,6 +301,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               {/* Toss prediction */}
               {userTeam && (
                 <motion.div
+                  ref={tossRef}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={spring}
