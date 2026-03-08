@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import PredictionCard, { type PredictionState, type BallResult } from "./PredictionCard";
+import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
+import ChatInput from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
 
 interface BallBlock {
@@ -10,7 +11,7 @@ interface BallBlock {
   countdown: number;
   selected: string | null;
   result: BallResult | null;
-  friendPicks: { name: string; avatar: string; pick: string; won?: boolean }[];
+  friendPicks: FriendPick[];
 }
 
 interface ChatItem {
@@ -20,7 +21,6 @@ interface ChatItem {
   avatar: string;
   text: string;
   timestamp: string;
-  isPick?: boolean;
 }
 
 const USERS = [
@@ -42,19 +42,12 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   wicket: ["GONE! 💀", "TIMBER! 🔥", "HUGE WICKET!", "The celebration says it all 🎉"],
 };
 
-const LOCK_TIME = 10; // seconds to pick before auto-lock
-const BALL_INTERVAL = 12000; // 12s between balls for demo speed
+const LOCK_TIME = 10;
 
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
 }
-
-const RANK_BADGES = ["👑", "🥈", "🥉"];
-const STREAK_THRESHOLDS = [
-  { min: 5, icon: "🔥", label: "On Fire" },
-  { min: 3, icon: "⚡", label: "Hot" },
-];
 
 const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
@@ -75,58 +68,38 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     }, 100);
   };
 
-  // Add friend pick chats during idle phase
-  const addFriendPicks = useCallback((ballId: number, ballLabel: string) => {
+  // Add friend picks (stored on ball, NOT as chat)
+  const addFriendPicks = useCallback((ballId: number) => {
     const shuffledUsers = [...USERS].sort(() => Math.random() - 0.5).slice(0, 3 + Math.floor(Math.random() * 2));
     const delays = [1500, 3000, 5000, 7000, 8500];
 
     shuffledUsers.forEach((user, i) => {
       setTimeout(() => {
         const pick = PICK_LABELS[Math.floor(Math.random() * PICK_LABELS.length)];
-        // Store the pick on the ball
-        setBalls(prev => prev.map(b => 
-          b.id === ballId 
+        setBalls(prev => prev.map(b =>
+          b.id === ballId
             ? { ...b, friendPicks: [...b.friendPicks, { name: user.name, avatar: user.avatar, pick }] }
             : b
         ));
-        // Add as chat
-        idRef.current += 1;
-        setChats(prev => [...prev, {
-          id: idRef.current,
-          parentBallId: ballId,
-          user: user.name,
-          avatar: user.avatar,
-          text: `picks **${pick}** for ${ballLabel}`,
-          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-          isPick: true,
-        }]);
         scrollToBottom();
       }, delays[i] || 2000);
     });
   }, []);
 
-  // Resolve a ball: transition from pending → resolved with banter
   const resolveBall = useCallback((ballId: number) => {
     const event = onNextBall();
     ballCountRef.current += 1;
 
-    const overNum = Math.floor((ballCountRef.current - 1) / 6) + 18;
-    const ballNum = ((ballCountRef.current - 1) % 6) + 3;
-    const adjustedOver = ballNum > 6 ? overNum + Math.floor((ballNum - 1) / 6) : overNum;
-    const adjustedBall = ballNum > 6 ? ((ballNum - 1) % 6) + 1 : ballNum;
-
     const result: BallResult = { label: event.label, type: event.result };
 
-    // Shake for big events
     if (event.result === "wicket" || event.result === "six") {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
     }
 
-    // Update ball to resolved
+    // Update ball to resolved + determine friend results
     setBalls(prev => prev.map(b => {
       if (b.id === ballId) {
-        // Determine friend results
         const updatedPicks = b.friendPicks.map(fp => ({
           ...fp,
           won: (fp.pick === "Dot" && event.result === "dot") ||
@@ -139,29 +112,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       return b;
     }));
 
-    // Add banter chats
-    const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
-    const numMessages = 2 + Math.floor(Math.random() * 2);
-    const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < numMessages; i++) {
-      const user = USERS[Math.floor(Math.random() * USERS.length)];
-      idRef.current += 1;
-      const chatId = idRef.current;
-      setTimeout(() => {
-        setChats(prev => [...prev, {
-          id: chatId,
-          parentBallId: ballId,
-          user: user.name,
-          avatar: user.avatar,
-          text: shuffled[i % shuffled.length],
-          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-        }]);
-        scrollToBottom();
-      }, 500 + i * 800);
-    }
-
-    // Update user scores
+    // Update scores
     setBalls(prev => {
       const ball = prev.find(b => b.id === ballId);
       if (ball) {
@@ -190,42 +141,34 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       return prev;
     });
 
-    // Add friend result chats
-    setTimeout(() => {
-      setBalls(prev => {
-        const ball = prev.find(b => b.id === ballId);
-        if (ball) {
-          ball.friendPicks.forEach((fp, i) => {
-            setTimeout(() => {
-              idRef.current += 1;
-              const won = (fp.pick === "Dot" && event.result === "dot") ||
-                          (fp.pick === "Boundary" && (event.result === "four" || event.result === "six")) ||
-                          (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
-                          (fp.pick === "Wicket" && event.result === "wicket");
-              setChats(prev => [...prev, {
-                id: idRef.current,
-                parentBallId: ballId,
-                user: fp.name,
-                avatar: fp.avatar,
-                text: won ? "✅ nailed it!" : "❌ wrong call",
-                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-                isPick: true,
-              }]);
-              scrollToBottom();
-            }, i * 400);
-          });
-        }
-        return prev;
-      });
-    }, numMessages * 800 + 500);
+    // Add banter chats (reactions only, not picks)
+    const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
+    const numMessages = 1 + Math.floor(Math.random() * 2);
+    const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
 
-    // Start next ball after a delay
+    for (let i = 0; i < numMessages; i++) {
+      const user = USERS[Math.floor(Math.random() * USERS.length)];
+      idRef.current += 1;
+      const chatId = idRef.current;
+      setTimeout(() => {
+        setChats(prev => [...prev, {
+          id: chatId,
+          parentBallId: ballId,
+          user: user.name,
+          avatar: user.avatar,
+          text: shuffled[i % shuffled.length],
+          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        }]);
+        scrollToBottom();
+      }, 500 + i * 800);
+    }
+
+    // Start next ball
     setTimeout(() => {
       startNewBall();
-    }, numMessages * 800 + 2500);
+    }, numMessages * 800 + 2000);
   }, [onNextBall]);
 
-  // Start a new ball prediction
   const startNewBall = useCallback(() => {
     idRef.current += 1;
     const ballId = idRef.current;
@@ -250,22 +193,18 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
 
     setBalls(prev => [...prev.slice(-20), newBall]);
     scrollToBottom();
+    addFriendPicks(ballId);
 
-    // Start friend picks
-    addFriendPicks(ballId, label);
-
-    // Start countdown
     clearInterval(countdownRef.current);
     let count = LOCK_TIME;
     countdownRef.current = setInterval(() => {
       count -= 1;
-      setBalls(prev => prev.map(b => 
+      setBalls(prev => prev.map(b =>
         b.id === ballId ? { ...b, countdown: count } : b
       ));
       if (count <= 0) {
         clearInterval(countdownRef.current);
-        // Auto-lock and go to pending
-        setBalls(prev => prev.map(b => 
+        setBalls(prev => prev.map(b =>
           b.id === ballId && b.predictionState === "idle"
             ? { ...b, predictionState: "pending" as PredictionState }
             : b
@@ -275,69 +214,52 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     }, 1000);
   }, [addFriendPicks, resolveBall]);
 
-  // Handle user prediction
   const handlePredict = useCallback((ballId: number, pick: string) => {
-    setBalls(prev => prev.map(b => 
-      b.id === ballId 
+    setBalls(prev => prev.map(b =>
+      b.id === ballId
         ? { ...b, selected: pick, predictionState: "locked" as PredictionState }
         : b
     ));
-    // After a short delay, go to pending then resolve
     clearInterval(countdownRef.current);
     setTimeout(() => {
-      setBalls(prev => prev.map(b => 
+      setBalls(prev => prev.map(b =>
         b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
       ));
       setTimeout(() => resolveBall(ballId), 1500);
     }, 2000);
   }, [resolveBall]);
 
-  // Kick off
+  const handleUserChat = useCallback((text: string) => {
+    idRef.current += 1;
+    const currentBallId = activeBallIdRef.current || 0;
+    setChats(prev => [...prev, {
+      id: idRef.current,
+      parentBallId: currentBallId,
+      user: "You",
+      avatar: "🙋",
+      text,
+      timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+    }]);
+    scrollToBottom();
+  }, []);
+
   useEffect(() => {
     startNewBall();
     return () => clearInterval(countdownRef.current);
   }, []);
 
-  // Compute ranked leaderboard
-  const ranked = Object.entries(userScores)
-    .map(([name, s]) => ({ name, ...s }))
-    .sort((a, b) => b.wins - a.wins || b.streak - a.streak);
-  const getRankBadge = (name: string) => {
-    const idx = ranked.findIndex(r => r.name === name);
-    if (idx < 3 && ranked[idx]?.wins > 0) return RANK_BADGES[idx];
-    return null;
-  };
-  const getStreakIcon = (name: string) => {
-    const score = userScores[name];
-    if (!score) return null;
-    for (const t of STREAK_THRESHOLDS) {
-      if (score.streak >= t.min) return t.icon;
-    }
-    return null;
-  };
-  const getScoreText = (name: string) => {
-    const score = userScores[name];
-    if (!score || score.total === 0) return null;
-    return `${score.wins}/${score.total}`;
-  };
-
   // Build interleaved render list
   const renderItems: { type: "ball" | "chat"; ball?: BallBlock; chat?: ChatItem }[] = [];
-  const ballOrder = balls.map(b => b.id);
-  
-  // For each ball, render it then its chats
-  ballOrder.forEach(ballId => {
-    const ball = balls.find(b => b.id === ballId)!;
+  balls.forEach(ball => {
     renderItems.push({ type: "ball", ball });
-    const ballChats = chats.filter(c => c.parentBallId === ballId);
-    ballChats.forEach(chat => {
+    chats.filter(c => c.parentBallId === ball.id).forEach(chat => {
       renderItems.push({ type: "chat", chat });
     });
   });
 
   return (
-    <div className={`flex-1 overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
-      <div ref={scrollRef} className="h-full overflow-y-auto pb-4">
+    <div className={`flex-1 flex flex-col overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto pb-2">
         <AnimatePresence initial={false}>
           {renderItems.map((item) => {
             if (item.type === "ball" && item.ball) {
@@ -351,6 +273,8 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
                   state={b.predictionState}
                   result={b.result}
                   selected={b.selected}
+                  friendPicks={b.friendPicks}
+                  userScores={userScores}
                   onPredict={(pick) => handlePredict(b.id, pick)}
                 />
               );
@@ -358,6 +282,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
 
             if (item.type === "chat" && item.chat) {
               const c = item.chat;
+              const isYou = c.user === "You";
               return (
                 <motion.div
                   key={`chat-${c.id}`}
@@ -367,32 +292,24 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
                   className="px-4 py-1"
                 >
                   <div className="flex items-start gap-2">
-                    <div className="w-7 h-7 flex items-center justify-center rounded-md bg-muted border-2 border-foreground text-xs flex-shrink-0"
-                      style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
+                    <div className="w-6 h-6 flex items-center justify-center rounded-md bg-muted border-2 border-foreground text-[10px] flex-shrink-0"
+                      style={{ boxShadow: "1px 1px 0px hsl(0 0% 0%)" }}
                     >
                       {c.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold font-mono text-neon">{c.user}</span>
-                        {getRankBadge(c.user) && (
-                          <span className="text-[10px]">{getRankBadge(c.user)}</span>
-                        )}
-                        {getStreakIcon(c.user) && (
-                          <span className="text-[10px]">{getStreakIcon(c.user)}</span>
-                        )}
-                        {getScoreText(c.user) && (
-                          <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-muted border border-border text-muted-foreground">
-                            {getScoreText(c.user)}
+                        <span className={`text-xs font-bold font-mono ${isYou ? "text-electric" : "text-neon"}`}>{c.user}</span>
+                        {!isYou && userScores[c.user]?.total > 0 && (
+                          <span className="text-[8px] font-mono px-1 py-0.5 rounded bg-muted border border-border text-muted-foreground">
+                            {userScores[c.user].wins}/{userScores[c.user].total}
                           </span>
                         )}
-                        <span className="text-[10px] font-mono text-muted-foreground ml-auto flex-shrink-0">
+                        <span className="text-[9px] font-mono text-muted-foreground ml-auto flex-shrink-0">
                           {c.timestamp}
                         </span>
                       </div>
-                      <p className={`text-sm mt-0.5 leading-relaxed ${c.isPick ? "text-muted-foreground italic" : "text-foreground"}`}>
-                        {c.text}
-                      </p>
+                      <p className="text-sm mt-0.5 leading-relaxed text-foreground">{c.text}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -402,6 +319,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
           })}
         </AnimatePresence>
       </div>
+      <ChatInput onSend={handleUserChat} />
     </div>
   );
 };

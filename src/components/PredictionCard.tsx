@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
+import { motion } from "framer-motion";
 import { Target, Zap, CircleDot, AlertTriangle, Clock } from "lucide-react";
 import { playWinSound, playFailSound, playClickSound } from "@/lib/sounds";
 
@@ -10,6 +10,13 @@ export interface BallResult {
   type: "dot" | "single" | "double" | "four" | "six" | "wicket";
 }
 
+export interface FriendPick {
+  name: string;
+  avatar: string;
+  pick: string;
+  won?: boolean;
+}
+
 interface PredictionCardProps {
   id: number;
   ballLabel: string;
@@ -17,6 +24,8 @@ interface PredictionCardProps {
   state: PredictionState;
   result: BallResult | null;
   selected: string | null;
+  friendPicks: FriendPick[];
+  userScores: Record<string, { wins: number; total: number; streak: number }>;
   onPredict: (pick: string) => void;
 }
 
@@ -36,7 +45,9 @@ const RESULT_STYLES: Record<string, string> = {
   wicket: "bg-destructive text-destructive-foreground",
 };
 
-const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, onPredict }: PredictionCardProps) => {
+const RANK_BADGES = ["👑", "🥈", "🥉"];
+
+const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, friendPicks, userScores, onPredict }: PredictionCardProps) => {
   const urgency = countdown <= 5;
   const won = result && selected && (
     (selected === "Dot" && result.type === "dot") ||
@@ -56,6 +67,16 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, onP
     if (state !== "idle") return;
     playClickSound();
     onPredict(label);
+  };
+
+  // Rank users by wins for badge display
+  const ranked = Object.entries(userScores)
+    .map(([name, s]) => ({ name, ...s }))
+    .sort((a, b) => b.wins - a.wins || b.streak - a.streak);
+  const getRankBadge = (name: string) => {
+    const idx = ranked.findIndex(r => r.name === name);
+    if (idx < 3 && ranked[idx]?.wins > 0) return RANK_BADGES[idx];
+    return null;
   };
 
   return (
@@ -93,7 +114,7 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, onP
             )}
             {state === "resolved" && selected && (
               <span className={`text-xs font-mono font-bold ${won ? "text-neon" : "text-destructive"}`}>
-                {won ? "🎯 YOU WON" : "💀 MISS"}
+                {won ? "🎯 WON" : "💀 MISS"}
               </span>
             )}
           </div>
@@ -126,7 +147,7 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, onP
 
         {/* Prediction buttons - only show when idle or locked */}
         {(state === "idle" || state === "locked") && (
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5 mb-2">
             {outcomes.map((o) => {
               const isSelected = selected === o.label;
               return (
@@ -148,6 +169,38 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, onP
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Condensed friend picks inside the card */}
+        {friendPicks.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {friendPicks.map((fp, i) => (
+              <motion.div
+                key={`${fp.name}-${i}`}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono border ${
+                  state === "resolved" && fp.won !== undefined
+                    ? fp.won 
+                      ? "border-neon/40 bg-neon/10 text-neon" 
+                      : "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-border bg-muted/50 text-muted-foreground"
+                }`}
+              >
+                <span>{fp.avatar}</span>
+                {getRankBadge(fp.name) && <span className="text-[8px]">{getRankBadge(fp.name)}</span>}
+                <span className="font-bold">{fp.name}</span>
+                <span className="opacity-70">→</span>
+                <span className="font-bold">{fp.pick}</span>
+                {state === "resolved" && fp.won !== undefined && (
+                  <span>{fp.won ? "✅" : "❌"}</span>
+                )}
+                {userScores[fp.name]?.total > 0 && (
+                  <span className="text-[8px] opacity-60">{userScores[fp.name].wins}/{userScores[fp.name].total}</span>
+                )}
+              </motion.div>
+            ))}
           </div>
         )}
       </div>
