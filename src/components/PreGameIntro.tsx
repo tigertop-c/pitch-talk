@@ -112,12 +112,14 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
           className="text-center pb-2"
         >
           <motion.div
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
             transition={{ ...spring, delay: 0.2 }}
-            className="text-5xl mb-3"
+            className="flex items-center justify-center gap-4 mb-3"
           >
-            🏏
+            <img src={dcLogo} alt="Delhi Capitals" className="w-14 h-14 object-contain" />
+            <span className="text-xl font-black text-muted-foreground tracking-tight">vs</span>
+            <img src={miLogo} alt="Mumbai Indians" className="w-14 h-14 object-contain" />
           </motion.div>
           <motion.h1
             initial={{ y: 20, opacity: 0 }}
@@ -125,7 +127,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.3 }}
             className="text-2xl font-bold tracking-tight text-foreground"
           >
-            IND vs AUS
+            DC vs MI
           </motion.h1>
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -133,7 +135,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.4 }}
             className="text-sm text-muted-foreground mt-1"
           >
-            2nd T20I • Predict while you wait
+            IPL 2025 • Match 32 • Predict while you wait
           </motion.p>
         </motion.div>
 
