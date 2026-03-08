@@ -73,9 +73,9 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
           transition={spring}
           className="text-center pb-1"
         >
-          <h1 className="text-2xl font-black tracking-tight text-foreground">🗣️ The Sledge</h1>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">🏏 Pitch Talk</h1>
           <p className="text-[12px] text-muted-foreground mt-1 font-medium">
-            Pick a match. Predict. Talk trash. Own the receipts.
+            Pick a match. Predict every ball. Banter with your squad.
           </p>
         </motion.div>
 
@@ -172,7 +172,7 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
           transition={{ delay: 0.8 }}
           className="text-center text-[11px] text-muted-foreground py-2"
         >
-          Tap a match to create or join a sledge room
+          Tap a match to create or join a room
         </motion.p>
       </div>
     </div>

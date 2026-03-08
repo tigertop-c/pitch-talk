@@ -55,7 +55,7 @@ const REPLY_SUGGESTIONS: Record<string, string[]> = {
   positive: ["Dream on 😂", "Relax, it's one ball", "Sure buddy 🙄", "Easy there 😏"],
   negative: ["Cope harder 💀", "Stay salty 😂", "Tears incoming 🥲", "Rent free 😎"],
   neutral: ["Facts though", "No cap 🧢", "Hmm debatable", "Fair point 🤝"],
-  sledge: ["That's rich coming from you 😂", "Bold talk, weak team", "Screenshot this for later 📸", "Say that again when you're winning 😏"],
+  cheeky: ["That's rich coming from you 😂", "Bold talk, weak team", "Screenshot this for later 📸", "Say that again when you're winning 😏"],
 };
 
 function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamId): string[] {
@@ -77,7 +77,7 @@ function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamI
   }
   
   return isRivalTeam 
-    ? REPLY_SUGGESTIONS.sledge.slice(0, 3)
+    ? REPLY_SUGGESTIONS.cheeky.slice(0, 3)
     : REPLY_SUGGESTIONS.neutral.slice(0, 3);
 }
 
@@ -491,8 +491,8 @@ const BanterStream = ({
     setChats([{
       id: idRef.current,
       parentBallId: 0,
-      user: "The Sledge",
-      avatar: "🗣️",
+      user: "Pitch Talk",
+      avatar: "🏏",
       text: "SOUND_TOGGLE",
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       isSystem: true,
@@ -611,7 +611,7 @@ const BanterStream = ({
                         {isSoundToggle ? (
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-[12px] text-muted-foreground italic">
-                              {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — sledge louder!"}
+                              {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — enjoy the vibe!"}
                             </p>
                             <button
                               onClick={handleToggleSound}

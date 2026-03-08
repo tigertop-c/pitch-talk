@@ -95,7 +95,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   }, [stage]);
 
   const handleInviteWhatsApp = () => {
-    const text = `🗣️ Join my Sledge room for ${team1.short} vs ${team2.short}! Predict every ball, talk maximum trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
+    const text = `🏏 Join my Pitch Talk room for ${team1.short} vs ${team2.short}! Predict every ball, banter with the squad 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -194,7 +194,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
         >
           {[
             { emoji: "🎯", text: "Predict every ball" },
-            { emoji: "🗣️", text: "Sledge your mates" },
+            { emoji: "🗣️", text: "Banter with your squad" },
             { emoji: "📊", text: "Track your record" },
           ].map((s, i) => (
             <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">
@@ -399,7 +399,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               className="w-full py-3 px-4 bg-secondary rounded-2xl text-[13px] font-semibold text-muted-foreground flex items-center justify-center gap-2 active:bg-muted transition-all duration-200"
             >
               <Users size={15} />
-              Invite more sledgers
+              Invite friends
               <ChevronRight size={13} className={`transition-transform duration-300 ${showInvite ? "rotate-90" : ""}`} />
             </button>
 

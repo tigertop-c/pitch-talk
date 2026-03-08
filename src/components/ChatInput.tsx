@@ -27,7 +27,7 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
 
   if (!result) {
     return isMyTeamBatting
-      ? ["Let's go DC! 💙", "Time to sledge 🗣️", "🔥", "DC supremacy!", "Bring it on!"]
+      ? ["Let's go DC! 💙", "Bring the heat 🗣️", "🔥", "DC supremacy!", "Bring it on!"]
       : ["MI owns this 💙", "Let's gooo! 🔥", "Paltan! 💪", "Time to bully 😤"];
   }
 
@@ -84,7 +84,7 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
       }
   }
 
-  // Situational sledges
+  // Situational banter
   if (ctx.target) {
     const remaining = ctx.target - ctx.runs;
     const ballsLeft = Math.max(1, (20 * 6) - (ctx.overs * 6 + ctx.balls));
@@ -145,7 +145,7 @@ const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Drop your sledge..."
+          placeholder="Say something..."
           className="flex-1 px-4 py-2 rounded-full bg-secondary text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
         />
         <button

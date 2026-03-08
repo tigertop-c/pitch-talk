@@ -34,7 +34,7 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
 
   const { title, color } = getTitle(data.accuracy);
 
-  const shareText = `🗣️ The Sledge — ${data.matchTitle}\n\n🎯 ${data.correctPicks}/${data.totalBalls} predictions correct (${data.accuracy}%)\n🔥 Best streak: ${data.bestStreak}\n🏆 Title: ${title}\n\nThink you can do better? Join The Sledge!`;
+  const shareText = `🏏 Pitch Talk — ${data.matchTitle}\n\n🎯 ${data.correctPicks}/${data.totalBalls} predictions correct (${data.accuracy}%)\n🔥 Best streak: ${data.bestStreak}\n🏆 Title: ${title}\n\nThink you can do better? Join Pitch Talk!`;
 
   const shareUrl = window.location.origin;
 
@@ -123,7 +123,7 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
           </div>
 
           <p className="text-center text-[9px] text-muted-foreground/50 font-medium tracking-wider">
-            THE SLEDGE • PREDICT EVERY BALL
+            PITCH TALK • PREDICT EVERY BALL
           </p>
         </div>
       </div>
