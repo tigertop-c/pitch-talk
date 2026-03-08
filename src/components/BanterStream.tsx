@@ -212,6 +212,12 @@ const BanterStream = ({
 
     setLastBallResult(event.result);
 
+    // Track over stats
+    overRunsRef.current += event.runs;
+    if (event.result === "wicket") overWicketsRef.current += 1;
+    if (event.result === "four" || event.result === "six") overBoundariesRef.current += 1;
+    if (event.result === "wide" || event.result === "noball") overExtrasRef.current += 1;
+
     if (!isSoundMuted()) {
       try {
         const audio = new Audio("/sounds/cricket_bat.mp3");
