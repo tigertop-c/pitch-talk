@@ -470,8 +470,41 @@ const BanterStream = ({
       }, 500 + i * 800);
     }
 
-    setTimeout(() => { setWaitingForNext(true); scrollToBottom(); }, numMessages * 800 + 1500);
-    setTimeout(() => { setWaitingForNext(false); startNewBall(); }, numMessages * 800 + 5000);
+    // Add Ravi Shastri / Sidhu style commentary for key moments
+    const commentaryPool = COMMENTARY_LINES[event.result];
+    if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5) || (event.result === "dot" && Math.random() < 0.15))) {
+      const commentaryText = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
+      idRef.current += 1;
+      const commentaryId = idRef.current;
+      setTimeout(() => {
+        setChats(prev => [...prev, {
+          id: commentaryId,
+          parentBallId: ballId,
+          user: "Commentary Box",
+          avatar: "🎙️",
+          text: commentaryText,
+          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          isSystem: true,
+        }]);
+        scrollToBottom();
+      }, numMessages * 800 + 600);
+    }
+
+    // Set contextual waiting message
+    const resultKey = isOverBreak.current ? "overBreak" : (event.result as string);
+    const msgPool = WAITING_MESSAGES[resultKey] || WAITING_MESSAGES.dot;
+    const pickedMsg = msgPool.messages[Math.floor(Math.random() * msgPool.messages.length)];
+
+    setTimeout(() => { 
+      setWaitingMessage({ emoji: msgPool.emoji, text: pickedMsg });
+      setWaitingForNext(true); 
+      scrollToBottom(); 
+    }, numMessages * 800 + 1500);
+    setTimeout(() => { 
+      setWaitingForNext(false); 
+      isOverBreak.current = false;
+      startNewBall(); 
+    }, numMessages * 800 + 5000);
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom]);
 
   const startNewBall = useCallback(() => {
