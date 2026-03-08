@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { type MatchState, type Batsman, formatBall } from "@/hooks/useMatchState";
+import dcLogo from "@/assets/dc-logo.png";
+import miLogo from "@/assets/mi-logo.png";
 
 interface LiveHeaderProps {
   match: MatchState;
