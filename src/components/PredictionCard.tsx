@@ -38,6 +38,8 @@ const mainOutcomes = [
 ];
 
 const secondaryOutcomes = [
+  { label: "Two", icon: RotateCcw, color: "bg-muted text-foreground border-foreground" },
+  { label: "Three", icon: RotateCcw, color: "bg-muted text-foreground border-foreground" },
   { label: "Wide", icon: ArrowRight, color: "bg-muted text-foreground border-foreground" },
   { label: "No Ball", icon: Ban, color: "bg-muted text-foreground border-foreground" },
 ];
