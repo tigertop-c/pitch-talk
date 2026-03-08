@@ -31,7 +31,7 @@ const USERS = [
   { name: "Vikram", avatar: "🎯" },
 ];
 
-const PICK_LABELS = ["Dot", "Boundary", "Single", "Wicket"];
+const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
 
 const BANTER_BY_RESULT: Record<string, string[]> = {
   dot: ["Dot ball. Pressure building 🫣", "Tight bowling 🎯", "Batsman looked clueless 😴"],
@@ -40,6 +40,8 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   four: ["SHOT! Boundary 💥", "Creamed through covers! 🔥", "Tracer bullet 🚀"],
   six: ["INTO THE STANDS! 🏟️", "That's out of the ground! 🚀", "MENTAL 🤯"],
   wicket: ["GONE! 💀", "TIMBER! 🔥", "HUGE WICKET!", "The celebration says it all 🎉"],
+  wide: ["Wide! Free runs 😅", "That's going down leg", "Bowler losing his line"],
+  noball: ["NO BALL! Free hit coming 🎁", "Overstepped! 😤", "That's sloppy bowling"],
 };
 
 const LOCK_TIME = 10;
@@ -103,9 +105,12 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
         const updatedPicks = b.friendPicks.map(fp => ({
           ...fp,
           won: (fp.pick === "Dot" && event.result === "dot") ||
-               (fp.pick === "Boundary" && (event.result === "four" || event.result === "six")) ||
+               (fp.pick === "Boundary" && event.result === "four") ||
+               (fp.pick === "Six" && event.result === "six") ||
                (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
-               (fp.pick === "Wicket" && event.result === "wicket"),
+               (fp.pick === "Wicket" && event.result === "wicket") ||
+               (fp.pick === "Wide" && event.result === "wide") ||
+               (fp.pick === "No Ball" && event.result === "noball"),
         }));
         return { ...b, predictionState: "resolved" as PredictionState, result, friendPicks: updatedPicks };
       }
@@ -119,9 +124,12 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
         const scoreUpdates: Record<string, { won: boolean }> = {};
         ball.friendPicks.forEach(fp => {
           const won = (fp.pick === "Dot" && event.result === "dot") ||
-                      (fp.pick === "Boundary" && (event.result === "four" || event.result === "six")) ||
+                      (fp.pick === "Boundary" && event.result === "four") ||
+                      (fp.pick === "Six" && event.result === "six") ||
                       (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
-                      (fp.pick === "Wicket" && event.result === "wicket");
+                      (fp.pick === "Wicket" && event.result === "wicket") ||
+                      (fp.pick === "Wide" && event.result === "wide") ||
+                      (fp.pick === "No Ball" && event.result === "noball");
           scoreUpdates[fp.name] = { won };
         });
         setUserScores(prev => {

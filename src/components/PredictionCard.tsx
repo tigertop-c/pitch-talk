@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Target, Zap, CircleDot, AlertTriangle, Clock } from "lucide-react";
+import { Target, Zap, CircleDot, AlertTriangle, Clock, Sparkles, ArrowRight, Ban } from "lucide-react";
 import { playWinSound, playFailSound, playClickSound } from "@/lib/sounds";
 
 export type PredictionState = "idle" | "locked" | "pending" | "resolved";
 
 export interface BallResult {
   label: string;
-  type: "dot" | "single" | "double" | "four" | "six" | "wicket";
+  type: "dot" | "single" | "double" | "four" | "six" | "wicket" | "wide" | "noball";
 }
 
 export interface FriendPick {
@@ -29,11 +29,17 @@ interface PredictionCardProps {
   onPredict: (pick: string) => void;
 }
 
-const outcomes = [
+const mainOutcomes = [
   { label: "Dot", icon: CircleDot, color: "bg-muted text-foreground border-foreground" },
-  { label: "Boundary", icon: Zap, color: "bg-primary text-primary-foreground border-foreground" },
   { label: "Single", icon: Target, color: "bg-surface-elevated text-foreground border-foreground" },
+  { label: "Boundary", icon: Zap, color: "bg-primary text-primary-foreground border-foreground" },
+  { label: "Six", icon: Sparkles, color: "bg-neon text-neon-foreground border-foreground" },
   { label: "Wicket", icon: AlertTriangle, color: "bg-destructive text-destructive-foreground border-foreground" },
+];
+
+const secondaryOutcomes = [
+  { label: "Wide", icon: ArrowRight, color: "bg-muted text-foreground border-foreground" },
+  { label: "No Ball", icon: Ban, color: "bg-muted text-foreground border-foreground" },
 ];
 
 const RESULT_STYLES: Record<string, string> = {
@@ -43,6 +49,8 @@ const RESULT_STYLES: Record<string, string> = {
   four: "bg-primary text-primary-foreground",
   six: "bg-neon text-neon-foreground",
   wicket: "bg-destructive text-destructive-foreground",
+  wide: "bg-muted text-muted-foreground",
+  noball: "bg-muted text-muted-foreground",
 };
 
 const RANK_BADGES = ["👑", "🥈", "🥉"];
@@ -51,9 +59,12 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
   const urgency = countdown <= 5;
   const won = result && selected && (
     (selected === "Dot" && result.type === "dot") ||
-    (selected === "Boundary" && (result.type === "four" || result.type === "six")) ||
+    (selected === "Boundary" && result.type === "four") ||
+    (selected === "Six" && result.type === "six") ||
     (selected === "Single" && (result.type === "single" || result.type === "double")) ||
-    (selected === "Wicket" && result.type === "wicket")
+    (selected === "Wicket" && result.type === "wicket") ||
+    (selected === "Wide" && result.type === "wide") ||
+    (selected === "No Ball" && result.type === "noball")
   );
 
   useEffect(() => {
@@ -147,29 +158,53 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
 
         {/* Prediction buttons - only show when idle or locked */}
         {(state === "idle" || state === "locked") && (
-          <div className="grid grid-cols-4 gap-1.5 mb-2">
-            {outcomes.map((o) => {
-              const isSelected = selected === o.label;
-              return (
-                <button
-                  key={o.label}
-                  onClick={() => handleClick(o.label)}
-                  disabled={state === "locked"}
-                  className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-md border-2 border-foreground text-[10px] font-bold font-mono uppercase transition-all ${
-                    isSelected
-                      ? "bg-neon text-neon-foreground scale-105 ring-2 ring-neon"
-                      : state === "locked"
-                      ? "opacity-40 " + o.color
-                      : o.color + " active:scale-95 hover:scale-105"
-                  }`}
-                  style={{ boxShadow: isSelected ? "2px 2px 0px hsl(78 100% 40%)" : "2px 2px 0px hsl(0 0% 0%)" }}
-                >
-                  <o.icon size={16} />
-                  {o.label}
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-5 gap-1.5 mb-1.5">
+              {mainOutcomes.map((o) => {
+                const isSelected = selected === o.label;
+                return (
+                  <button
+                    key={o.label}
+                    onClick={() => handleClick(o.label)}
+                    disabled={state === "locked"}
+                    className={`flex flex-col items-center gap-0.5 py-2 px-1 rounded-md border-2 border-foreground text-[10px] font-bold font-mono uppercase transition-all ${
+                      isSelected
+                        ? "bg-neon text-neon-foreground scale-105 ring-2 ring-neon"
+                        : state === "locked"
+                        ? "opacity-40 " + o.color
+                        : o.color + " active:scale-95 hover:scale-105"
+                    }`}
+                    style={{ boxShadow: isSelected ? "2px 2px 0px hsl(78 100% 40%)" : "2px 2px 0px hsl(0 0% 0%)" }}
+                  >
+                    <o.icon size={14} />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-1.5 mb-2">
+              {secondaryOutcomes.map((o) => {
+                const isSelected = selected === o.label;
+                return (
+                  <button
+                    key={o.label}
+                    onClick={() => handleClick(o.label)}
+                    disabled={state === "locked"}
+                    className={`flex items-center gap-1 py-1 px-2 rounded-md border border-border text-[9px] font-bold font-mono uppercase transition-all ${
+                      isSelected
+                        ? "bg-neon text-neon-foreground ring-1 ring-neon"
+                        : state === "locked"
+                        ? "opacity-40 bg-muted text-muted-foreground"
+                        : "bg-muted/50 text-muted-foreground hover:text-foreground active:scale-95"
+                    }`}
+                  >
+                    <o.icon size={10} />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Condensed friend picks inside the card */}
