@@ -52,9 +52,10 @@ const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
+  onHype?: (type: "four" | "six" | "wicket") => void;
 }
 
-const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
+const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
