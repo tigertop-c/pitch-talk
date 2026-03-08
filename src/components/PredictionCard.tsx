@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Zap, CircleDot, AlertTriangle } from "lucide-react";
+import { playWinSound, playFailSound, playClickSound } from "@/lib/sounds";
 
 type PredictionState = "idle" | "pending" | "winner" | "failed";
 
@@ -24,6 +25,7 @@ const PredictionCard = ({ id, user, event }: PredictionCardProps) => {
 
   const handlePredict = (label: string) => {
     if (state !== "idle") return;
+    playClickSound();
     setSelected(label);
     setState("pending");
 
@@ -31,6 +33,8 @@ const PredictionCard = ({ id, user, event }: PredictionCardProps) => {
       const won = Math.random() > 0.5;
       setState(won ? "winner" : "failed");
       setResult(won ? "winner" : "failed");
+      if (won) playWinSound();
+      else playFailSound();
     }, 2000);
   };
 
