@@ -50,10 +50,19 @@ interface BanterStreamProps {
   onNextBall: () => BallEvent;
 }
 
+const RANK_BADGES = ["👑", "🥈", "🥉"];
+const STREAK_THRESHOLDS = [
+  { min: 5, icon: "🔥", label: "On Fire" },
+  { min: 3, icon: "⚡", label: "Hot" },
+];
+
 const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
+  const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
+    () => Object.fromEntries(USERS.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const ballCountRef = useRef(0);
@@ -151,6 +160,35 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
         scrollToBottom();
       }, 500 + i * 800);
     }
+
+    // Update user scores
+    setBalls(prev => {
+      const ball = prev.find(b => b.id === ballId);
+      if (ball) {
+        const scoreUpdates: Record<string, { won: boolean }> = {};
+        ball.friendPicks.forEach(fp => {
+          const won = (fp.pick === "Dot" && event.result === "dot") ||
+                      (fp.pick === "Boundary" && (event.result === "four" || event.result === "six")) ||
+                      (fp.pick === "Single" && (event.result === "single" || event.result === "double")) ||
+                      (fp.pick === "Wicket" && event.result === "wicket");
+          scoreUpdates[fp.name] = { won };
+        });
+        setUserScores(prev => {
+          const next = { ...prev };
+          Object.entries(scoreUpdates).forEach(([name, { won }]) => {
+            if (next[name]) {
+              next[name] = {
+                wins: next[name].wins + (won ? 1 : 0),
+                total: next[name].total + 1,
+                streak: won ? next[name].streak + 1 : 0,
+              };
+            }
+          });
+          return next;
+        });
+      }
+      return prev;
+    });
 
     // Add friend result chats
     setTimeout(() => {
@@ -260,6 +298,29 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     return () => clearInterval(countdownRef.current);
   }, []);
 
+  // Compute ranked leaderboard
+  const ranked = Object.entries(userScores)
+    .map(([name, s]) => ({ name, ...s }))
+    .sort((a, b) => b.wins - a.wins || b.streak - a.streak);
+  const getRankBadge = (name: string) => {
+    const idx = ranked.findIndex(r => r.name === name);
+    if (idx < 3 && ranked[idx]?.wins > 0) return RANK_BADGES[idx];
+    return null;
+  };
+  const getStreakIcon = (name: string) => {
+    const score = userScores[name];
+    if (!score) return null;
+    for (const t of STREAK_THRESHOLDS) {
+      if (score.streak >= t.min) return t.icon;
+    }
+    return null;
+  };
+  const getScoreText = (name: string) => {
+    const score = userScores[name];
+    if (!score || score.total === 0) return null;
+    return `${score.wins}/${score.total}`;
+  };
+
   // Build interleaved render list
   const renderItems: { type: "ball" | "chat"; ball?: BallBlock; chat?: ChatItem }[] = [];
   const ballOrder = balls.map(b => b.id);
@@ -312,8 +373,19 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
                       {c.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold font-mono text-neon">{c.user}</span>
+                        {getRankBadge(c.user) && (
+                          <span className="text-[10px]">{getRankBadge(c.user)}</span>
+                        )}
+                        {getStreakIcon(c.user) && (
+                          <span className="text-[10px]">{getStreakIcon(c.user)}</span>
+                        )}
+                        {getScoreText(c.user) && (
+                          <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-muted border border-border text-muted-foreground">
+                            {getScoreText(c.user)}
+                          </span>
+                        )}
                         <span className="text-[10px] font-mono text-muted-foreground ml-auto flex-shrink-0">
                           {c.timestamp}
                         </span>
