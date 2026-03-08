@@ -12,6 +12,7 @@ export interface OverSummaryData {
     accuracy: number;
     streak: number;
     bestStreak: number;
+    team?: string;
   }[];
   activePlayers: number;
   maxPlayers: number;
@@ -20,6 +21,11 @@ export interface OverSummaryData {
   matchWickets: number;
   matchOvers: string;
   matchTarget: number | null;
+  overRuns?: number;
+  overWickets?: number;
+  overBoundaries?: number;
+  overExtras?: number;
+  teamAllegiances?: { team1: string; team1Count: number; team2: string; team2Count: number };
 }
 
 interface OverSummaryProps {
