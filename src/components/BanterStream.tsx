@@ -333,6 +333,39 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
             return null;
           })}
         </AnimatePresence>
+
+        {/* Subtle waiting-for-next-ball indicator */}
+        <AnimatePresence>
+          {waitingForNext && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="flex items-center justify-center gap-2 py-3 px-4"
+            >
+              <div className="flex items-center gap-1.5">
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  className="text-sm"
+                >🏏</motion.span>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  Bowler walking back...
+                </span>
+                <motion.span
+                  className="flex gap-0.5"
+                  initial={{ opacity: 0.4 }}
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                </motion.span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <ChatInput onSend={handleUserChat} />
     </div>
