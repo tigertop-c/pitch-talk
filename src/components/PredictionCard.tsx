@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Target, Zap, CircleDot, AlertTriangle, Clock } from "lucide-react";
+import { Target, Zap, CircleDot, AlertTriangle, Clock, Sparkles, ArrowRight, Ban } from "lucide-react";
 import { playWinSound, playFailSound, playClickSound } from "@/lib/sounds";
 
 export type PredictionState = "idle" | "locked" | "pending" | "resolved";
