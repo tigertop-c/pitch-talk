@@ -6,15 +6,14 @@ import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchSta
 interface StreamItem {
   id: number;
   type: "ball-header" | "chat" | "prediction";
-  // ball-header fields
   ballLabel?: string;
   ballResult?: string;
   ballResultType?: BallEvent["result"];
-  // chat fields
   user?: string;
   avatar?: string;
   text?: string;
   timestamp?: string;
+  nextBallLabel?: string;
 }
 
 const USERS = [
