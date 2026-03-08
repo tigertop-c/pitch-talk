@@ -7,7 +7,7 @@ export type PredictionState = "idle" | "locked" | "pending" | "resolved";
 
 export interface BallResult {
   label: string;
-  type: "dot" | "single" | "double" | "four" | "six" | "wicket";
+  type: "dot" | "single" | "double" | "four" | "six" | "wicket" | "wide" | "noball";
 }
 
 export interface FriendPick {
