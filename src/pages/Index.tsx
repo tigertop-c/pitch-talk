@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import LiveHeader from "@/components/LiveHeader";
 import BanterStream from "@/components/BanterStream";
 import type { FriendDef } from "@/components/BanterStream";
 import GameBoard, { type GameBoardPlayer } from "@/components/GameBoard";
+import GamePicker, { type UpcomingMatch } from "@/components/GamePicker";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import ReceiptsScreen from "@/components/ReceiptsScreen";
 import Leaderboard, { type LeaderboardEntry } from "@/components/Leaderboard";
@@ -40,10 +41,14 @@ interface FriendState {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("arena");
+  const [selectedMatch, setSelectedMatch] = useState<UpcomingMatch | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [userTeam, setUserTeam] = useState<TeamId>("DC");
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
   const { match, nextBall, crr } = useMatchState();
+
+  // Room ID - unique per session
+  const roomId = useRef(`room-${Math.random().toString(36).slice(2, 8)}`).current;
 
   // Sound mute
   const [soundMuted, setSoundMutedState] = useState(false);
@@ -75,6 +80,10 @@ const Index = () => {
     setHypeType(type);
     setTimeout(() => setHypeType(null), 2500);
   };
+
+  const handleSelectMatch = useCallback((m: UpcomingMatch) => {
+    setSelectedMatch(m);
+  }, []);
 
   const handleGameStart = useCallback((team: TeamId) => {
     setUserTeam(team);
@@ -139,13 +148,15 @@ const Index = () => {
       setFriendScores(prev => ({ ...prev, [newFriend.name]: { wins: 0, total: 0, streak: 0, bestStreak: 0 } }));
     }
 
-    const text = "🏏 Join me on PitchTalk! Predict every ball, talk trash, and see who's the real cricket brain 🧠🔥\n\n" + window.location.origin;
+    const matchLabel = selectedMatch ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}` : "DC vs MI";
+    const text = `🏏 Join my PitchTalk room for ${matchLabel}! Predict every ball, talk trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  }, [friends]);
+  }, [friends, selectedMatch, roomId]);
 
   const activeFriends = friends.filter(f => f.active).map(f => f.friend);
+  const activeFriendCount = friends.filter(f => f.active).length;
 
-  const gameBoardPlayers: GameBoardPlayer[] = [
+  const gameBoardPlayers: GameBoardPlayer[] = useMemo(() => [
     {
       name: "You",
       avatar: "🙋",
@@ -167,10 +178,9 @@ const Index = () => {
       active: f.active,
       warned: f.warned,
     })),
-  ];
+  ], [predictions, friends, friendScores]);
 
-  // All player standings for over summaries (now includes streak data)
-  const allPlayerStandings = [
+  const allPlayerStandings = useMemo(() => [
     {
       name: "You",
       avatar: "🙋",
@@ -193,7 +203,7 @@ const Index = () => {
       streak: friendScores[f.name]?.streak || 0,
       bestStreak: friendScores[f.name]?.bestStreak || 0,
     })),
-  ];
+  ], [predictions, activeFriends, friendScores, currentStreak, bestStreak]);
 
   const receiptData: ReceiptData | undefined = predictions.length > 0 ? {
     predictions,
@@ -204,7 +214,9 @@ const Index = () => {
         Math.max(1, predictions.filter(p => p.won !== null).length)) * 100
     ),
     bestStreak,
-    matchTitle: "DC vs MI • IPL 2025",
+    matchTitle: selectedMatch
+      ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short} • IPL 2025`
+      : "DC vs MI • IPL 2025",
   } : undefined;
 
   const leaderboardEntries: LeaderboardEntry[] = [
@@ -226,6 +238,10 @@ const Index = () => {
     })),
   ];
 
+  const matchTitle = selectedMatch
+    ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}`
+    : "DC vs MI";
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-[hsl(220,15%,12%)]">
       <div className="relative w-full max-w-md mx-auto h-screen sm:h-[812px] sm:my-4 sm:rounded-[3rem] sm:border-[6px] sm:border-[hsl(0,0%,20%)] sm:shadow-[0_0_0_2px_hsl(0,0%,30%),0_20px_60px_-10px_hsl(0,0%,0%/0.5)] overflow-hidden bg-background">
@@ -234,9 +250,20 @@ const Index = () => {
         
         <div className="flex flex-col h-full relative overflow-hidden sm:pt-[2px]">
           <HypeOverlay type={hypeType} />
-          <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} />
-          {!gameStarted ? (
-            <PreGameIntro onStart={handleGameStart} />
+          {(selectedMatch || gameStarted) && (
+            <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} />
+          )}
+          {!selectedMatch ? (
+            <GamePicker onSelectMatch={handleSelectMatch} />
+          ) : !gameStarted ? (
+            <PreGameIntro
+              onStart={handleGameStart}
+              matchStartTime={selectedMatch.startTime}
+              team1={{ name: selectedMatch.team1.name, short: selectedMatch.team1.short }}
+              team2={{ name: selectedMatch.team2.name, short: selectedMatch.team2.short }}
+              matchNumber={selectedMatch.matchNumber}
+              roomId={roomId}
+            />
           ) : activeTab === "arena" ? (
             <>
               <GameBoard
@@ -255,6 +282,10 @@ const Index = () => {
                 onOverComplete={handleOverComplete}
                 allPlayerStandings={allPlayerStandings}
                 userTeam={userTeam}
+                activePlayers={activeFriendCount + 1}
+                maxPlayers={MAX_PLAYERS}
+                roomId={roomId}
+                onInvite={handleInvite}
               />
             </>
           ) : activeTab === "receipts" ? (
