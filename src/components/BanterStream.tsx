@@ -64,6 +64,7 @@ interface BanterStreamProps {
   maxPlayers: number;
   roomId: string;
   onInvite?: () => void;
+  onToggleSound?: () => void;
 }
 
 const BanterStream = ({
