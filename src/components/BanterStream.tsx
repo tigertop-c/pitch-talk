@@ -742,7 +742,11 @@ const BanterStream = ({
   }, []);
 
   // Build render items
-  const renderItems: { type: "ball" | "chat" | "over-summary"; ball?: BallBlock; chat?: ChatItem; overSummary?: OverSummaryData }[] = [];
+  // Build render items - track ball labels for chat context
+  const ballLabelMap = new Map<number, string>();
+  balls.forEach(b => ballLabelMap.set(b.id, b.ballLabel));
+
+  const renderItems: { type: "ball" | "chat" | "over-summary" | "ball-divider"; ball?: BallBlock; chat?: ChatItem; overSummary?: OverSummaryData; dividerLabel?: string }[] = [];
   
   chats.filter(c => c.parentBallId === 0).forEach(chat => {
     renderItems.push({ type: "chat", chat });
@@ -750,7 +754,11 @@ const BanterStream = ({
 
   balls.forEach(ball => {
     renderItems.push({ type: "ball", ball });
-    chats.filter(c => c.parentBallId === ball.id).forEach(chat => {
+    const ballChats = chats.filter(c => c.parentBallId === ball.id);
+    if (ballChats.length > 0 && ball.result) {
+      renderItems.push({ type: "ball-divider", dividerLabel: `${ball.ballLabel} — ${ball.result?.label || ""}` });
+    }
+    ballChats.forEach(chat => {
       renderItems.push({ type: "chat", chat });
     });
     const summary = overSummaries.find(s => s.afterBallId === ball.id);
