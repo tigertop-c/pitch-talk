@@ -66,46 +66,46 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext, style: UserChatStyle
 
   if (!result) {
     picks.push(...(stylePicks.default || []));
-    // Add cross-style variety
     if (style !== "hype") picks.push("Let's GO! 🔥");
     if (style !== "expert") picks.push("Key match-up coming 🧠");
-    return picks.slice(0, 6);
+  } else {
+    switch (result) {
+      case "six":
+        picks.push(...(isMyTeamBatting ? stylePicks.six : (style === "troll" ? stylePicks.six : STYLE_PICKS.neutral.six)));
+        break;
+      case "four":
+        picks.push(...(isMyTeamBatting ? stylePicks.four : (style === "troll" ? stylePicks.four : STYLE_PICKS.neutral.four)));
+        break;
+      case "wicket":
+        picks.push(...(isMyTeamBatting ? stylePicks.wicket_my : stylePicks.wicket_opp));
+        break;
+      case "dot":
+        picks.push(...stylePicks.dot);
+        break;
+      default:
+        picks.push(...stylePicks.default);
+    }
+
+    // Add situational picks
+    if (ctx.target) {
+      const remaining = ctx.target - ctx.runs;
+      const ballsLeft = Math.max(1, (20 * 6) - (ctx.overs * 6 + ctx.balls));
+      const rrr = (remaining / ballsLeft) * 6;
+      if (remaining <= 20 && isMyTeamBatting) picks.push("Almost there! 🤫🏆");
+      if (rrr > 12 && isMyTeamBatting) picks.push("Need big overs NOW! 💥");
+      if (rrr > 12 && !isMyTeamBatting) picks.push("Rate's climbing! 📈😏");
+    }
+
+    // Add one from a different style for variety
+    const otherStyle = style === "hype" ? "expert" : style === "expert" ? "hype" : "neutral";
+    const otherPicks = STYLE_PICKS[otherStyle];
+    const otherKey = result === "wicket" ? (isMyTeamBatting ? "wicket_my" : "wicket_opp") : result;
+    if (otherPicks[otherKey]) picks.push(otherPicks[otherKey][0]);
   }
 
-  switch (result) {
-    case "six":
-      picks.push(...(isMyTeamBatting ? stylePicks.six : (style === "troll" ? stylePicks.six : STYLE_PICKS.neutral.six)));
-      break;
-    case "four":
-      picks.push(...(isMyTeamBatting ? stylePicks.four : (style === "troll" ? stylePicks.four : STYLE_PICKS.neutral.four)));
-      break;
-    case "wicket":
-      picks.push(...(isMyTeamBatting ? stylePicks.wicket_my : stylePicks.wicket_opp));
-      break;
-    case "dot":
-      picks.push(...stylePicks.dot);
-      break;
-    default:
-      picks.push(...stylePicks.default);
-  }
-
-  // Add situational picks
-  if (ctx.target) {
-    const remaining = ctx.target - ctx.runs;
-    const ballsLeft = Math.max(1, (20 * 6) - (ctx.overs * 6 + ctx.balls));
-    const rrr = (remaining / ballsLeft) * 6;
-    if (remaining <= 20 && isMyTeamBatting) picks.push("Almost there! 🤫🏆");
-    if (rrr > 12 && isMyTeamBatting) picks.push("Need big overs NOW! 💥");
-    if (rrr > 12 && !isMyTeamBatting) picks.push("Rate's climbing! 📈😏");
-  }
-
-  // Always add a couple from other styles for variety
-  const otherStyle = style === "hype" ? "expert" : style === "expert" ? "hype" : "neutral";
-  const otherPicks = STYLE_PICKS[otherStyle];
-  const otherKey = result === "wicket" ? (isMyTeamBatting ? "wicket_my" : "wicket_opp") : result;
-  if (otherPicks[otherKey]) picks.push(otherPicks[otherKey][0]);
-
-  return picks.slice(0, 6);
+  // Deduplicate and cap at 5
+  const unique = [...new Set(picks)];
+  return unique.slice(0, 5);
 }
 
 const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: ChatInputProps) => {
