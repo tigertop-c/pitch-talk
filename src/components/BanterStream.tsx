@@ -55,7 +55,7 @@ const REPLY_SUGGESTIONS: Record<string, string[]> = {
   positive: ["Dream on 😂", "Relax, it's one ball", "Sure buddy 🙄", "Easy there 😏"],
   negative: ["Cope harder 💀", "Stay salty 😂", "Tears incoming 🥲", "Rent free 😎"],
   neutral: ["Facts though", "No cap 🧢", "Hmm debatable", "Fair point 🤝"],
-  sledge: ["That's rich coming from you 😂", "Bold talk, weak team", "Screenshot this for later 📸", "Say that again when you're winning 😏"],
+  cheeky: ["That's rich coming from you 😂", "Bold talk, weak team", "Screenshot this for later 📸", "Say that again when you're winning 😏"],
 };
 
 function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamId): string[] {
