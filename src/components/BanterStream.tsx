@@ -44,7 +44,7 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   noball: ["NO BALL! Free hit coming 🎁", "Overstepped! 😤", "That's sloppy bowling"],
 };
 
-const LOCK_TIME = 10;
+const LOCK_TIME = 15;
 
 interface BanterStreamProps {
   match: MatchState;
@@ -55,6 +55,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
+  const [waitingForNext, setWaitingForNext] = useState(false);
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(USERS.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
@@ -171,10 +172,16 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       }, 500 + i * 800);
     }
 
-    // Start next ball
+    // Show waiting indicator, then start next ball
     setTimeout(() => {
+      setWaitingForNext(true);
+      scrollToBottom();
+    }, numMessages * 800 + 1500);
+
+    setTimeout(() => {
+      setWaitingForNext(false);
       startNewBall();
-    }, numMessages * 800 + 2000);
+    }, numMessages * 800 + 5000);
   }, [onNextBall]);
 
   const startNewBall = useCallback(() => {
@@ -325,6 +332,39 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
             }
             return null;
           })}
+        </AnimatePresence>
+
+        {/* Subtle waiting-for-next-ball indicator */}
+        <AnimatePresence>
+          {waitingForNext && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              className="flex items-center justify-center gap-2 py-3 px-4"
+            >
+              <div className="flex items-center gap-1.5">
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  className="text-sm"
+                >🏏</motion.span>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  Bowler walking back...
+                </span>
+                <motion.span
+                  className="flex gap-0.5"
+                  initial={{ opacity: 0.4 }}
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                </motion.span>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
       <ChatInput onSend={handleUserChat} />
