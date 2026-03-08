@@ -55,6 +55,7 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
+  const [waitingForNext, setWaitingForNext] = useState(false);
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(USERS.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
