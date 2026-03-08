@@ -123,7 +123,7 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
           </div>
 
           <p className="text-center text-[9px] text-muted-foreground/50 font-medium tracking-wider">
-            PITCHTALK • PREDICT EVERY BALL
+            THE SLEDGE • PREDICT EVERY BALL
           </p>
         </div>
       </div>
