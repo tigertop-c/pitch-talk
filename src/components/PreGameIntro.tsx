@@ -118,7 +118,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-4 space-y-5">
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24 space-y-4">
 
         {/* Hero */}
         <motion.div
