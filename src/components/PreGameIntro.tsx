@@ -358,7 +358,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                 className="text-5xl"
               >🗣️</motion.div>
               <p className="text-xl font-bold text-foreground tracking-tight">
-                Sledging starts NOW...
+                Game ON! 🔥
               </p>
               <motion.div
                 key={countdown}
