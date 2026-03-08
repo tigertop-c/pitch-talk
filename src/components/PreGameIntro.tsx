@@ -10,7 +10,7 @@ interface PreGameIntroProps {
 
 type Stage = "welcome" | "toss" | "target" | "starting";
 
-const TEAMS = ["India 🇮🇳", "Australia 🇦🇺"];
+const TEAMS = ["Delhi Capitals", "Mumbai Indians"];
 const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
