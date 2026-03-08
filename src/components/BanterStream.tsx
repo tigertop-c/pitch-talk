@@ -133,6 +133,10 @@ const BanterStream = ({
   const currentOverNum = useRef(0);
   const overFriendResults = useRef<Record<string, { correct: number; total: number }>>({});
   const overParticipation = useRef<Record<string, boolean>>({});
+  const overRunsRef = useRef(0);
+  const overWicketsRef = useRef(0);
+  const overBoundariesRef = useRef(0);
+  const overExtrasRef = useRef(0);
 
   const scrollToBottom = useCallback(() => {
     if (userIsScrolledUp.current) {
