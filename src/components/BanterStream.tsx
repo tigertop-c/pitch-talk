@@ -77,7 +77,7 @@ function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamI
   }
   
   return isRivalTeam 
-    ? REPLY_SUGGESTIONS.sledge.slice(0, 3)
+    ? REPLY_SUGGESTIONS.cheeky.slice(0, 3)
     : REPLY_SUGGESTIONS.neutral.slice(0, 3);
 }
 
