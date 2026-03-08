@@ -52,9 +52,10 @@ const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
+  onHype?: (type: "four" | "six" | "wicket") => void;
 }
 
-const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
+const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
@@ -97,9 +98,10 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
 
     const result: BallResult = { label: event.label, type: event.result };
 
-    if (event.result === "wicket" || event.result === "six") {
+    if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
+      onHype?.(event.result as "four" | "six" | "wicket");
     }
 
     setBalls(prev => prev.map(b => {
