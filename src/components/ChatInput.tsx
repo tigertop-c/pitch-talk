@@ -19,7 +19,7 @@ interface ChatInputProps {
 }
 
 function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
-  const battingTeam: TeamId = "DC"; // DC is batting in this simulation
+  const battingTeam: TeamId = "DC";
   const isMyTeamBatting = userTeam === battingTeam;
   const result = ctx.lastBallResult;
 
@@ -27,75 +27,83 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
 
   if (!result) {
     return isMyTeamBatting
-      ? ["Come on DC! 💙", "Let's go!", "🔥", "DC all the way!", "💪"]
-      : ["MI MI MI! 💙", "Let's go MI!", "Paltan! 🔥", "💪", "Rohit era!"];
+      ? ["Let's go DC! 💙", "Time to sledge 🗣️", "🔥", "DC supremacy!", "Bring it on!"]
+      : ["MI owns this 💙", "Let's gooo! 🔥", "Paltan! 💪", "Time to bully 😤"];
   }
 
   switch (result) {
     case "six":
       if (isMyTeamBatting) {
-        picks.push("SIX! 🚀", "MASSIVE! 🏟️", "DC DC DC! 💙", "That's my team! 🔥");
+        picks.push("SIX! Sit down! 🪑", "BOOM! Where's your bowler? 💀", "DC DC DC! 🚀", "That's GONE! 🏟️");
+        // Armchair expert
+        picks.push("Told you, play the lofted shot 🧠", "This is textbook T20 batting");
       } else {
-        picks.push("Lucky shot 🙄", "Won't last", "Still losing 😏", "Fluke");
+        picks.push("Lucky! Your batsman can't do that again 🙄", "One six doesn't win matches 😏", "Bowler set him up, relax 🎣", "Ugh, curse that bowler 🤬");
       }
       break;
     case "four":
       if (isMyTeamBatting) {
-        picks.push("SHOT! 🏏", "Beautiful! 💫", "Class! 🔥", "Keep going DC!");
+        picks.push("SHOT! 🏏💥", "Too easy! 😎", "Your bowler's getting schooled!", "CLASS! 🔥");
+        picks.push("Gap ball, should've packed the off side 🧠");
       } else {
-        picks.push("Bad bowling 🎳", "Won't save them", "So? 🤷", "Meh");
+        picks.push("Bad line, bad length 🤦", "Won't save them from losing", "Even I could've hit that 🥱", "Your bowler's cooked 😤");
       }
       break;
     case "wicket":
       if (isMyTeamBatting) {
-        picks.push("No... 😰", "We're fine 💪", "Next man up!", "Still got this 🙏");
+        picks.push("Ugh come on! 😤", "Still got this 💪", "Next one's gonna smash it", "Whatever, we're still winning 😤");
+        picks.push("Should've left that alone, bad shot selection");
       } else {
-        picks.push("YES! 💀", "Get out! 👋", "MI MI MI! 🎉", "Easy! 😏");
+        picks.push("YESSS GET OUT! 👋💀", "BYE BYE! Walk of shame! 🚶", "Pack your bags! 😂", "Your team's FINISHED! 💀");
+        picks.push("Bowler's been setting that up for 3 balls 🧠");
       }
       break;
     case "dot":
       if (isMyTeamBatting) {
-        picks.push("Come on! 😤", "Play shots!", "Hit it! 🏏", "Be aggressive!");
+        picks.push("Play some shots! 😤", "Stop parking the bus 🚌", "Rotate strike at least!", "This is painful 💀");
+        picks.push("Need to target the shorter boundary 🧠");
       } else {
-        picks.push("Pressure! 🫣", "Can't score 😂", "Tight! 🎯", "Love it!");
+        picks.push("Can't even score? 😂", "Dot ball merchant! 💀", "Pressure mounting! Love it 😈", "Your batsman's scared 🫣");
       }
       break;
     case "wide":
     case "noball":
       if (isMyTeamBatting) {
-        picks.push("Free runs! 🎁", "Thanks bowler 😂", "Keep 'em coming!", "Sloppy! 😅");
+        picks.push("Free runs LMAO 😂", "Thanks for the gift 🎁", "Can't even bowl straight 💀", "More of this please! 😂");
+        picks.push("Smart to leave that, take the free runs");
       } else {
-        picks.push("Focus! 😤", "Come on bowler!", "Get it together!", "🤦");
+        picks.push("What is our bowler doing?! 🤬", "GET HIM OFF! 😤", "My grandma bowls better 👵", "This is embarrassing 🤦");
+        picks.push("Need to adjust the line, bowling too wide");
       }
       break;
     default: // single, double, triple
       if (isMyTeamBatting) {
-        picks.push("Smart cricket 🧠", "Keep ticking!", "Good running 🏃", "Build it up!");
+        picks.push("Smart cricket 🧠", "Ticking along nicely", "Good placement 👌", "Building the innings");
       } else {
-        picks.push("That's nothing", "Need more than singles", "🥱", "Tick tick... 💣");
+        picks.push("Singles won't save you 😏", "Running like scared cats 🐱", "Is that all you got? 🥱", "Tick tick... BOOM soon 💣");
       }
   }
 
-  // Situational picks based on match state
+  // Situational sledges
   if (ctx.target) {
     const remaining = ctx.target - ctx.runs;
     const ballsLeft = Math.max(1, (20 * 6) - (ctx.overs * 6 + ctx.balls));
     const rrr = (remaining / ballsLeft) * 6;
 
-    if (remaining <= 20 && isMyTeamBatting) picks.push("Almost there! 🏁");
-    if (remaining <= 20 && !isMyTeamBatting) picks.push("Getting nervous 😬");
-    if (rrr > 12 && isMyTeamBatting) picks.push("Need boundaries! 💥");
-    if (rrr > 12 && !isMyTeamBatting) picks.push("Game over soon 😎");
+    if (remaining <= 20 && isMyTeamBatting) picks.push("Almost there, stay quiet haters! 🤫");
+    if (remaining <= 20 && !isMyTeamBatting) picks.push("Getting nervous yet? 😬");
+    if (rrr > 12 && isMyTeamBatting) picks.push("Need big overs! Come on! 💥");
+    if (rrr > 12 && !isMyTeamBatting) picks.push("Game's done, go home 😎");
   }
 
   if (ctx.wickets >= 5) {
-    if (isMyTeamBatting) picks.push("Believe! 💪");
-    else picks.push("Collapse! 💀");
+    if (isMyTeamBatting) picks.push("We've got DEPTH! 💪");
+    else picks.push("COLLAPSE! Love to see it 💀😂");
   }
 
   if (ctx.wickets <= 1 && ctx.overs >= 10) {
-    if (isMyTeamBatting) picks.push("Set batsmen! 🔥");
-    else picks.push("Too easy out there 😤");
+    if (isMyTeamBatting) picks.push("Set platform, now EXPLODE 🧨");
+    else picks.push("Too comfortable, bowl better! 😤");
   }
 
   return picks.slice(0, 6);
@@ -137,7 +145,7 @@ const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Drop your take..."
+          placeholder="Drop your sledge..."
           className="flex-1 px-4 py-2 rounded-full bg-secondary text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
         />
         <button

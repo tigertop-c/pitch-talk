@@ -377,14 +377,18 @@ const BanterStream = ({
     scrollToBottom();
   }, []);
 
+  const handleToggleSound = useCallback(() => {
+    onToggleSound?.();
+  }, [onToggleSound]);
+
   useEffect(() => {
     idRef.current += 1;
     setChats([{
       id: idRef.current,
       parentBallId: 0,
-      user: "PitchTalk",
-      avatar: "🏏",
-      text: "🔊 Sound effects are ON! Use the 🔇 button in the header to mute anytime.",
+      user: "The Sledge",
+      avatar: "🗣️",
+      text: "SOUND_TOGGLE",
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       isSystem: true,
     }]);
