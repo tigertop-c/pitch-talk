@@ -50,10 +50,19 @@ interface BanterStreamProps {
   onNextBall: () => BallEvent;
 }
 
+const RANK_BADGES = ["👑", "🥈", "🥉"];
+const STREAK_THRESHOLDS = [
+  { min: 5, icon: "🔥", label: "On Fire" },
+  { min: 3, icon: "⚡", label: "Hot" },
+];
+
 const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
+  const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
+    () => Object.fromEntries(USERS.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const ballCountRef = useRef(0);
