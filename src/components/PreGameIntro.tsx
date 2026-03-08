@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Copy, Check, ChevronRight } from "lucide-react";
+import dcLogo from "@/assets/dc-logo.png";
+import miLogo from "@/assets/mi-logo.png";
 
 interface PreGameIntroProps {
   onStart: () => void;
@@ -8,7 +10,7 @@ interface PreGameIntroProps {
 
 type Stage = "welcome" | "toss" | "target" | "starting";
 
-const TEAMS = ["India 🇮🇳", "Australia 🇦🇺"];
+const TEAMS = ["Delhi Capitals", "Mumbai Indians"];
 const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
@@ -23,7 +25,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   const [showInvite, setShowInvite] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  const inviteLink = "pitchtalk.app/join/IND-vs-AUS";
+  const inviteLink = "pitchtalk.app/join/DC-vs-MI";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`Join me on PitchTalk! Predict every ball live 🏏🔥 ${inviteLink}`);
@@ -34,7 +36,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   useEffect(() => {
     if (matchWinner && tossWinner && stage === "welcome") {
       const timer = setTimeout(() => {
-        const winner = Math.random() > 0.5 ? "India 🇮🇳" : "Australia 🇦🇺";
+        const winner = Math.random() > 0.5 ? "Delhi Capitals" : "Mumbai Indians";
         setTossResult(winner);
         setStage("toss");
       }, 2500);
@@ -110,12 +112,14 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
           className="text-center pb-2"
         >
           <motion.div
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
             transition={{ ...spring, delay: 0.2 }}
-            className="text-5xl mb-3"
+            className="flex items-center justify-center gap-4 mb-3"
           >
-            🏏
+            <img src={dcLogo} alt="Delhi Capitals" className="w-14 h-14 object-contain" />
+            <span className="text-xl font-black text-muted-foreground tracking-tight">vs</span>
+            <img src={miLogo} alt="Mumbai Indians" className="w-14 h-14 object-contain" />
           </motion.div>
           <motion.h1
             initial={{ y: 20, opacity: 0 }}
@@ -123,7 +127,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.3 }}
             className="text-2xl font-bold tracking-tight text-foreground"
           >
-            IND vs AUS
+            DC vs MI
           </motion.h1>
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -131,7 +135,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.4 }}
             className="text-sm text-muted-foreground mt-1"
           >
-            2nd T20I • Predict while you wait
+            IPL 2025 • Match 32 • Predict while you wait
           </motion.p>
         </motion.div>
 

@@ -26,8 +26,8 @@ export interface MatchState {
   target: number | null;
 }
 
-const BOWLERS = ["Bumrah", "Starc", "Cummins", "Hazlewood", "Zampa"];
-const BATSMEN_POOL = ["Rohit", "Kohli", "SKY", "Pant", "Hardik", "Jadeja", "Axar", "Rinku", "Gill", "Iyer"];
+const BOWLERS = ["Bumrah", "Archer", "Boult", "Nortje", "Kuldeep"];
+const BATSMEN_POOL = ["Shaw", "Pant", "Warner", "Marsh", "Axar", "Powell", "Stubbs", "Agarwal", "Salt", "Hope"];
 
 const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number; legal: boolean }[] = [
   { result: "dot", runs: 0, label: "DOT BALL", weight: 32, legal: true },

@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { type MatchState, type Batsman, formatBall } from "@/hooks/useMatchState";
+import dcLogo from "@/assets/dc-logo.png";
+import miLogo from "@/assets/mi-logo.png";
 
 interface LiveHeaderProps {
   match: MatchState;
@@ -43,7 +45,12 @@ const LiveHeader = ({ match, crr }: LiveHeaderProps) => {
           </span>
           <span className="text-[11px] uppercase tracking-wider text-live font-semibold">Live</span>
         </div>
-        <span className="text-[11px] text-muted-foreground font-medium">IND vs AUS • 2nd T20I</span>
+        <div className="flex items-center gap-2">
+          <img src={dcLogo} alt="DC" className="w-5 h-5 object-contain" />
+          <span className="text-[11px] text-muted-foreground font-medium">DC vs MI</span>
+          <img src={miLogo} alt="MI" className="w-5 h-5 object-contain" />
+          <span className="text-[10px] text-muted-foreground">• IPL 2025</span>
+        </div>
       </div>
 
       {/* Row 2: Big score + overs + run rates */}

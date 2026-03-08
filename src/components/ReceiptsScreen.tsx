@@ -10,12 +10,12 @@ interface ShameCard {
 }
 
 const SHAME_DATA: ShameCard[] = [
-  { id: 1, user: "Rahul", claim: "He's a walking wicket", result: "SIX — 108m into the stands", emoji: "🤡" },
+  { id: 1, user: "Rahul", claim: "Pant can't play pace", result: "SIX — 108m into the stands", emoji: "🤡" },
   { id: 2, user: "Priya", claim: "Bumrah will go for 50+ today", result: "3/18 in 4 overs", emoji: "🤡" },
-  { id: 3, user: "Arjun", claim: "India can't chase 180", result: "Won by 7 wickets, 2 overs left", emoji: "🤡" },
+  { id: 3, user: "Arjun", claim: "DC can't chase 180", result: "Won by 7 wickets, 2 overs left", emoji: "🤡" },
   { id: 4, user: "Vikram", claim: "Pant is overrated", result: "97(43) match-winning knock", emoji: "🤡" },
   { id: 5, user: "Sneha", claim: "This pitch has nothing for spinners", result: "Kuldeep: 4/22", emoji: "🤡" },
-  { id: 6, user: "Rahul", claim: "Easy win for Australia", result: "India won by 65 runs", emoji: "💀" },
+  { id: 6, user: "Rahul", claim: "Easy win for MI", result: "DC won by 65 runs", emoji: "💀" },
 ];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
