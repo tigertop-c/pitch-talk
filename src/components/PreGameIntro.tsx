@@ -1,22 +1,41 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronRight, MessageCircle } from "lucide-react";
+import { Users, ChevronRight, MessageCircle, Clock } from "lucide-react";
 import dcLogo from "@/assets/dc-logo.png";
 import miLogo from "@/assets/mi-logo.png";
 import type { TeamId } from "./ChatInput";
 
 interface PreGameIntroProps {
   onStart: (team: TeamId) => void;
+  matchStartTime: Date;
+  team1: { name: string; short: string };
+  team2: { name: string; short: string };
+  matchNumber: number;
+  roomId: string;
 }
 
 type Stage = "welcome" | "team-pick" | "toss" | "target" | "starting";
 
-const TEAMS = ["Delhi Capitals", "Mumbai Indians"] as const;
 const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
-const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
+function useCountdown(targetDate: Date) {
+  const [timeLeft, setTimeLeft] = useState(() => Math.max(0, targetDate.getTime() - Date.now()));
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTimeLeft(Math.max(0, targetDate.getTime() - Date.now()));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+
+  const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+  return { hours, minutes, seconds, isLive: timeLeft <= 0 };
+}
+
+const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId }: PreGameIntroProps) => {
   const [stage, setStage] = useState<Stage>("welcome");
   const [userTeam, setUserTeam] = useState<TeamId | null>(null);
   const [matchWinner, setMatchWinner] = useState<string | null>(null);
@@ -26,7 +45,9 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   const [showInvite, setShowInvite] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  // After team pick, go to predictions
+  const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
+  const TEAMS = [team1.name, team2.name] as const;
+
   useEffect(() => {
     if (userTeam && stage === "welcome") {
       setStage("team-pick");
@@ -36,13 +57,13 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   useEffect(() => {
     if (matchWinner && tossWinner && stage === "team-pick") {
       const timer = setTimeout(() => {
-        const winner = Math.random() > 0.5 ? "Delhi Capitals" : "Mumbai Indians";
+        const winner = Math.random() > 0.5 ? team1.name : team2.name;
         setTossResult(winner);
         setStage("toss");
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [matchWinner, tossWinner, stage]);
+  }, [matchWinner, tossWinner, stage, team1.name, team2.name]);
 
   useEffect(() => {
     if (runTarget && stage === "toss") {
@@ -80,7 +101,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   }, [stage]);
 
   const handleInviteWhatsApp = () => {
-    const text = "🏏 Join me on PitchTalk! Predict every ball, talk trash, and see who's the real cricket brain 🧠🔥\n\n" + window.location.origin;
+    const text = `🏏 Join my PitchTalk room for ${team1.short} vs ${team2.short}! Predict every ball, talk trash 🧠🔥\n\nRoom: ${roomId}\n${window.location.origin}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -118,9 +139,9 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.2 }}
             className="flex items-center justify-center gap-4 mb-3"
           >
-            <img src={dcLogo} alt="Delhi Capitals" className="w-20 h-20 object-contain" />
+            <img src={dcLogo} alt={team1.short} className="w-20 h-20 object-contain" />
             <span className="text-2xl font-black text-muted-foreground tracking-tight">vs</span>
-            <img src={miLogo} alt="Mumbai Indians" className="w-20 h-20 object-contain" />
+            <img src={miLogo} alt={team2.short} className="w-20 h-20 object-contain" />
           </motion.div>
           <motion.h1
             initial={{ y: 20, opacity: 0 }}
@@ -128,7 +149,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.3 }}
             className="text-3xl font-black tracking-tight text-foreground"
           >
-            DC vs MI
+            {team1.short} vs {team2.short}
           </motion.h1>
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -136,8 +157,38 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
             transition={{ ...spring, delay: 0.4 }}
             className="text-sm text-muted-foreground mt-1"
           >
-            IPL 2025 • Match 32 • Predict while you wait
+            IPL 2025 • Match {matchNumber}
           </motion.p>
+
+          {/* Countdown to match */}
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ ...spring, delay: 0.45 }}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-secondary"
+          >
+            <Clock size={13} className="text-muted-foreground" />
+            {isLive ? (
+              <span className="text-[13px] font-bold text-destructive flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75 animate-live-pulse" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive" />
+                </span>
+                LIVE NOW
+              </span>
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground font-medium">Starts in</span>
+                <div className="flex items-center gap-0.5">
+                  {hours > 0 && (
+                    <span className="bg-card px-1.5 py-0.5 rounded-md text-[14px] font-bold text-foreground tabular-nums">{hours}h</span>
+                  )}
+                  <span className="bg-card px-1.5 py-0.5 rounded-md text-[14px] font-bold text-foreground tabular-nums">{String(minutes).padStart(2, '0')}m</span>
+                  <span className="bg-card px-1.5 py-0.5 rounded-md text-[14px] font-bold text-foreground tabular-nums">{String(seconds).padStart(2, '0')}s</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
         </motion.div>
 
         {/* How it works */}
@@ -170,7 +221,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
               transition={{ ...spring, delay: 0.6 }}
               className="space-y-3"
             >
-              {/* Team selection — WHO ARE YOU ROOTING FOR */}
+              {/* Team selection */}
               <div className="p-4 ios-card">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Your Team</p>
                 <p className="text-[15px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
@@ -185,7 +236,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
                     }`}
                   >
                     <img src={dcLogo} alt="DC" className="w-12 h-12 object-contain" />
-                    <span className="text-[14px] font-bold">Delhi Capitals</span>
+                    <span className="text-[14px] font-bold">{team1.name}</span>
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.96 }}
@@ -197,7 +248,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
                     }`}
                   >
                     <img src={miLogo} alt="MI" className="w-12 h-12 object-contain" />
-                    <span className="text-[14px] font-bold">Mumbai Indians</span>
+                    <span className="text-[14px] font-bold">{team2.name}</span>
                   </motion.button>
                 </div>
                 {userTeam && (
@@ -207,7 +258,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
                     transition={spring}
                     className="text-[11px] text-primary mt-2.5 text-center font-medium"
                   >
-                    {userTeam === "DC" ? "💙 DC fan locked in!" : "💙 MI Paltan locked in!"}
+                    {userTeam === "DC" ? `💙 ${team1.short} fan locked in!` : `💙 ${team2.short} fan locked in!`}
                   </motion.p>
                 )}
               </div>

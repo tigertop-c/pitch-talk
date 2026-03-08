@@ -60,11 +60,16 @@ interface BanterStreamProps {
   onOverComplete?: (overNum: number, participation: Record<string, boolean>) => void;
   allPlayerStandings: OverSummaryData["standings"];
   userTeam: TeamId;
+  activePlayers: number;
+  maxPlayers: number;
+  roomId: string;
+  onInvite?: () => void;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
+  activePlayers, maxPlayers, roomId, onInvite,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -252,10 +257,18 @@ const BanterStream = ({
           }
         });
 
+        const oversStr = `${match.overs}.${match.balls}`;
         const summaryData: OverSummaryData = {
           overNumber: overNum,
           overMvp: mvp,
           standings: allPlayerStandings,
+          activePlayers,
+          maxPlayers,
+          roomId,
+          matchRuns: match.runs,
+          matchWickets: match.wickets,
+          matchOvers: oversStr,
+          matchTarget: match.target,
         };
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
@@ -430,7 +443,7 @@ const BanterStream = ({
             }
 
             if (item.type === "over-summary" && item.overSummary) {
-              return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} />;
+              return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} onInvite={onInvite} />;
             }
 
             if (item.type === "chat" && item.chat) {
