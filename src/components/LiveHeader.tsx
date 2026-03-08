@@ -95,6 +95,7 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
           >
             ({formatBall(match.overs, match.balls)})
           </motion.span>
+          </div>
         </div>
 
         <div className="flex gap-4 items-end">
