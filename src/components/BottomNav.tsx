@@ -1,9 +1,11 @@
 import { motion } from "framer-motion";
-import { Flame, ScrollText } from "lucide-react";
+import { Flame, ScrollText, Trophy } from "lucide-react";
+
+export type TabId = "arena" | "receipts" | "leaderboard";
 
 interface BottomNavProps {
-  activeTab: "arena" | "receipts";
-  onTabChange: (tab: "arena" | "receipts") => void;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
 }
 
 const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
@@ -13,6 +15,7 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
         {[
           { id: "arena" as const, label: "Live Arena", icon: Flame },
           { id: "receipts" as const, label: "Receipts", icon: ScrollText },
+          { id: "leaderboard" as const, label: "Leaderboard", icon: Trophy },
         ].map((tab) => (
           <button
             key={tab.id}

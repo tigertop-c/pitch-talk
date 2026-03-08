@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
+import { type PredictionRecord } from "./ShareableReceipt";
 import ChatInput from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
 
@@ -53,9 +54,11 @@ interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
   onHype?: (type: "four" | "six" | "wicket") => void;
+  onPredictionResolved?: (record: PredictionRecord) => void;
+  onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number }>) => void;
 }
 
-const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
+const BanterStream = ({ match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
@@ -132,6 +135,23 @@ const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
         }, fadeStart);
       } catch (e) { /* audio not supported */ }
     }
+    // Determine if user's pick was correct
+    let userWon: boolean | null = null;
+    setBalls(prev => {
+      const ball = prev.find(b => b.id === ballId);
+      if (ball?.selected) {
+        userWon = (ball.selected === "Dot" && event.result === "dot") ||
+                  (ball.selected === "Boundary" && event.result === "four") ||
+                  (ball.selected === "Six" && event.result === "six") ||
+                  (ball.selected === "Single" && event.result === "single") ||
+                  (ball.selected === "Two" && event.result === "double") ||
+                  (ball.selected === "Three" && event.result === "triple") ||
+                  (ball.selected === "Wicket" && event.result === "wicket") ||
+                  (ball.selected === "Wide" && event.result === "wide") ||
+                  (ball.selected === "No Ball" && event.result === "noball");
+      }
+      return prev;
+    });
 
     setBalls(prev => prev.map(b => {
       if (b.id === ballId) {
@@ -179,9 +199,23 @@ const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
               };
             }
           });
+          onFriendScoresUpdate?.(next);
           return next;
         });
       }
+      return prev;
+    });
+
+    // Report prediction to parent for receipts
+    setBalls(prev => {
+      const ball = prev.find(b => b.id === ballId);
+      onPredictionResolved?.({
+        ballLabel: ball?.ballLabel || "",
+        predicted: ball?.selected || null,
+        result: event.label,
+        resultType: event.result,
+        won: ball?.selected ? userWon : null,
+      });
       return prev;
     });
 
