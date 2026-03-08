@@ -195,11 +195,11 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
           {[
             { emoji: "🎯", text: "Predict every ball" },
             { emoji: "🗣️", text: "Sledge your mates" },
-            { emoji: "🧾", text: "Keep the receipts" },
+            { emoji: "📊", text: "Track your record" },
           ].map((s, i) => (
-            <div key={i} className="flex-1 py-3 px-2 ios-card">
-              <div className="text-lg mb-0.5">{s.emoji}</div>
-              <p className="text-[10px] text-muted-foreground leading-tight font-medium">{s.text}</p>
+            <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">
+              <div className="text-lg mb-0.5 text-center">{s.emoji}</div>
+              <p className="text-[10px] text-muted-foreground leading-tight font-medium text-center">{s.text}</p>
             </div>
           ))}
         </motion.div>

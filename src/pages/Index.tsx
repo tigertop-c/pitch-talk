@@ -17,19 +17,19 @@ import type { TeamId } from "@/components/ChatInput";
 const MAX_PLAYERS = 10;
 
 const INITIAL_FRIENDS: FriendDef[] = [
-  { name: "Rahul", avatar: "🔥" },
-  { name: "Priya", avatar: "💅" },
-  { name: "Arjun", avatar: "🏏" },
-  { name: "Sneha", avatar: "⚡" },
-  { name: "Vikram", avatar: "🎯" },
+  { name: "Rahul", avatar: "🔥", team: "DC" },
+  { name: "Priya", avatar: "💅", team: "MI" },
+  { name: "Arjun", avatar: "🏏", team: "DC" },
+  { name: "Sneha", avatar: "⚡", team: "MI" },
+  { name: "Vikram", avatar: "🎯", team: "DC" },
 ];
 
 const INVITE_POOL: FriendDef[] = [
-  { name: "Deepak", avatar: "💪" },
-  { name: "Kavya", avatar: "✨" },
-  { name: "Rohit", avatar: "🌟" },
-  { name: "Ananya", avatar: "🎶" },
-  { name: "Karthik", avatar: "🦁" },
+  { name: "Deepak", avatar: "💪", team: "MI" },
+  { name: "Kavya", avatar: "✨", team: "DC" },
+  { name: "Rohit", avatar: "🌟", team: "MI" },
+  { name: "Ananya", avatar: "🎶", team: "DC" },
+  { name: "Karthik", avatar: "🦁", team: "MI" },
 ];
 
 interface FriendState {
@@ -45,12 +45,11 @@ const Index = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [userTeam, setUserTeam] = useState<TeamId>("DC");
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
+  const [showGameBoard, setShowGameBoard] = useState(true);
   const { match, nextBall, crr } = useMatchState();
 
-  // Room ID - unique per session
   const roomId = useRef(`room-${Math.random().toString(36).slice(2, 8)}`).current;
 
-  // Sound mute
   const [soundMuted, setSoundMutedState] = useState(false);
   const toggleSound = useCallback(() => {
     setSoundMutedState(prev => {
@@ -60,18 +59,15 @@ const Index = () => {
     });
   }, []);
 
-  // Predictions
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
 
-  // Friends / Game board
   const [friends, setFriends] = useState<FriendState[]>(
     () => INITIAL_FRIENDS.map(f => ({ friend: f, active: true, warned: false, lastActiveOver: 0 }))
   );
   const invitePoolRef = useRef([...INVITE_POOL]);
 
-  // Friend scores
   const [friendScores, setFriendScores] = useState<Record<string, { wins: number; total: number; streak: number; bestStreak: number }>>(
     () => Object.fromEntries(INITIAL_FRIENDS.map(u => [u.name, { wins: 0, total: 0, streak: 0, bestStreak: 0 }]))
   );
@@ -88,6 +84,10 @@ const Index = () => {
   const handleGameStart = useCallback((team: TeamId) => {
     setUserTeam(team);
     setGameStarted(true);
+  }, []);
+
+  const handleFirstOverComplete = useCallback(() => {
+    setShowGameBoard(false);
   }, []);
 
   const handlePredictionResolved = useCallback((record: PredictionRecord) => {
@@ -238,9 +238,10 @@ const Index = () => {
     })),
   ];
 
-  const matchTitle = selectedMatch
-    ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}`
-    : "DC vs MI";
+  // Team split for display
+  const dcCount = activeFriends.filter(f => f.team === "DC").length + (userTeam === "DC" ? 1 : 0);
+  const miCount = activeFriends.filter(f => f.team === "MI").length + (userTeam === "MI" ? 1 : 0);
+  const showTeamSplit = (dcCount + miCount) >= 3;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-[hsl(220,15%,12%)]">
@@ -266,11 +267,21 @@ const Index = () => {
             />
           ) : activeTab === "arena" ? (
             <>
-              <GameBoard
-                players={gameBoardPlayers}
-                maxPlayers={MAX_PLAYERS}
-                onInvite={handleInvite}
-              />
+              {showGameBoard && (
+                <GameBoard
+                  players={gameBoardPlayers}
+                  maxPlayers={MAX_PLAYERS}
+                  onInvite={handleInvite}
+                />
+              )}
+              {/* Team split banner */}
+              {showTeamSplit && !showGameBoard && (
+                <div className="flex items-center justify-center gap-3 px-4 py-1.5 bg-secondary/50">
+                  <span className="text-[10px] font-bold text-primary">{dcCount} DC 💙</span>
+                  <span className="text-[10px] text-muted-foreground">vs</span>
+                  <span className="text-[10px] font-bold text-primary">{miCount} MI 💙</span>
+                </div>
+              )}
               <BanterStream
                 match={match}
                 onNextBall={nextBall}
@@ -287,6 +298,7 @@ const Index = () => {
                 roomId={roomId}
                 onInvite={handleInvite}
                 onToggleSound={toggleSound}
+                onFirstOverComplete={handleFirstOverComplete}
               />
             </>
           ) : activeTab === "receipts" ? (

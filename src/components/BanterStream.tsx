@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, Reply } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
 import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
@@ -25,11 +26,14 @@ interface ChatItem {
   text: string;
   timestamp: string;
   isSystem?: boolean;
+  replyTo?: { user: string; text: string };
+  team?: TeamId;
 }
 
 export interface FriendDef {
   name: string;
   avatar: string;
+  team?: TeamId;
 }
 
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
@@ -45,6 +49,37 @@ const BANTER_BY_RESULT: Record<string, string[]> = {
   wide: ["WIDE! Can't even bowl straight 💀", "That's going to the next pitch 😂", "My 5-year-old bowls better 👶"],
   noball: ["NO BALL! Free hit! Bowler's having a MARE 🤡", "Overstepped! Absolute clown moment 🎪", "FREE HIT! Bowler in the mud 😤"],
 };
+
+// Smart reply suggestions based on what the original message says
+const REPLY_SUGGESTIONS: Record<string, string[]> = {
+  positive: ["Dream on 😂", "Relax, it's one ball", "Sure buddy 🙄", "Easy there 😏"],
+  negative: ["Cope harder 💀", "Stay salty 😂", "Tears incoming 🥲", "Rent free 😎"],
+  neutral: ["Facts though", "No cap 🧢", "Hmm debatable", "Fair point 🤝"],
+  sledge: ["That's rich coming from you 😂", "Bold talk, weak team", "Screenshot this for later 📸", "Say that again when you're winning 😏"],
+};
+
+function getSmartReplies(originalText: string, myTeam: TeamId, theirTeam?: TeamId): string[] {
+  const text = originalText.toLowerCase();
+  const isRivalTeam = theirTeam && theirTeam !== myTeam;
+  
+  if (text.includes("six") || text.includes("shot") || text.includes("boundary") || text.includes("🚀") || text.includes("💥")) {
+    return isRivalTeam 
+      ? ["Lucky shot, won't happen again 🙄", "One swallow doesn't make a summer", "Calm down it's one ball 😂"]
+      : ["YESSS! More of that please! 🔥", "That's what we came for!", "Take a bow! 🙌"];
+  }
+  if (text.includes("wicket") || text.includes("out") || text.includes("gone") || text.includes("💀") || text.includes("👋")) {
+    return isRivalTeam
+      ? ["Your whole team's next 💀", "That's just the start 😈", "Wicket merchant activated 🎯"]
+      : ["Ugh, we'll come back stronger 💪", "Still got this!", "One wicket doesn't change anything 😤"];
+  }
+  if (text.includes("clown") || text.includes("embarrass") || text.includes("shame") || text.includes("🤡")) {
+    return ["Keep that energy for later 📸", "We'll see who's laughing at the end 😏", "Bold words, weak team 😂"];
+  }
+  
+  return isRivalTeam 
+    ? REPLY_SUGGESTIONS.sledge.slice(0, 3)
+    : REPLY_SUGGESTIONS.neutral.slice(0, 3);
+}
 
 const LOCK_TIME = 15;
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
@@ -65,12 +100,13 @@ interface BanterStreamProps {
   roomId: string;
   onInvite?: () => void;
   onToggleSound?: () => void;
+  onFirstOverComplete?: () => void;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
-  activePlayers, maxPlayers, roomId, onInvite, onToggleSound,
+  activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -81,12 +117,16 @@ const BanterStream = ({
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
+  const [replyingTo, setReplyingTo] = useState<ChatItem | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const idRef = useRef(0);
   const ballCountRef = useRef(0);
   const countdownRef = useRef<ReturnType<typeof setInterval>>();
   const activeBallIdRef = useRef<number | null>(null);
+  const userIsScrolledUp = useRef(false);
+  const firstOverFired = useRef(false);
 
   // Over tracking
   const legalBallsThisOver = useRef(0);
@@ -94,11 +134,33 @@ const BanterStream = ({
   const overFriendResults = useRef<Record<string, { correct: number; total: number }>>({});
   const overParticipation = useRef<Record<string, boolean>>({});
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
+    if (userIsScrolledUp.current) {
+      setShowScrollButton(true);
+      return;
+    }
     setTimeout(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }, 100);
-  };
+  }, []);
+
+  const handleScrollToBottom = useCallback(() => {
+    userIsScrolledUp.current = false;
+    setShowScrollButton(false);
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom > 100) {
+      userIsScrolledUp.current = true;
+    } else {
+      userIsScrolledUp.current = false;
+      setShowScrollButton(false);
+    }
+  }, []);
 
   useEffect(() => {
     setUserScores(prev => {
@@ -126,7 +188,7 @@ const BanterStream = ({
         scrollToBottom();
       }, delays[i] || 2000);
     });
-  }, [activeFriends]);
+  }, [activeFriends, scrollToBottom]);
 
   const checkPickWon = (pick: string, result: string) =>
     (pick === "Dot" && result === "dot") ||
@@ -247,6 +309,11 @@ const BanterStream = ({
         currentOverNum.current += 1;
         const overNum = currentOverNum.current;
 
+        if (!firstOverFired.current) {
+          firstOverFired.current = true;
+          onFirstOverComplete?.();
+        }
+
         const friendResults = { ...overFriendResults.current };
         let mvp: OverSummaryData["overMvp"] = null;
         let maxCorrect = 0;
@@ -281,6 +348,7 @@ const BanterStream = ({
       }
     }
 
+    // Generate banter - sometimes as replies to recent chats
     const banterPool = BANTER_BY_RESULT[event.result] || BANTER_BY_RESULT.dot;
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...banterPool].sort(() => Math.random() - 0.5);
@@ -289,22 +357,48 @@ const BanterStream = ({
       const user = activeFriends[Math.floor(Math.random() * activeFriends.length)];
       idRef.current += 1;
       const chatId = idRef.current;
+      
+      // 30% chance of replying to a recent chat from a different-team friend
+      const shouldReply = i === 1 && Math.random() < 0.3;
+      
       setTimeout(() => {
-        setChats(prev => [...prev, {
-          id: chatId,
-          parentBallId: ballId,
-          user: user.name,
-          avatar: user.avatar,
-          text: shuffled[i % shuffled.length],
-          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-        }]);
+        setChats(prev => {
+          let replyData: ChatItem["replyTo"] | undefined;
+          if (shouldReply && prev.length > 0) {
+            const recentChats = prev.filter(c => !c.isSystem && c.user !== user.name).slice(-5);
+            if (recentChats.length > 0) {
+              const target = recentChats[Math.floor(Math.random() * recentChats.length)];
+              const replies = getSmartReplies(target.text, user.team || "DC", target.team);
+              replyData = { user: target.user, text: target.text };
+              return [...prev, {
+                id: chatId,
+                parentBallId: ballId,
+                user: user.name,
+                avatar: user.avatar,
+                text: replies[Math.floor(Math.random() * replies.length)],
+                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+                replyTo: replyData,
+                team: user.team,
+              }];
+            }
+          }
+          return [...prev, {
+            id: chatId,
+            parentBallId: ballId,
+            user: user.name,
+            avatar: user.avatar,
+            text: shuffled[i % shuffled.length],
+            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            team: user.team,
+          }];
+        });
         scrollToBottom();
       }, 500 + i * 800);
     }
 
     setTimeout(() => { setWaitingForNext(true); scrollToBottom(); }, numMessages * 800 + 1500);
     setTimeout(() => { setWaitingForNext(false); startNewBall(); }, numMessages * 800 + 5000);
-  }, [onNextBall, activeFriends, allPlayerStandings]);
+  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom]);
 
   const startNewBall = useCallback(() => {
     idRef.current += 1;
@@ -347,7 +441,7 @@ const BanterStream = ({
         setTimeout(() => resolveBall(ballId), 1500);
       }
     }, 1000);
-  }, [addFriendPicks, resolveBall]);
+  }, [addFriendPicks, resolveBall, scrollToBottom]);
 
   const handlePredict = useCallback((ballId: number, pick: string) => {
     setBalls(prev => prev.map(b =>
@@ -367,15 +461,25 @@ const BanterStream = ({
   const handleUserChat = useCallback((text: string) => {
     idRef.current += 1;
     const currentBallId = activeBallIdRef.current || 0;
-    setChats(prev => [...prev, {
+    const newChat: ChatItem = {
       id: idRef.current,
       parentBallId: currentBallId,
       user: "You",
       avatar: "🙋",
       text,
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-    }]);
+      team: userTeam,
+      replyTo: replyingTo ? { user: replyingTo.user, text: replyingTo.text } : undefined,
+    };
+    setChats(prev => [...prev, newChat]);
+    setReplyingTo(null);
     scrollToBottom();
+  }, [replyingTo, userTeam, scrollToBottom]);
+
+  const handleReply = useCallback((chat: ChatItem) => {
+    // Don't allow replying to system messages or own messages
+    if (chat.isSystem || chat.user === "You") return;
+    setReplyingTo(chat);
   }, []);
 
   const handleToggleSound = useCallback(() => {
@@ -424,125 +528,209 @@ const BanterStream = ({
     balls: match.balls,
   };
 
+  // Smart reply suggestions for the user when replying
+  const replySuggestions = replyingTo
+    ? getSmartReplies(replyingTo.text, userTeam, replyingTo.team)
+    : [];
+
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pb-2">
-        <AnimatePresence initial={false}>
-          {renderItems.map((item) => {
-            if (item.type === "ball" && item.ball) {
-              const b = item.ball;
-              return (
-                <PredictionCard
-                  key={`ball-${b.id}`}
-                  id={b.id}
-                  ballLabel={b.ballLabel}
-                  countdown={b.countdown}
-                  state={b.predictionState}
-                  result={b.result}
-                  selected={b.selected}
-                  friendPicks={b.friendPicks}
-                  userScores={userScores}
-                  onPredict={(pick) => handlePredict(b.id, pick)}
-                />
-              );
-            }
+      <div className="relative flex-1 overflow-hidden">
+        <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto pb-2">
+          <AnimatePresence initial={false}>
+            {renderItems.map((item) => {
+              if (item.type === "ball" && item.ball) {
+                const b = item.ball;
+                return (
+                  <PredictionCard
+                    key={`ball-${b.id}`}
+                    id={b.id}
+                    ballLabel={b.ballLabel}
+                    countdown={b.countdown}
+                    state={b.predictionState}
+                    result={b.result}
+                    selected={b.selected}
+                    friendPicks={b.friendPicks}
+                    userScores={userScores}
+                    onPredict={(pick) => handlePredict(b.id, pick)}
+                  />
+                );
+              }
 
-            if (item.type === "over-summary" && item.overSummary) {
-              return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} onInvite={onInvite} />;
-            }
+              if (item.type === "over-summary" && item.overSummary) {
+                return <OverSummary key={`over-${item.overSummary.overNumber}`} data={item.overSummary} onInvite={onInvite} />;
+              }
 
-            if (item.type === "chat" && item.chat) {
-              const c = item.chat;
-              const isYou = c.user === "You";
-              const isSystem = c.isSystem;
-              const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
-              return (
-                <motion.div
-                  key={`chat-${c.id}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ ...spring }}
-                  className="px-5 py-1"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className={`w-7 h-7 flex items-center justify-center rounded-full text-[11px] flex-shrink-0 ${
-                      isSystem ? "bg-primary/15" : "bg-secondary"
-                    }`}>
-                      {c.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[12px] font-semibold ${
-                          isSystem ? "text-primary" : isYou ? "text-primary" : "text-foreground"
-                        }`}>{c.user}</span>
-                        {!isYou && !isSystem && userScores[c.user]?.total > 0 && (
-                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                            {userScores[c.user].wins}/{userScores[c.user].total}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
-                          {c.timestamp}
-                        </span>
+              if (item.type === "chat" && item.chat) {
+                const c = item.chat;
+                const isYou = c.user === "You";
+                const isSystem = c.isSystem;
+                const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
+                const teamColor = c.team === "DC" ? "text-[hsl(211,100%,50%)]" : c.team === "MI" ? "text-[hsl(211,80%,40%)]" : "";
+                return (
+                  <motion.div
+                    key={`chat-${c.id}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ ...spring }}
+                    className="px-5 py-1 group"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div className={`w-7 h-7 flex items-center justify-center rounded-full text-[11px] flex-shrink-0 ${
+                        isSystem ? "bg-primary/15" : "bg-secondary"
+                      }`}>
+                        {c.avatar}
                       </div>
-                      {isSoundToggle ? (
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-[12px] text-muted-foreground italic">
-                            {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — sledge louder!"}
-                          </p>
-                          <button
-                            onClick={handleToggleSound}
-                            className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-foreground active:scale-95 transition-transform"
-                          >
-                            {soundMuted ? "🔊 Turn On" : "🔇 Mute"}
-                          </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[12px] font-semibold ${
+                            isSystem ? "text-primary" : isYou ? "text-primary" : "text-foreground"
+                          }`}>{c.user}</span>
+                          {c.team && !isSystem && (
+                            <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
+                              c.team === "DC" ? "bg-primary/10 text-primary" : "bg-primary/10 text-primary"
+                            }`}>{c.team}</span>
+                          )}
+                          {!isYou && !isSystem && userScores[c.user]?.total > 0 && (
+                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                              {userScores[c.user].wins}/{userScores[c.user].total}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+                            {c.timestamp}
+                          </span>
                         </div>
-                      ) : (
-                        <p className={`text-[14px] mt-0.5 leading-relaxed ${
-                          isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
-                        }`}>{c.text}</p>
-                      )}
+                        {/* Reply context */}
+                        {c.replyTo && (
+                          <div className="mt-0.5 mb-0.5 pl-2 border-l-2 border-primary/30">
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              <span className="font-semibold">{c.replyTo.user}:</span> {c.replyTo.text}
+                            </p>
+                          </div>
+                        )}
+                        {isSoundToggle ? (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[12px] text-muted-foreground italic">
+                              {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — sledge louder!"}
+                            </p>
+                            <button
+                              onClick={handleToggleSound}
+                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-foreground active:scale-95 transition-transform"
+                            >
+                              {soundMuted ? "🔊 Turn On" : "🔇 Mute"}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className={`text-[14px] mt-0.5 leading-relaxed ${
+                            isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
+                          }`}>{c.text}</p>
+                        )}
+                        {/* Reply button - only for non-system, non-self messages */}
+                        {!isSystem && !isYou && (
+                          <button
+                            onClick={() => handleReply(c)}
+                            className="opacity-0 group-hover:opacity-100 mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-all"
+                          >
+                            <Reply size={10} />
+                            Reply
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            }
-            return null;
-          })}
-        </AnimatePresence>
+                  </motion.div>
+                );
+              }
+              return null;
+            })}
+          </AnimatePresence>
 
+          <AnimatePresence>
+            {waitingForNext && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-center justify-center gap-2 py-4 px-4"
+              >
+                <div className="flex items-center gap-2">
+                  <motion.span
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                    className="text-sm"
+                  >🏏</motion.span>
+                  <span className="text-[12px] text-muted-foreground font-medium">
+                    Bowler walking back...
+                  </span>
+                  <motion.span
+                    className="flex gap-1"
+                    initial={{ opacity: 0.4 }}
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                  >
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                  </motion.span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Scroll to bottom button */}
         <AnimatePresence>
-          {waitingForNext && (
-            <motion.div
+          {showScrollButton && (
+            <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center justify-center gap-2 py-4 px-4"
+              exit={{ opacity: 0, y: 10 }}
+              onClick={handleScrollToBottom}
+              className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold shadow-lg shadow-primary/25"
             >
-              <div className="flex items-center gap-2">
-                <motion.span
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                  className="text-sm"
-                >🏏</motion.span>
-                <span className="text-[12px] text-muted-foreground font-medium">
-                  Bowler walking back...
-                </span>
-                <motion.span
-                  className="flex gap-1"
-                  initial={{ opacity: 0.4 }}
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                >
-                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-                  <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-                </motion.span>
-              </div>
-            </motion.div>
+              <ChevronDown size={14} />
+              New updates
+            </motion.button>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Reply bar */}
+      <AnimatePresence>
+        {replyingTo && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 py-2 bg-secondary/50 border-t border-border">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <Reply size={12} className="text-primary flex-shrink-0" />
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Replying to <span className="font-semibold text-foreground">{replyingTo.user}</span>: {replyingTo.text}
+                  </p>
+                </div>
+                <button onClick={() => setReplyingTo(null)} className="text-[12px] text-muted-foreground px-1.5">✕</button>
+              </div>
+              {/* Smart reply suggestions */}
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                {replySuggestions.map((reply) => (
+                  <button
+                    key={reply}
+                    onClick={() => { handleUserChat(reply); }}
+                    className="flex-shrink-0 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold active:scale-95 transition-all"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} />
     </div>
   );

@@ -14,7 +14,7 @@ const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
       <div className="flex pb-[env(safe-area-inset-bottom,0px)]">
         {[
           { id: "arena" as const, label: "Live Arena", icon: Flame },
-          { id: "receipts" as const, label: "Receipts", icon: ScrollText },
+          { id: "receipts" as const, label: "My Record", icon: ScrollText },
           { id: "leaderboard" as const, label: "Leaderboard", icon: Trophy },
         ].map((tab) => (
           <button
