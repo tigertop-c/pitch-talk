@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Space Grotesk", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "'SF Pro Display'", "'SF Pro Text'", "'Helvetica Neue'", "system-ui", "sans-serif"],
+        display: ["-apple-system", "BlinkMacSystemFont", "'SF Pro Display'", "'Helvetica Neue'", "system-ui", "sans-serif"],
+        mono: ["'SF Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
