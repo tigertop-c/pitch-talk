@@ -172,10 +172,16 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
       }, 500 + i * 800);
     }
 
-    // Start next ball
+    // Show waiting indicator, then start next ball
     setTimeout(() => {
+      setWaitingForNext(true);
+      scrollToBottom();
+    }, numMessages * 800 + 1500);
+
+    setTimeout(() => {
+      setWaitingForNext(false);
       startNewBall();
-    }, numMessages * 800 + 2000);
+    }, numMessages * 800 + 5000);
   }, [onNextBall]);
 
   const startNewBall = useCallback(() => {
