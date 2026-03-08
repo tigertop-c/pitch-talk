@@ -154,8 +154,10 @@ const BanterStream = ({
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [shakeScreen, setShakeScreen] = useState(false);
   const [waitingForNext, setWaitingForNext] = useState(false);
+  const [waitingMessage, setWaitingMessage] = useState<{ emoji: string; text: string }>({ emoji: "🏏", text: "Bowler walking back..." });
   const [overSummaries, setOverSummaries] = useState<{ afterBallId: number; data: OverSummaryData }[]>([]);
   const [lastBallResult, setLastBallResult] = useState<string | null>(null);
+  const isOverBreak = useRef(false);
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
