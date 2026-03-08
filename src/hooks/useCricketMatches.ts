@@ -60,14 +60,20 @@ export function useCricketMatches() {
         setLoading(true);
         setError(null);
 
-        const { data, error: fnError } = await supabase.functions.invoke("cricket-matches", {
-          body: null,
-          method: "GET",
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const fnUrl = `https://${projectId}.supabase.co/functions/v1/cricket-matches?endpoint=matches&offset=0`;
+
+        const res = await fetch(fnUrl, {
+          headers: {
+            "apikey": anonKey,
+            "Content-Type": "application/json",
+          },
         });
 
-        if (fnError) throw new Error(fnError.message);
+        if (!res.ok) throw new Error(`Function error: ${res.status}`);
+        const response = (await res.json()) as CricApiResponse;
 
-        const response = data as CricApiResponse;
         if (response.status !== "success") {
           throw new Error("API returned non-success status");
         }
