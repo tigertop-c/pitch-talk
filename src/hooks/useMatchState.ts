@@ -8,6 +8,13 @@ export interface BallEvent {
   label: string;
 }
 
+export interface Batsman {
+  name: string;
+  runs: number;
+  balls: number;
+  isOnStrike: boolean;
+}
+
 export interface MatchState {
   runs: number;
   wickets: number;
@@ -15,9 +22,12 @@ export interface MatchState {
   balls: number;
   currentBowler: string;
   ballEvents: BallEvent[];
+  batsmen: [Batsman, Batsman];
+  target: number | null;
 }
 
 const BOWLERS = ["Bumrah", "Starc", "Cummins", "Hazlewood", "Zampa"];
+const BATSMEN_POOL = ["Rohit", "Kohli", "SKY", "Pant", "Hardik", "Jadeja", "Axar", "Rinku", "Gill", "Iyer"];
 
 const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number; legal: boolean }[] = [
   { result: "dot", runs: 0, label: "DOT BALL", weight: 32, legal: true },
@@ -46,6 +56,7 @@ export function formatBall(overs: number, balls: number) {
 }
 
 export function useMatchState() {
+  const nextBatsmanIdx = useRef(2);
   const [match, setMatch] = useState<MatchState>({
     runs: 0,
     wickets: 0,
@@ -53,6 +64,11 @@ export function useMatchState() {
     balls: 0,
     currentBowler: "Bumrah",
     ballEvents: [],
+    batsmen: [
+      { name: BATSMEN_POOL[0], runs: 0, balls: 0, isOnStrike: true },
+      { name: BATSMEN_POOL[1], runs: 0, balls: 0, isOnStrike: false },
+    ],
+    target: 185,
   });
 
   const ballIdRef = useRef(0);
@@ -70,7 +86,6 @@ export function useMatchState() {
     ballIdRef.current += 1;
 
     setMatch((prev) => {
-      // Wide and no-ball don't count as legal deliveries
       const isLegal = outcome.result !== "wide" && outcome.result !== "noball";
       let newBalls = isLegal ? prev.balls + 1 : prev.balls;
       let newOvers = prev.overs;
@@ -90,6 +105,29 @@ export function useMatchState() {
         label: outcome.label,
       };
 
+      // Update batsmen
+      let newBatsmen: [Batsman, Batsman] = [{ ...prev.batsmen[0] }, { ...prev.batsmen[1] }];
+      const strikerIdx = newBatsmen[0].isOnStrike ? 0 : 1;
+
+      if (outcome.result === "wicket") {
+        // New batsman comes in
+        const newName = BATSMEN_POOL[nextBatsmanIdx.current % BATSMEN_POOL.length];
+        nextBatsmanIdx.current += 1;
+        newBatsmen[strikerIdx] = { name: newName, runs: 0, balls: 0, isOnStrike: true };
+        if (isLegal) newBatsmen[strikerIdx].balls = 1;
+      } else {
+        newBatsmen[strikerIdx].runs += outcome.runs;
+        if (isLegal) newBatsmen[strikerIdx].balls += 1;
+        // Rotate strike on odd runs or end of over
+        const oddRuns = outcome.runs % 2 === 1;
+        const endOfOver = newBalls === 6 && isLegal;
+        if (oddRuns !== endOfOver) {
+          // XOR: swap strike
+          newBatsmen[0].isOnStrike = !newBatsmen[0].isOnStrike;
+          newBatsmen[1].isOnStrike = !newBatsmen[1].isOnStrike;
+        }
+      }
+
       return {
         runs: prev.runs + outcome.runs,
         wickets: prev.wickets + (outcome.result === "wicket" ? 1 : 0),
@@ -97,6 +135,8 @@ export function useMatchState() {
         balls: newBalls,
         currentBowler: newBowler,
         ballEvents: [...prev.ballEvents.slice(-20), event],
+        batsmen: newBatsmen,
+        target: prev.target,
       };
     });
 
