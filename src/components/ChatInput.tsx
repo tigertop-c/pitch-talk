@@ -84,7 +84,7 @@ function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
       }
   }
 
-  // Situational sledges
+  // Situational banter
   if (ctx.target) {
     const remaining = ctx.target - ctx.runs;
     const ballsLeft = Math.max(1, (20 * 6) - (ctx.overs * 6 + ctx.balls));
