@@ -218,7 +218,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               {/* Team selection */}
               <div className="p-4 ios-card">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Pick Your Side</p>
-                <p className="text-[15px] font-semibold text-foreground mb-3">Who are you sledging for?</p>
+                <p className="text-[15px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
                 <div className="grid grid-cols-2 gap-2">
                   <motion.button
                     whileTap={{ scale: 0.96 }}
