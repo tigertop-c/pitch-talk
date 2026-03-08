@@ -36,7 +36,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   useEffect(() => {
     if (matchWinner && tossWinner && stage === "welcome") {
       const timer = setTimeout(() => {
-        const winner = Math.random() > 0.5 ? "India 🇮🇳" : "Australia 🇦🇺";
+        const winner = Math.random() > 0.5 ? "Delhi Capitals" : "Mumbai Indians";
         setTossResult(winner);
         setStage("toss");
       }, 2500);
