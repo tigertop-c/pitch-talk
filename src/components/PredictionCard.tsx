@@ -48,6 +48,7 @@ const RESULT_STYLES: Record<string, string> = {
   dot: "bg-muted text-muted-foreground",
   single: "bg-surface-elevated text-foreground",
   double: "bg-surface-elevated text-foreground",
+  triple: "bg-surface-elevated text-foreground",
   four: "bg-primary text-primary-foreground",
   six: "bg-neon text-neon-foreground",
   wicket: "bg-destructive text-destructive-foreground",
