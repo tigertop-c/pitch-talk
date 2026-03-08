@@ -18,6 +18,8 @@ const SHAME_DATA: ShameCard[] = [
   { id: 6, user: "Rahul", claim: "Easy win for Australia", result: "India won by 65 runs", emoji: "💀" },
 ];
 
+const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
+
 const handleShare = (card: ShameCard) => {
   const text = `🏏 THE SLEDGE - Wall of Shame ${card.emoji}\n\n${card.user} said: "${card.claim}"\n→ Result: ${card.result}\n\nGet rekt. 💀`;
   const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -27,11 +29,11 @@ const handleShare = (card: ShameCard) => {
 const ReceiptsScreen = () => {
   return (
     <div className="flex-1 overflow-y-auto p-4">
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold font-mono text-neon uppercase tracking-wider">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">
           🏆 Wall of Shame
         </h2>
-        <p className="text-xs font-mono text-muted-foreground mt-1">
+        <p className="text-[13px] text-muted-foreground mt-1">
           Where bad takes live forever
         </p>
       </div>
@@ -42,32 +44,30 @@ const ReceiptsScreen = () => {
             key={card.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-card border-[3px] border-foreground rounded-lg p-4"
-            style={{ boxShadow: "4px 4px 0px hsl(0 0% 0%)" }}
+            transition={{ ...spring, delay: i * 0.08 }}
+            className="ios-card p-4"
           >
             <div className="flex items-start justify-between mb-2">
-              <span className="text-xs font-mono font-bold text-primary uppercase">
+              <span className="text-[12px] font-semibold text-primary">
                 {card.user} said:
               </span>
               <span className="text-2xl">{card.emoji}</span>
             </div>
 
-            <p className="text-sm font-semibold text-foreground mb-1 italic">
+            <p className="text-[15px] font-semibold text-foreground mb-1.5 italic">
               "{card.claim}"
             </p>
 
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-mono text-muted-foreground">→ Result:</span>
-              <span className="text-xs font-mono font-bold text-neon">{card.result}</span>
+            <div className="flex items-center gap-2 mb-3.5">
+              <span className="text-[12px] text-muted-foreground">→ Result:</span>
+              <span className="text-[12px] font-semibold text-neon">{card.result}</span>
             </div>
 
             <button
               onClick={() => handleShare(card)}
-              className="w-full flex items-center justify-center gap-2 py-2 bg-neon text-neon-foreground font-mono font-bold text-xs uppercase rounded-md border-2 border-foreground transition-transform active:scale-95"
-              style={{ boxShadow: "2px 2px 0px hsl(0 0% 0%)" }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-semibold text-[13px] rounded-xl transition-transform duration-150 active:scale-[0.97]"
             >
-              <Share2 size={14} />
+              <Share2 size={15} />
               Share to WhatsApp
             </button>
           </motion.div>
