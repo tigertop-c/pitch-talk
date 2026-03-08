@@ -187,6 +187,32 @@ function getQuickPicks(
   return unique.slice(0, 5);
 }
 
+function getQuickEmojis(userTeam: TeamId, ctx: MatchContext): string[] {
+  const battingTeam: TeamId = "DC";
+  const isMyTeamBatting = userTeam === battingTeam;
+  const result = ctx.lastBallResult;
+
+  if (!result) return ["🔥", "💪", "🏏"];
+
+  if (isMyTeamBatting) {
+    switch (result) {
+      case "six": return ["🙌", "🔥", "🤩"];
+      case "four": return ["🤚", "👏", "⚡"];
+      case "wicket": return ["😭", "🤦‍♂️", "💔"];
+      case "dot": return ["🥺", "🙏", "💪"];
+      default: return ["🏏", "🏃", "⚡"];
+    }
+  } else {
+    switch (result) {
+      case "six": return ["😭", "🤦‍♂️", "😡"];
+      case "four": return ["😠", "🙄", "🤐"];
+      case "wicket": return ["☝️", "🎯", "🔥"];
+      case "dot": return ["👏", "🔥", "🎯"];
+      default: return ["🏏", "👀", "🎯"];
+    }
+  }
+}
+
 const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: ChatInputProps) => {
   const [text, setText] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
