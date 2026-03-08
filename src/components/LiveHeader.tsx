@@ -13,7 +13,7 @@ interface LiveHeaderProps {
   isChasing?: boolean;
 }
 
-const LiveHeader = ({ match, crr, soundMuted, onToggleSound }: LiveHeaderProps) => {
+const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing }: LiveHeaderProps) => {
   const totalOvers = match.overs + match.balls / 6;
   const remainingOvers = 20 - totalOvers;
   const remainingRuns = match.target ? match.target - match.runs : null;
