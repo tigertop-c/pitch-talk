@@ -1,40 +1,40 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Copy, Check, ChevronRight } from "lucide-react";
+import { Users, ChevronRight, MessageCircle } from "lucide-react";
 import dcLogo from "@/assets/dc-logo.png";
 import miLogo from "@/assets/mi-logo.png";
+import type { TeamId } from "./ChatInput";
 
 interface PreGameIntroProps {
-  onStart: () => void;
+  onStart: (team: TeamId) => void;
 }
 
-type Stage = "welcome" | "toss" | "target" | "starting";
+type Stage = "welcome" | "team-pick" | "toss" | "target" | "starting";
 
-const TEAMS = ["Delhi Capitals", "Mumbai Indians"];
+const TEAMS = ["Delhi Capitals", "Mumbai Indians"] as const;
 const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
   const [stage, setStage] = useState<Stage>("welcome");
+  const [userTeam, setUserTeam] = useState<TeamId | null>(null);
   const [matchWinner, setMatchWinner] = useState<string | null>(null);
   const [tossWinner, setTossWinner] = useState<string | null>(null);
   const [tossResult, setTossResult] = useState<string | null>(null);
   const [runTarget, setRunTarget] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  const inviteLink = "pitchtalk.app/join/DC-vs-MI";
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(`Join me on PitchTalk! Predict every ball live 🏏🔥 ${inviteLink}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // After team pick, go to predictions
+  useEffect(() => {
+    if (userTeam && stage === "welcome") {
+      setStage("team-pick");
+    }
+  }, [userTeam, stage]);
 
   useEffect(() => {
-    if (matchWinner && tossWinner && stage === "welcome") {
+    if (matchWinner && tossWinner && stage === "team-pick") {
       const timer = setTimeout(() => {
         const winner = Math.random() > 0.5 ? "Delhi Capitals" : "Mumbai Indians";
         setTossResult(winner);
@@ -59,13 +59,12 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
       const t = setTimeout(() => setCountdown(c => c - 1), 1000);
       return () => clearTimeout(t);
     }
-    if (stage === "starting" && countdown === 0) {
-      const t = setTimeout(onStart, 400);
+    if (stage === "starting" && countdown === 0 && userTeam) {
+      const t = setTimeout(() => onStart(userTeam), 400);
       return () => clearTimeout(t);
     }
-  }, [stage, countdown, onStart]);
+  }, [stage, countdown, onStart, userTeam]);
 
-  // Play horn when countdown starts, stop before first ball
   useEffect(() => {
     if (stage === "starting") {
       let horn: HTMLAudioElement | null = null;
@@ -73,40 +72,30 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
         horn = new Audio("/sounds/ipl_horn.mp3");
         horn.volume = 0.7;
         horn.play();
-      } catch (e) { /* audio not supported */ }
+      } catch (e) {}
       return () => {
-        if (horn) {
-          horn.pause();
-          horn.currentTime = 0;
-        }
+        if (horn) { horn.pause(); horn.currentTime = 0; }
       };
     }
   }, [stage]);
 
+  const handleInviteWhatsApp = () => {
+    const text = "🏏 Join me on PitchTalk! Predict every ball, talk trash, and see who's the real cricket brain 🧠🔥\n\n" + window.location.origin;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
   const PickButton = ({
-    label,
-    selected,
-    onPick,
-    accent = false,
-  }: {
-    label: string;
-    selected: boolean;
-    onPick: () => void;
-    accent?: boolean;
-  }) => (
+    label, selected, onPick, accent = false,
+  }: { label: string; selected: boolean; onPick: () => void; accent?: boolean }) => (
     <motion.button
       whileTap={{ scale: 0.96 }}
       onClick={onPick}
       transition={spring}
-      className={`
-        py-3.5 px-4 rounded-2xl text-[15px] font-semibold transition-all duration-200
-        ${selected
-          ? accent
-            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-            : "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+      className={`py-3.5 px-4 rounded-2xl text-[15px] font-semibold transition-all duration-200 ${
+        selected
+          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
           : "bg-secondary text-foreground active:bg-muted"
-        }
-      `}
+      }`}
     >
       {label}
     </motion.button>
@@ -172,7 +161,7 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
 
         {/* Stages */}
         <AnimatePresence mode="wait">
-          {stage === "welcome" && (
+          {(stage === "welcome" || stage === "team-pick") && (
             <motion.div
               key="welcome"
               initial={{ opacity: 0, y: 20 }}
@@ -181,57 +170,107 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
               transition={{ ...spring, delay: 0.6 }}
               className="space-y-3"
             >
-              {/* Match winner */}
+              {/* Team selection — WHO ARE YOU ROOTING FOR */}
               <div className="p-4 ios-card">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏆 Pre-match</p>
-                <p className="text-[15px] font-semibold text-foreground mb-3">Who wins today?</p>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Your Team</p>
+                <p className="text-[15px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {TEAMS.map(t => (
-                    <PickButton key={t} label={t} selected={matchWinner === t} onPick={() => setMatchWinner(t)} accent />
-                  ))}
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => setUserTeam("DC")}
+                    className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
+                      userTeam === "DC"
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary"
+                        : "bg-secondary text-foreground active:bg-muted"
+                    }`}
+                  >
+                    <img src={dcLogo} alt="DC" className="w-12 h-12 object-contain" />
+                    <span className="text-[14px] font-bold">Delhi Capitals</span>
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => setUserTeam("MI")}
+                    className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
+                      userTeam === "MI"
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary"
+                        : "bg-secondary text-foreground active:bg-muted"
+                    }`}
+                  >
+                    <img src={miLogo} alt="MI" className="w-12 h-12 object-contain" />
+                    <span className="text-[14px] font-bold">Mumbai Indians</span>
+                  </motion.button>
                 </div>
-                {matchWinner && (
+                {userTeam && (
                   <motion.p
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={spring}
                     className="text-[11px] text-primary mt-2.5 text-center font-medium"
                   >
-                    Locked in ✓
+                    {userTeam === "DC" ? "💙 DC fan locked in!" : "💙 MI Paltan locked in!"}
                   </motion.p>
                 )}
               </div>
 
+              {/* Match winner */}
+              {userTeam && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={spring}
+                  className="p-4 ios-card"
+                >
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏆 Pre-match</p>
+                  <p className="text-[15px] font-semibold text-foreground mb-3">Who wins today?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TEAMS.map(t => (
+                      <PickButton key={t} label={t} selected={matchWinner === t} onPick={() => setMatchWinner(t)} accent />
+                    ))}
+                  </div>
+                  {matchWinner && (
+                    <motion.p
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={spring}
+                      className="text-[11px] text-primary mt-2.5 text-center font-medium"
+                    >
+                      Locked in ✓
+                    </motion.p>
+                  )}
+                </motion.div>
+              )}
+
               {/* Toss */}
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: matchWinner ? 1 : 0.4, y: 0 }}
-                transition={spring}
-                className="p-4 ios-card"
-                style={{ pointerEvents: matchWinner ? "auto" : "none" }}
-              >
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🪙 Toss call</p>
-                <p className="text-[15px] font-semibold text-foreground mb-3">Who wins the toss?</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {TEAMS.map(t => (
-                    <PickButton key={t} label={t} selected={tossWinner === t} onPick={() => setTossWinner(t)} />
-                  ))}
-                </div>
-                {tossWinner && !tossResult && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center justify-center gap-2 mt-3"
-                  >
-                    <motion.span
-                      animate={{ rotateY: [0, 180, 360] }}
-                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                      className="text-lg"
-                    >🪙</motion.span>
-                    <span className="text-[12px] text-muted-foreground font-medium">Coin in the air...</span>
-                  </motion.div>
-                )}
-              </motion.div>
+              {userTeam && matchWinner && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={spring}
+                  className="p-4 ios-card"
+                >
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🪙 Toss call</p>
+                  <p className="text-[15px] font-semibold text-foreground mb-3">Who wins the toss?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TEAMS.map(t => (
+                      <PickButton key={t} label={t} selected={tossWinner === t} onPick={() => setTossWinner(t)} />
+                    ))}
+                  </div>
+                  {tossWinner && !tossResult && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-center justify-center gap-2 mt-3"
+                    >
+                      <motion.span
+                        animate={{ rotateY: [0, 180, 360] }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                        className="text-lg"
+                      >🪙</motion.span>
+                      <span className="text-[12px] text-muted-foreground font-medium">Coin in the air...</span>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
             </motion.div>
           )}
 
@@ -356,20 +395,17 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
                   transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
                   className="overflow-hidden"
                 >
-                  <div className="p-4 ios-card">
-                    <p className="text-[12px] text-muted-foreground mb-2.5 font-medium">Share this link 👇</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 px-3.5 py-2.5 bg-secondary rounded-xl text-[13px] text-foreground truncate font-medium">
-                        {inviteLink}
-                      </div>
-                      <button
-                        onClick={handleCopy}
-                        className="px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-[13px] font-semibold flex items-center gap-1.5 active:scale-95 transition-transform duration-150"
-                      >
-                        {copied ? <Check size={15} /> : <Copy size={15} />}
-                        {copied ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
+                  <div className="p-4 ios-card space-y-2">
+                    <p className="text-[12px] text-muted-foreground mb-1 font-medium">Share via WhatsApp 👇</p>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleInviteWhatsApp}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-[13px] text-primary-foreground"
+                      style={{ backgroundColor: "hsl(142, 70%, 45%)" }}
+                    >
+                      <MessageCircle size={16} />
+                      Invite on WhatsApp
+                    </motion.button>
                   </div>
                 </motion.div>
               )}
