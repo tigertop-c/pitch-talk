@@ -47,10 +47,10 @@ export function formatBall(overs: number, balls: number) {
 
 export function useMatchState() {
   const [match, setMatch] = useState<MatchState>({
-    runs: 184,
-    wickets: 4,
-    overs: 18,
-    balls: 2,
+    runs: 0,
+    wickets: 0,
+    overs: 0,
+    balls: 0,
     currentBowler: "Bumrah",
     ballEvents: [],
   });
