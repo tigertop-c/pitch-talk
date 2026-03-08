@@ -58,6 +58,12 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0) {
+      // Play IPL horn sound when game starts
+      try {
+        const horn = new Audio("/sounds/ipl_horn.mp3");
+        horn.volume = 0.7;
+        horn.play();
+      } catch (e) { /* audio not supported */ }
       const t = setTimeout(onStart, 400);
       return () => clearTimeout(t);
     }
