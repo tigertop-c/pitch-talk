@@ -19,13 +19,15 @@ export interface MatchState {
 
 const BOWLERS = ["Bumrah", "Starc", "Cummins", "Hazlewood", "Zampa"];
 
-const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number }[] = [
-  { result: "dot", runs: 0, label: "DOT BALL", weight: 35 },
-  { result: "single", runs: 1, label: "SINGLE", weight: 25 },
-  { result: "double", runs: 2, label: "TWO RUNS", weight: 12 },
-  { result: "four", runs: 4, label: "FOUR! 🟢", weight: 15 },
-  { result: "six", runs: 6, label: "SIX! 🔵", weight: 8 },
-  { result: "wicket", runs: 0, label: "WICKET! 🔴", weight: 5 },
+const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number; legal: boolean }[] = [
+  { result: "dot", runs: 0, label: "DOT BALL", weight: 32, legal: true },
+  { result: "single", runs: 1, label: "SINGLE", weight: 23, legal: true },
+  { result: "double", runs: 2, label: "TWO RUNS", weight: 10, legal: true },
+  { result: "four", runs: 4, label: "FOUR! 🟢", weight: 14, legal: true },
+  { result: "six", runs: 6, label: "SIX! 🔵", weight: 8, legal: true },
+  { result: "wicket", runs: 0, label: "WICKET! 🔴", weight: 5, legal: true },
+  { result: "wide", runs: 1, label: "WIDE", weight: 5, legal: false },
+  { result: "noball", runs: 1, label: "NO BALL", weight: 3, legal: false },
 ];
 
 function weightedRandom() {
