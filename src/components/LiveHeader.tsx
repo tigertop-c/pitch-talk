@@ -103,7 +103,7 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
             <div className="text-[9px] text-muted-foreground uppercase tracking-wide">CRR</div>
             <div className="text-base font-bold text-primary leading-tight">{crr}</div>
           </div>
-          {rrr && (
+          {isChasing && rrr && (
             <div className="text-right">
               <div className="text-[9px] text-muted-foreground uppercase tracking-wide">RRR</div>
               <div className="text-base font-bold text-destructive leading-tight">{rrr}</div>
