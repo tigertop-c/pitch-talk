@@ -98,9 +98,10 @@ const BanterStream = ({ match, onNextBall, onHype }: BanterStreamProps) => {
 
     const result: BallResult = { label: event.label, type: event.result };
 
-    if (event.result === "wicket" || event.result === "six") {
+    if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
+      onHype?.(event.result as "four" | "six" | "wicket");
     }
 
     setBalls(prev => prev.map(b => {
