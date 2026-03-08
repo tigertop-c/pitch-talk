@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Send } from "lucide-react";
 
 export type TeamId = "DC" | "MI";
+export type UserChatStyle = "hype" | "expert" | "troll" | "neutral";
 
 interface MatchContext {
   lastBallResult: string | null;
@@ -16,134 +17,123 @@ interface ChatInputProps {
   onSend: (text: string) => void;
   userTeam: TeamId;
   matchContext: MatchContext;
+  userStyle?: UserChatStyle;
 }
 
-function getQuickPicks(userTeam: TeamId, ctx: MatchContext): string[] {
+// Categorized picks by personality style
+const STYLE_PICKS: Record<UserChatStyle, Record<string, string[]>> = {
+  hype: {
+    six: ["YESSS! MASSIVE! 🚀🔥", "INTO THE STANDS! 🏟️💥", "WHAT A HIT! 😤🔥"],
+    four: ["SHOT! Beautiful! 🔥", "CLASS! 😍⚡", "BOUNDARY! Let's GO! 💥"],
+    wicket_my: ["We'll bounce back! 💪🔥", "Still got this! 🙌", "Next one FIRES UP! 🔥"],
+    wicket_opp: ["YESSS! BIG WICKET! 🎯🔥", "SEE YA! 👋💀", "Let's GOOO! 🤩"],
+    dot: ["Come ON boys! 💪", "Find the gaps! ⚡", "Next ball's the one! 🔥"],
+    default: ["Let's GO! 🔥💪", "ENERGY! ⚡🏏", "Come on squad! 🙌"],
+  },
+  expert: {
+    six: ["Set up shot, great execution 🧠", "Targeted the short side, smart 📐", "Knew the bowler would go full 🎯"],
+    four: ["Gap identified, clinical finish 🧠", "Weight of shot was perfect 📊", "Read the field, found the gap 🎯"],
+    wicket_my: ["Bad shot selection, should've rotated 🧠", "Needed to respect that spell 📋", "Wrong approach for this phase 🤔"],
+    wicket_opp: ["Bowler set that up over 3 balls 🧠", "Change of pace did the trick 📊", "Field placement was key there 🎯"],
+    dot: ["Building pressure, need to rotate 🧠", "Target the shorter boundary next 📐", "Time for a change of approach 🤔"],
+    default: ["Interesting tactical phase 🧠", "Match situation demands patience 📊", "Key over coming up 🎯"],
+  },
+  troll: {
+    six: ["Sit down! Your bowler's DONE 🪑😂", "Ball's left the stadium AND the city 💀", "Bowler questioning life choices 😭"],
+    four: ["Your bowler's getting a LESSON 📚😏", "Fielding? Never heard of her 😂", "That ball had a FAMILY 💀"],
+    wicket_my: ["Just one wicket, RELAX 🙄", "Still gonna win, stay salty 😏", "Your bowler got lucky, that's all 🤷"],
+    wicket_opp: ["Bye bye! Walk of shame time 🚶💀", "Pack your bags fam 👋😂", "Screenshot this, I called it 📸"],
+    dot: ["Is that all they've got? 😏", "My nan bats better 👵💀", "Wake me up when something happens 😴"],
+    default: ["Rent free 😎💀", "Your team's a meme 😂", "Bold talk, weak team 🤷"],
+  },
+  neutral: {
+    six: ["Great hit! 🏏", "What a shot! 👏", "That's massive! 🙌"],
+    four: ["Nice shot! 👏", "Well played! 🏏", "Good timing! 👌"],
+    wicket_my: ["We'll come back 💪", "Still in the game 🙌", "Long way to go 🏏"],
+    wicket_opp: ["Good wicket! 🎯", "Well bowled! 👏", "Big moment! ⚡"],
+    dot: ["Tight bowling 🎯", "Good ball 👏", "Pressure building 🏏"],
+    default: ["Good cricket! 🏏", "Interesting! 🤔", "Let's see! 👀"],
+  },
+};
+
+function getQuickPicks(userTeam: TeamId, ctx: MatchContext, style: UserChatStyle): string[] {
   const battingTeam: TeamId = "DC";
   const isMyTeamBatting = userTeam === battingTeam;
   const result = ctx.lastBallResult;
 
+  const stylePicks = STYLE_PICKS[style];
   const picks: string[] = [];
 
   if (!result) {
-    return isMyTeamBatting
-      ? ["Let's go DC! 💙", "Come on boys! 🔥", "Feeling good about this 🙌", "DC all the way!", "Positive vibes only ✨"]
-      : ["MI all the way! 💙", "Let's gooo! 🔥", "Paltan energy! 💪", "Good feelings! 🙌"];
+    picks.push(...(stylePicks.default || []));
+    // Add cross-style variety
+    if (style !== "hype") picks.push("Let's GO! 🔥");
+    if (style !== "expert") picks.push("Key match-up coming 🧠");
+    return picks.slice(0, 6);
   }
 
   switch (result) {
     case "six":
-      if (isMyTeamBatting) {
-        // Positive first
-        picks.push("YESSS! What a hit! 🚀", "That's what we came for! 🔥", "INTO THE STANDS! 🏟️");
-        // Armchair expert
-        picks.push("Told you, play the lofted shot 🧠", "Textbook T20 batting right there");
-        // Teasy
-        picks.push("Sit down! Your bowler's done 🪑");
-      } else {
-        picks.push("Good hit, credit where it's due 👏", "One six won't decide the match 🧠", "Bowler set him up, watch next ball 🎣");
-      }
+      picks.push(...(isMyTeamBatting ? stylePicks.six : (style === "troll" ? stylePicks.six : STYLE_PICKS.neutral.six)));
       break;
     case "four":
-      if (isMyTeamBatting) {
-        picks.push("Beautiful shot! 🏏🔥", "CLASS! Love to see it 😍", "What timing! ⚡");
-        picks.push("Found the gap perfectly, reading the field 🧠");
-        picks.push("Your bowler's getting a lesson 😏");
-      } else {
-        picks.push("Nice shot, but one boundary won't save them 🧠", "Bad line, needs adjustment 🤔", "Credit to the batsman on that one 👌");
-      }
+      picks.push(...(isMyTeamBatting ? stylePicks.four : (style === "troll" ? stylePicks.four : STYLE_PICKS.neutral.four)));
       break;
     case "wicket":
-      if (isMyTeamBatting) {
-        picks.push("We'll bounce back! 💪", "Still got this, loads of batting left 🙌", "Next one will fire 🔥");
-        picks.push("Bad shot selection, should've left that 🧠");
-        picks.push("Just one wicket, relax everyone 😤");
-      } else {
-        picks.push("YESSS! Massive wicket! 🎯🔥", "What a delivery! Deserved that! 👏", "Bowler's been planning that for 3 balls 🧠");
-        picks.push("Bye bye! 👋😂");
-      }
+      picks.push(...(isMyTeamBatting ? stylePicks.wicket_my : stylePicks.wicket_opp));
       break;
     case "dot":
-      if (isMyTeamBatting) {
-        picks.push("Keep going, build pressure your way 💪", "It's okay, find the gaps next ball 🙌", "Patience pays 🧘");
-        picks.push("Need to target the shorter boundary side 🧠");
-        picks.push("Rotate the strike at least! 😤");
-      } else {
-        picks.push("Great bowling! Building pressure 🎯", "Love the discipline! 💪", "Tight line and length 🧠");
-        picks.push("Can't score off that? Levels 😂");
-      }
+      picks.push(...stylePicks.dot);
       break;
-    case "wide":
-    case "noball":
-      if (isMyTeamBatting) {
-        picks.push("Free runs, we'll take it! 🎁", "Every run counts! 👌", "Smart to leave that 🧠");
-        picks.push("Thanks for the gift 😂");
-      } else {
-        picks.push("Come on bowler, tighten up! 💪", "Needs to adjust the line 🧠", "It's okay, next ball 🙌");
-        picks.push("That's embarrassing though 🤦");
-      }
-      break;
-    default: // single, double, triple
-      if (isMyTeamBatting) {
-        picks.push("Smart cricket! 🧠", "Good running! Ticking along nicely 🙌", "Nice placement 👌");
-        picks.push("Building a solid foundation 🏗️");
-      } else {
-        picks.push("Singles won't win it, need more than that 🧠", "Good bowling, keep them quiet 🎯", "Pressure building! 💪");
-        picks.push("Is that all they've got? 😏");
-      }
+    default:
+      picks.push(...stylePicks.default);
   }
 
-  // Situational banter
+  // Add situational picks
   if (ctx.target) {
     const remaining = ctx.target - ctx.runs;
     const ballsLeft = Math.max(1, (20 * 6) - (ctx.overs * 6 + ctx.balls));
     const rrr = (remaining / ballsLeft) * 6;
-
-    if (remaining <= 20 && isMyTeamBatting) picks.push("Almost there, stay quiet haters! 🤫");
-    if (remaining <= 20 && !isMyTeamBatting) picks.push("Getting nervous yet? 😬");
-    if (rrr > 12 && isMyTeamBatting) picks.push("Need big overs! Come on! 💥");
-    if (rrr > 12 && !isMyTeamBatting) picks.push("Game's done, go home 😎");
+    if (remaining <= 20 && isMyTeamBatting) picks.push("Almost there! 🤫🏆");
+    if (rrr > 12 && isMyTeamBatting) picks.push("Need big overs NOW! 💥");
+    if (rrr > 12 && !isMyTeamBatting) picks.push("Rate's climbing! 📈😏");
   }
 
-  if (ctx.wickets >= 5) {
-    if (isMyTeamBatting) picks.push("We've got DEPTH! 💪");
-    else picks.push("COLLAPSE! Love to see it 💀😂");
-  }
-
-  if (ctx.wickets <= 1 && ctx.overs >= 10) {
-    if (isMyTeamBatting) picks.push("Set platform, now EXPLODE 🧨");
-    else picks.push("Too comfortable, bowl better! 😤");
-  }
+  // Always add a couple from other styles for variety
+  const otherStyle = style === "hype" ? "expert" : style === "expert" ? "hype" : "neutral";
+  const otherPicks = STYLE_PICKS[otherStyle];
+  const otherKey = result === "wicket" ? (isMyTeamBatting ? "wicket_my" : "wicket_opp") : result;
+  if (otherPicks[otherKey]) picks.push(otherPicks[otherKey][0]);
 
   return picks.slice(0, 6);
 }
 
-const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
+const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: ChatInputProps) => {
   const [text, setText] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
 
   const quickPicks = useMemo(
-    () => getQuickPicks(userTeam, matchContext),
-    [userTeam, matchContext.lastBallResult, matchContext.runs, matchContext.wickets, matchContext.overs]
+    () => getQuickPicks(userTeam, matchContext, userStyle),
+    [userTeam, matchContext.lastBallResult, matchContext.runs, matchContext.wickets, matchContext.overs, userStyle]
   );
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
     onSend(trimmed);
     setText("");
     setShowTextInput(false);
-  };
+  }, [text, onSend]);
 
   return (
     <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
-      {/* Dynamic quick picks */}
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar items-center">
+      {/* Dynamic quick picks - wrapping layout for visibility */}
+      <div className="flex flex-wrap gap-1.5 items-center">
         {quickPicks.map((pick) => (
           <button
             key={pick}
             onClick={() => onSend(pick)}
-            className="flex-shrink-0 px-3 py-1.5 rounded-full bg-secondary text-foreground text-xs font-medium hover:bg-muted active:scale-95 transition-all duration-150"
+            className="px-3.5 py-2 rounded-full bg-secondary text-foreground text-[12px] font-semibold hover:bg-muted active:scale-95 transition-all duration-150 leading-tight"
           >
             {pick}
           </button>
@@ -152,7 +142,7 @@ const ChatInput = ({ onSend, userTeam, matchContext }: ChatInputProps) => {
         {!showTextInput && (
           <button
             onClick={() => setShowTextInput(true)}
-            className="flex-shrink-0 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium active:scale-95 transition-all duration-150"
+            className="px-3.5 py-2 rounded-full bg-primary/10 text-primary text-[12px] font-semibold active:scale-95 transition-all duration-150"
           >
             ✏️ Type
           </button>
