@@ -286,6 +286,7 @@ const Index = () => {
                 maxPlayers={MAX_PLAYERS}
                 roomId={roomId}
                 onInvite={handleInvite}
+                onToggleSound={toggleSound}
               />
             </>
           ) : activeTab === "receipts" ? (
