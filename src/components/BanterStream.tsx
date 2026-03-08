@@ -195,11 +195,9 @@ const BanterStream = ({ match, onNextBall }: BanterStreamProps) => {
     activeBallIdRef.current = ballId;
 
     const tempBallCount = ballCountRef.current + 1;
-    const overNum = Math.floor((tempBallCount - 1) / 6) + 18;
-    const ballNum = ((tempBallCount - 1) % 6) + 3;
-    const adjustedOver = ballNum > 6 ? overNum + Math.floor((ballNum - 1) / 6) : overNum;
-    const adjustedBall = ballNum > 6 ? ((ballNum - 1) % 6) + 1 : ballNum;
-    const label = formatBall(adjustedOver, adjustedBall);
+    const overNum = Math.floor((tempBallCount - 1) / 6);
+    const ballNum = ((tempBallCount - 1) % 6) + 1;
+    const label = formatBall(overNum, ballNum);
 
     const newBall: BallBlock = {
       id: ballId,
