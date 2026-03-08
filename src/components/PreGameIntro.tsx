@@ -41,11 +41,14 @@ const PreGameIntro = ({ onStart }: PreGameIntroProps) => {
     }
   }, [matchWinner, tossWinner, stage]);
 
-  // After run target picked, countdown then start
+  // After run target picked, auto-transition to starting after a brief pause
   useEffect(() => {
-    if (runTarget && stage === "target") {
-      setStage("starting");
-      setCountdown(5);
+    if (runTarget && stage === "toss") {
+      const timer = setTimeout(() => {
+        setStage("starting");
+        setCountdown(5);
+      }, 1500);
+      return () => clearTimeout(timer);
     }
   }, [runTarget, stage]);
 
