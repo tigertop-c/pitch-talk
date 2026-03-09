@@ -151,11 +151,18 @@ export function useMultiplayer() {
       setRoomId(code);
       setIsHost(true);
       setGameSnapshot(initialSnapshot);
-      setPlayers([{
-        id: playerData.id, name, avatar, isHost: true,
-        wins: 0, total: 0, streak: 0,
-      }]);
 
+      // Insert AI bot players into the room
+      const aiInserts = AI_PLAYERS.map(ai => ({
+        room_id: code,
+        player_name: ai.name,
+        avatar: ai.avatar,
+        is_host: false,
+        team_picked: ai.team,
+      }));
+      await supabase.from("room_players").insert(aiInserts);
+
+      await fetchPlayers(code);
       subscribe(code);
       return code;
     } catch (e: any) {
