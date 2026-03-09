@@ -14,7 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      room_players: {
+        Row: {
+          avatar: string
+          id: string
+          is_host: boolean
+          joined_at: string
+          player_name: string
+          room_id: string
+          streak: number
+          team_picked: string | null
+          total_predictions: number
+          wins: number
+        }
+        Insert: {
+          avatar?: string
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          player_name: string
+          room_id: string
+          streak?: number
+          team_picked?: string | null
+          total_predictions?: number
+          wins?: number
+        }
+        Update: {
+          avatar?: string
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          player_name?: string
+          room_id?: string
+          streak?: number
+          team_picked?: string | null
+          total_predictions?: number
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          game_snapshot: Json | null
+          host_name: string
+          id: string
+          match_label: string
+          match_number: number
+          match_team1_name: string
+          match_team1_short: string
+          match_team2_name: string
+          match_team2_short: string
+          match_venue: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          game_snapshot?: Json | null
+          host_name?: string
+          id: string
+          match_label?: string
+          match_number?: number
+          match_team1_name?: string
+          match_team1_short?: string
+          match_team2_name?: string
+          match_team2_short?: string
+          match_venue?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          game_snapshot?: Json | null
+          host_name?: string
+          id?: string
+          match_label?: string
+          match_number?: number
+          match_team1_name?: string
+          match_team1_short?: string
+          match_team2_name?: string
+          match_team2_short?: string
+          match_venue?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
