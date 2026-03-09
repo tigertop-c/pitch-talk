@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Reply } from "lucide-react";
+import { ChevronDown, ThumbsUp, ThumbsDown } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
 import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
@@ -26,7 +26,6 @@ interface ChatItem {
   text: string;
   timestamp: string;
   isSystem?: boolean;
-  replyTo?: { user: string; text: string };
   team?: TeamId;
   isCommentaryGuess?: boolean;
   commentaryGuessData?: {
@@ -224,7 +223,7 @@ const BanterStream = ({
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
-  const [replyingTo, setReplyingTo] = useState<ChatItem | null>(null);
+  const [chatReactions, setChatReactions] = useState<Record<number, { up: number; down: number; myVote?: "up" | "down" }>>({});
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [commentaryScore, setCommentaryScore] = useState({ correct: 0, total: 0 });
   const [userChatStyle, setUserChatStyle] = useState<UserChatStyle>("neutral");
@@ -548,29 +547,8 @@ const BanterStream = ({
       idRef.current += 1;
       const chatId = idRef.current;
       
-      const shouldReply = i === 1 && Math.random() < 0.3;
-      
       setTimeout(() => {
         setChats(prev => {
-          let replyData: ChatItem["replyTo"] | undefined;
-          if (shouldReply && prev.length > 0) {
-            const recentChats = prev.filter(c => !c.isSystem && c.user !== user.name).slice(-5);
-            if (recentChats.length > 0) {
-              const target = recentChats[Math.floor(Math.random() * recentChats.length)];
-              const replies = getSmartReplies(target.text, user.team || "DC", target.team);
-              replyData = { user: target.user, text: target.text };
-              return [...prev, {
-                id: chatId,
-                parentBallId: ballId,
-                user: user.name,
-                avatar: user.avatar,
-                text: replies[Math.floor(Math.random() * replies.length)],
-                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-                replyTo: replyData,
-                team: user.team,
-              }];
-            }
-          }
           return [...prev, {
             id: chatId,
             parentBallId: ballId,
@@ -729,16 +707,25 @@ const BanterStream = ({
       text,
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       team: userTeam,
-      replyTo: replyingTo ? { user: replyingTo.user, text: replyingTo.text } : undefined,
     };
     setChats(prev => [...prev, newChat]);
-    setReplyingTo(null);
     scrollToBottom();
-  }, [replyingTo, userTeam, scrollToBottom, detectStyle]);
+  }, [userTeam, scrollToBottom, detectStyle]);
 
-  const handleReply = useCallback((chat: ChatItem) => {
-    if (chat.isSystem || chat.user === "You") return;
-    setReplyingTo(chat);
+  const handleReaction = useCallback((chatId: number, type: "up" | "down") => {
+    setChatReactions(prev => {
+      const existing = prev[chatId] || { up: 0, down: 0 };
+      if (existing.myVote === type) return prev; // already voted this way
+      const undoPrev = existing.myVote ? (existing.myVote === "up" ? { up: -1, down: 0 } : { up: 0, down: -1 }) : { up: 0, down: 0 };
+      return {
+        ...prev,
+        [chatId]: {
+          up: existing.up + undoPrev.up + (type === "up" ? 1 : 0),
+          down: existing.down + undoPrev.down + (type === "down" ? 1 : 0),
+          myVote: type,
+        },
+      };
+    });
   }, []);
 
   const handleToggleSound = useCallback(() => {
@@ -795,9 +782,6 @@ const BanterStream = ({
     balls: match.balls,
   };
 
-  const replySuggestions = replyingTo
-    ? getSmartReplies(replyingTo.text, userTeam, replyingTo.team)
-    : [];
 
   // Check if any ball prediction is currently actionable (idle state)
   const isPredictionActive = balls.some(b => b.predictionState === "idle" || b.predictionState === "locked");
@@ -947,13 +931,6 @@ const BanterStream = ({
                             {c.timestamp}
                           </span>
                         </div>
-                        {c.replyTo && (
-                          <div className="mt-0.5 mb-0.5 pl-2 border-l-2 border-primary/30">
-                            <p className="text-[10px] text-muted-foreground truncate">
-                              <span className="font-semibold">{c.replyTo.user}:</span> {c.replyTo.text}
-                            </p>
-                          </div>
-                        )}
                         {isSoundToggle ? (
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-[12px] text-muted-foreground italic">
@@ -972,13 +949,30 @@ const BanterStream = ({
                           }`}>{c.text}</p>
                         )}
                         {!isSystem && !isYou && (
-                          <button
-                            onClick={() => handleReply(c)}
-                            className="mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground active:text-primary transition-all"
-                          >
-                            <Reply size={10} />
-                            Reply
-                          </button>
+                          <div className="mt-1 flex items-center gap-2">
+                            <button
+                              onClick={() => handleReaction(c.id, "up")}
+                              className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-all active:scale-95 ${
+                                chatReactions[c.id]?.myVote === "up"
+                                  ? "bg-primary/15 text-primary font-semibold"
+                                  : "text-muted-foreground hover:bg-secondary"
+                              }`}
+                            >
+                              <ThumbsUp size={10} />
+                              {(chatReactions[c.id]?.up || 0) > 0 && <span>{chatReactions[c.id].up}</span>}
+                            </button>
+                            <button
+                              onClick={() => handleReaction(c.id, "down")}
+                              className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-all active:scale-95 ${
+                                chatReactions[c.id]?.myVote === "down"
+                                  ? "bg-destructive/15 text-destructive font-semibold"
+                                  : "text-muted-foreground hover:bg-secondary"
+                              }`}
+                            >
+                              <ThumbsDown size={10} />
+                              {(chatReactions[c.id]?.down || 0) > 0 && <span>{chatReactions[c.id].down}</span>}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1039,40 +1033,6 @@ const BanterStream = ({
         </AnimatePresence>
       </div>
 
-      {/* Reply bar */}
-      <AnimatePresence>
-        {replyingTo && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 py-2 bg-secondary/50 border-t border-border">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <Reply size={12} className="text-primary flex-shrink-0" />
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Replying to <span className="font-semibold text-foreground">{replyingTo.user}</span>: {replyingTo.text}
-                  </p>
-                </div>
-                <button onClick={() => setReplyingTo(null)} className="text-[12px] text-muted-foreground px-1.5">✕</button>
-              </div>
-              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-                {replySuggestions.map((reply) => (
-                  <button
-                    key={reply}
-                    onClick={() => { handleUserChat(reply); }}
-                    className="flex-shrink-0 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold active:scale-95 transition-all"
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} userStyle={userChatStyle} />
     </div>
