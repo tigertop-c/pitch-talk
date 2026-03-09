@@ -318,6 +318,24 @@ const Index = () => {
     })),
   ];
 
+  const squadEntries: SquadEntry[] = useMemo(() => [
+    {
+      name: playerName || "You",
+      avatar: playerAvatar,
+      wins: predictions.filter(p => p.won === true).length,
+      total: predictions.filter(p => p.won !== null).length,
+      streak: currentStreak,
+      isYou: true,
+    },
+    ...activeFriends.map(f => ({
+      name: f.name,
+      avatar: f.avatar,
+      wins: friendScores[f.name]?.wins || 0,
+      total: friendScores[f.name]?.total || 0,
+      streak: friendScores[f.name]?.streak || 0,
+    })),
+  ], [predictions, activeFriends, friendScores, currentStreak, playerName, playerAvatar]);
+
   const isGameActive = stage === "game";
 
   // Don't render until profile check is done
