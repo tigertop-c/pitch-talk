@@ -799,6 +799,9 @@ const BanterStream = ({
     ? getSmartReplies(replyingTo.text, userTeam, replyingTo.team)
     : [];
 
+  // Check if any ball prediction is currently actionable (idle state)
+  const isPredictionActive = balls.some(b => b.predictionState === "idle" || b.predictionState === "locked");
+
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
       <div className="relative flex-1 overflow-hidden">
