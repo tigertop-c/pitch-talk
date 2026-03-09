@@ -278,227 +278,90 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
         >
           <h1 className="text-2xl font-black tracking-tight text-foreground">🏏 Pitch Talk</h1>
           <p className="text-[12px] text-muted-foreground mt-1 font-medium">
-            Pick a match. Predict every ball. Play with your squad.
+            Pick two teams. Predict every ball. Play with your squad.
           </p>
         </motion.div>
 
-        {/* Mode toggle */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="flex items-center gap-1.5 p-1 rounded-xl bg-secondary/70"
-        >
-          <button
-            onClick={() => setMode("live")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition-all ${
-              mode === "live"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground"
-            }`}
+        {/* Matchup preview */}
+        {simTeam1 && simTeam2 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={spring}
+            className="ios-card p-5"
           >
-            <Wifi size={12} />
-            Live Matches
-          </button>
-          <button
-            onClick={() => setMode("simulation")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] font-semibold transition-all ${
-              mode === "simulation"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground"
-            }`}
-          >
-            <Zap size={12} />
-            Simulation
-          </button>
-        </motion.div>
-
-        {/* ─── SIMULATION: Pick two teams ─── */}
-        {mode === "simulation" && (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key="sim-picker"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={spring}
-              className="space-y-4"
-            >
-              {/* Matchup preview */}
-              {simTeam1 && simTeam2 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={spring}
-                  className="ios-card p-5"
-                >
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium text-center mb-3">Your Matchup</p>
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam1)!.logo} alt={simTeam1} className="w-16 h-16 object-contain" />
-                      <span className="text-[14px] font-bold text-foreground">{simTeam1}</span>
-                    </div>
-                    <span className="text-xl font-black text-muted-foreground/50">vs</span>
-                    <div className="flex flex-col items-center gap-1.5">
-                      <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam2)!.logo} alt={simTeam2} className="w-16 h-16 object-contain" />
-                      <span className="text-[14px] font-bold text-foreground">{simTeam2}</span>
-                    </div>
-                  </div>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleStartSim}
-                    className="w-full mt-4 py-3.5 rounded-2xl bg-primary text-primary-foreground text-[15px] font-bold shadow-lg shadow-primary/25 active:shadow-md flex items-center justify-center gap-2"
-                  >
-                    <Zap size={16} />
-                    Start Simulation
-                  </motion.button>
-                </motion.div>
-              ) : (
-                <div className="ios-card p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">⚡ Build Your Match</p>
-                  <p className="text-[13px] text-foreground font-semibold">
-                    {!simTeam1 ? "Pick the first team" : "Now pick the opponent"}
-                  </p>
-                </div>
-              )}
-
-              {/* Team grid */}
-              <div className="grid grid-cols-5 gap-2">
-                {ALL_IPL_TEAMS.map((t, i) => {
-                  const isSelected = t.id === simTeam1 || t.id === simTeam2;
-                  const isTeam1 = t.id === simTeam1;
-                  const isTeam2 = t.id === simTeam2;
-                  return (
-                    <motion.button
-                      key={t.id}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ ...spring, delay: 0.03 * i }}
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => handleSimTeamPick(t.id)}
-                      className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl transition-all duration-200 ${
-                        isSelected
-                          ? "bg-primary/15 ring-2 ring-primary shadow-sm"
-                          : "bg-secondary/50 active:bg-muted"
-                      }`}
-                    >
-                      <img src={t.logo} alt={t.short} className="w-10 h-10 object-contain" />
-                      <span className={`text-[9px] font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>{t.short}</span>
-                      {isTeam1 && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 rounded">1st</span>}
-                      {isTeam2 && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 rounded">2nd</span>}
-                    </motion.button>
-                  );
-                })}
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium text-center mb-3">Your Matchup</p>
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex flex-col items-center gap-1.5">
+                <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam1)!.logo} alt={simTeam1} className="w-16 h-16 object-contain" />
+                <span className="text-[14px] font-bold text-foreground">{simTeam1}</span>
               </div>
-
-              {simTeam1 && !simTeam2 && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center text-[11px] text-muted-foreground"
-                >
-                  Tap another team to set the opponent
-                </motion.p>
-              )}
-            </motion.div>
-          </AnimatePresence>
+              <span className="text-xl font-black text-muted-foreground/50">vs</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam2)!.logo} alt={simTeam2} className="w-16 h-16 object-contain" />
+                <span className="text-[14px] font-bold text-foreground">{simTeam2}</span>
+              </div>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleStartSim}
+              className="w-full mt-4 py-3.5 rounded-2xl bg-primary text-primary-foreground text-[15px] font-bold shadow-lg shadow-primary/25 active:shadow-md flex items-center justify-center gap-2"
+            >
+              <Zap size={16} />
+              Start Simulation
+            </motion.button>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={spring}
+            className="ios-card p-4"
+          >
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">⚡ Build Your Match</p>
+            <p className="text-[13px] text-foreground font-semibold">
+              {!simTeam1 ? "Pick the first team" : "Now pick the opponent"}
+            </p>
+          </motion.div>
         )}
 
-        {/* ─── LIVE MATCHES ─── */}
-        {mode === "live" && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-center gap-2"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                Upcoming Matches
-              </span>
-              <div className="flex-1 h-px bg-border" />
-            </motion.div>
-
-            {loading && (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="ios-card p-4 space-y-3">
-                    <div className="flex justify-between">
-                      <Skeleton className="h-3 w-32" />
-                      <Skeleton className="h-4 w-16 rounded-full" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="w-12 h-12 rounded-full" />
-                        <div className="space-y-1">
-                          <Skeleton className="h-4 w-10" />
-                          <Skeleton className="h-3 w-20" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-4 w-6" />
-                      <div className="flex items-center gap-3">
-                        <div className="space-y-1">
-                          <Skeleton className="h-4 w-10" />
-                          <Skeleton className="h-3 w-20" />
-                        </div>
-                        <Skeleton className="w-12 h-12 rounded-full" />
-                      </div>
-                    </div>
-                    <Skeleton className="h-3 w-full mt-3" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {error && !loading && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="ios-card p-6 text-center space-y-3"
+        {/* Team grid */}
+        <div className="grid grid-cols-5 gap-2">
+          {ALL_IPL_TEAMS.map((t, i) => {
+            const isSelected = t.id === simTeam1 || t.id === simTeam2;
+            const isTeam1 = t.id === simTeam1;
+            const isTeam2 = t.id === simTeam2;
+            return (
+              <motion.button
+                key={t.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ ...spring, delay: 0.03 * i }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => handleSimTeamPick(t.id)}
+                className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl transition-all duration-200 ${
+                  isSelected
+                    ? "bg-primary/15 ring-2 ring-primary shadow-sm"
+                    : "bg-secondary/50 active:bg-muted"
+                }`}
               >
-                <WifiOff size={28} className="mx-auto text-muted-foreground" />
-                <p className="text-[15px] font-semibold text-foreground">Can't reach live scores</p>
-                <p className="text-[12px] text-muted-foreground leading-relaxed">
-                  We're having trouble connecting to the live match feed. No worries — you can still play with a simulated match!
-                </p>
-                <button
-                  onClick={() => setMode("simulation")}
-                  className="mt-1 px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground text-[13px] font-semibold active:scale-95 transition-transform"
-                >
-                  <Zap size={13} className="inline mr-1.5 -mt-px" />
-                  Play Simulation Instead
-                </button>
-              </motion.div>
-            )}
+                <img src={t.logo} alt={t.short} className="w-10 h-10 object-contain" />
+                <span className={`text-[9px] font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>{t.short}</span>
+                {isTeam1 && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 rounded">1st</span>}
+                {isTeam2 && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1.5 rounded">2nd</span>}
+              </motion.button>
+            );
+          })}
+        </div>
 
-            {!loading && !error && liveMatches.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="ios-card p-6 text-center space-y-3"
-              >
-                <span className="text-3xl block">🏏</span>
-                <p className="text-[15px] font-semibold text-foreground">No live matches right now</p>
-                <p className="text-[12px] text-muted-foreground leading-relaxed">
-                  There are no cricket matches scheduled at the moment. Jump into a simulation to sharpen your prediction skills!
-                </p>
-                <button
-                  onClick={() => setMode("simulation")}
-                  className="mt-1 px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground text-[13px] font-semibold active:scale-95 transition-transform"
-                >
-                  <Zap size={13} className="inline mr-1.5 -mt-px" />
-                  Play Simulation Instead
-                </button>
-              </motion.div>
-            )}
-
-            {!loading && !error && liveMatches.length > 0 && (
-              <div className="space-y-3">
-                {liveMatches.map((match, i) => (
-                  <MatchCard key={match.id} match={match} i={i} onSelect={() => onSelectMatch(match)} />
-                ))}
-              </div>
-            )}
-          </>
+        {simTeam1 && !simTeam2 && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center text-[11px] text-muted-foreground"
+          >
+            Tap another team to set the opponent
+          </motion.p>
         )}
 
         {/* Footer hint */}
@@ -508,7 +371,7 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
           transition={{ delay: 0.8 }}
           className="text-center text-[11px] text-muted-foreground py-2"
         >
-          {mode === "simulation" ? "Pick any two IPL teams for a 5-over simulation" : "Tap a match to start playing"}
+          Pick any two IPL teams for a 5-over simulation
         </motion.p>
       </div>
     </div>
