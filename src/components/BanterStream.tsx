@@ -223,7 +223,7 @@ const BanterStream = ({
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
-  const [replyingTo, setReplyingTo] = useState<ChatItem | null>(null);
+  const [chatReactions, setChatReactions] = useState<Record<number, { up: number; down: number; myVote?: "up" | "down" }>>({});
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [commentaryScore, setCommentaryScore] = useState({ correct: 0, total: 0 });
   const [userChatStyle, setUserChatStyle] = useState<UserChatStyle>("neutral");
