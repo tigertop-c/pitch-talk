@@ -733,9 +733,20 @@ const BanterStream = ({
     scrollToBottom();
   }, [userTeam, scrollToBottom, detectStyle]);
 
-  const handleReply = useCallback((chat: ChatItem) => {
-    if (chat.isSystem || chat.user === "You") return;
-    setReplyingTo(chat);
+  const handleReaction = useCallback((chatId: number, type: "up" | "down") => {
+    setChatReactions(prev => {
+      const existing = prev[chatId] || { up: 0, down: 0 };
+      if (existing.myVote === type) return prev; // already voted this way
+      const undoPrev = existing.myVote ? (existing.myVote === "up" ? { up: -1, down: 0 } : { up: 0, down: -1 }) : { up: 0, down: 0 };
+      return {
+        ...prev,
+        [chatId]: {
+          up: existing.up + undoPrev.up + (type === "up" ? 1 : 0),
+          down: existing.down + undoPrev.down + (type === "down" ? 1 : 0),
+          myVote: type,
+        },
+      };
+    });
   }, []);
 
   const handleToggleSound = useCallback(() => {
