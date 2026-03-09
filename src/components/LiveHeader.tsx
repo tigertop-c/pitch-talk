@@ -14,8 +14,9 @@ interface LiveHeaderProps {
 }
 
 const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing }: LiveHeaderProps) => {
+  const MAX_OVERS = 5; // 5 overs per innings
   const totalOvers = match.overs + match.balls / 6;
-  const remainingOvers = 20 - totalOvers;
+  const remainingOvers = MAX_OVERS - totalOvers;
   const remainingRuns = match.target ? match.target - match.runs : null;
   const rrr = match.target && remainingOvers > 0
     ? (remainingRuns! / remainingOvers).toFixed(2)
