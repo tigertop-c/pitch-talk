@@ -26,7 +26,6 @@ interface ChatItem {
   text: string;
   timestamp: string;
   isSystem?: boolean;
-  replyTo?: { user: string; text: string };
   team?: TeamId;
   isCommentaryGuess?: boolean;
   commentaryGuessData?: {
