@@ -728,12 +728,10 @@ const BanterStream = ({
       text,
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       team: userTeam,
-      replyTo: replyingTo ? { user: replyingTo.user, text: replyingTo.text } : undefined,
     };
     setChats(prev => [...prev, newChat]);
-    setReplyingTo(null);
     scrollToBottom();
-  }, [replyingTo, userTeam, scrollToBottom, detectStyle]);
+  }, [userTeam, scrollToBottom, detectStyle]);
 
   const handleReply = useCallback((chat: ChatItem) => {
     if (chat.isSystem || chat.user === "You") return;
