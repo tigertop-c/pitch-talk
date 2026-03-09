@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      room_chats: {
+        Row: {
+          avatar: string
+          created_at: string
+          id: string
+          message: string
+          player_name: string
+          room_id: string
+          team: string | null
+        }
+        Insert: {
+          avatar?: string
+          created_at?: string
+          id?: string
+          message: string
+          player_name: string
+          room_id: string
+          team?: string | null
+        }
+        Update: {
+          avatar?: string
+          created_at?: string
+          id?: string
+          message?: string
+          player_name?: string
+          room_id?: string
+          team?: string | null
+        }
+        Relationships: []
+      }
       room_players: {
         Row: {
           avatar: string
@@ -60,6 +90,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      room_predictions: {
+        Row: {
+          ball_id: number
+          created_at: string
+          id: string
+          player_name: string
+          prediction: string
+          room_id: string
+        }
+        Insert: {
+          ball_id: number
+          created_at?: string
+          id?: string
+          player_name: string
+          prediction: string
+          room_id: string
+        }
+        Update: {
+          ball_id?: number
+          created_at?: string
+          id?: string
+          player_name?: string
+          prediction?: string
+          room_id?: string
+        }
+        Relationships: []
       }
       rooms: {
         Row: {
@@ -114,7 +171,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      upsert_room_prediction: {
+        Args: {
+          p_ball_id: number
+          p_player_name: string
+          p_prediction: string
+          p_room_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
