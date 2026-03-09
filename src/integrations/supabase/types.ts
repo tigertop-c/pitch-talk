@@ -14,13 +14,172 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      room_chats: {
+        Row: {
+          avatar: string
+          created_at: string
+          id: string
+          message: string
+          player_name: string
+          room_id: string
+          team: string | null
+        }
+        Insert: {
+          avatar?: string
+          created_at?: string
+          id?: string
+          message: string
+          player_name: string
+          room_id: string
+          team?: string | null
+        }
+        Update: {
+          avatar?: string
+          created_at?: string
+          id?: string
+          message?: string
+          player_name?: string
+          room_id?: string
+          team?: string | null
+        }
+        Relationships: []
+      }
+      room_players: {
+        Row: {
+          avatar: string
+          id: string
+          is_host: boolean
+          joined_at: string
+          player_name: string
+          room_id: string
+          streak: number
+          team_picked: string | null
+          total_predictions: number
+          wins: number
+        }
+        Insert: {
+          avatar?: string
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          player_name: string
+          room_id: string
+          streak?: number
+          team_picked?: string | null
+          total_predictions?: number
+          wins?: number
+        }
+        Update: {
+          avatar?: string
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          player_name?: string
+          room_id?: string
+          streak?: number
+          team_picked?: string | null
+          total_predictions?: number
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_predictions: {
+        Row: {
+          ball_id: number
+          created_at: string
+          id: string
+          player_name: string
+          prediction: string
+          room_id: string
+        }
+        Insert: {
+          ball_id: number
+          created_at?: string
+          id?: string
+          player_name: string
+          prediction: string
+          room_id: string
+        }
+        Update: {
+          ball_id?: number
+          created_at?: string
+          id?: string
+          player_name?: string
+          prediction?: string
+          room_id?: string
+        }
+        Relationships: []
+      }
+      rooms: {
+        Row: {
+          created_at: string
+          game_snapshot: Json | null
+          host_name: string
+          id: string
+          match_label: string
+          match_number: number
+          match_team1_name: string
+          match_team1_short: string
+          match_team2_name: string
+          match_team2_short: string
+          match_venue: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          game_snapshot?: Json | null
+          host_name?: string
+          id: string
+          match_label?: string
+          match_number?: number
+          match_team1_name?: string
+          match_team1_short?: string
+          match_team2_name?: string
+          match_team2_short?: string
+          match_venue?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          game_snapshot?: Json | null
+          host_name?: string
+          id?: string
+          match_label?: string
+          match_number?: number
+          match_team1_name?: string
+          match_team1_short?: string
+          match_team2_name?: string
+          match_team2_short?: string
+          match_venue?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      upsert_room_prediction: {
+        Args: {
+          p_ball_id: number
+          p_player_name: string
+          p_prediction: string
+          p_room_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

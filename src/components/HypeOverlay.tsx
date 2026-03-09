@@ -2,27 +2,29 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface HypeOverlayProps {
   type: "four" | "six" | "wicket" | null;
+  onDismiss?: () => void;
+  onMute?: (type: string) => void;
 }
 
 const HYPE: Record<string, { emoji: string; text: string; color: string }> = {
-  four: { emoji: "🤚", text: "FOUR!", color: "from-primary/30 to-transparent" },
-  six: { emoji: "🙌", text: "SIX!", color: "from-neon/30 to-transparent" },
+  four: { emoji: "🏏💨", text: "FOUR!", color: "from-primary/30 to-transparent" },
+  six: { emoji: "🚀", text: "SIX!", color: "from-neon/30 to-transparent" },
   wicket: { emoji: "☝️", text: "WICKET!", color: "from-destructive/30 to-transparent" },
 };
 
-const HypeOverlay = ({ type }: HypeOverlayProps) => {
+const HypeOverlay = ({ type, onDismiss, onMute }: HypeOverlayProps) => {
   const data = type ? HYPE[type] : null;
 
   return (
     <AnimatePresence>
-      {data && (
+      {data && type && (
         <motion.div
           key={type}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
-          className={`absolute inset-0 z-[100] pointer-events-none flex flex-col items-center justify-center bg-gradient-to-b ${data.color}`}
+          className={`absolute inset-0 z-[100] pointer-events-auto flex flex-col items-center justify-center bg-gradient-to-b ${data.color}`}
           style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
         >
           <motion.div
@@ -47,6 +49,27 @@ const HypeOverlay = ({ type }: HypeOverlayProps) => {
           >
             {data.text}
           </motion.p>
+
+          {/* Controls */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex items-center gap-3 mt-6"
+          >
+            <button
+              onClick={onDismiss}
+              className="px-4 py-2 rounded-full text-[12px] font-semibold bg-background/60 text-foreground active:scale-95 transition-transform"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={() => { onMute?.(type); onDismiss?.(); }}
+              className="px-4 py-2 rounded-full text-[12px] font-semibold bg-background/40 text-muted-foreground active:scale-95 transition-transform"
+            >
+              🔇 Mute {type}s
+            </button>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
