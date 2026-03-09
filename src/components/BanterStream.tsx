@@ -715,7 +715,7 @@ const BanterStream = ({
       setBalls(prev => prev.map(b =>
         b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
       ));
-      setTimeout(() => resolveBall(ballId), 1500);
+      setTimeout(() => resolveBallRef.current(ballId), 1500);
     }, 2000);
   }, [resolveBall]);
 
