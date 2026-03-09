@@ -231,6 +231,8 @@ interface BanterStreamProps {
   onToggleSound?: () => void;
   onFirstOverComplete?: () => void;
   onBallStateChange?: (ball: { id: number; label: string; state: "idle" | "pending" | "resolved"; openedAt: number; result: { label: string; type: string } | null }, matchState: { runs: number; wickets: number; overs: number; balls: number; currentBowler: string; target: number | null }) => void;
+  isHost: boolean;
+  gameSnapshot?: GameSnapshot | null;
 }
 
 const BanterStream = ({
