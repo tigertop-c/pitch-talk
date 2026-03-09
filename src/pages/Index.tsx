@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { motion } from "framer-motion";
 import LiveHeader from "@/components/LiveHeader";
 import BanterStream from "@/components/BanterStream";
 import type { FriendDef } from "@/components/BanterStream";
