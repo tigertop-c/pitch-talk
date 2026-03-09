@@ -204,12 +204,14 @@ interface BanterStreamProps {
   onInvite?: () => void;
   onToggleSound?: () => void;
   onFirstOverComplete?: () => void;
+  onBallStateChange?: (ball: { id: number; label: string; state: "idle" | "pending" | "resolved"; openedAt: number; result: { label: string; type: string } | null }, matchState: { runs: number; wickets: number; overs: number; balls: number; currentBowler: string; target: number | null }) => void;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
+  onBallStateChange,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -379,6 +381,12 @@ const BanterStream = ({
     }
 
     const result: BallResult = { label: event.label, type: event.result };
+
+    // Sync resolved ball state to multiplayer
+    onBallStateChange?.(
+      { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
+      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+    );
 
     if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
@@ -638,7 +646,7 @@ const BanterStream = ({
       isOverBreak.current = false;
       startNewBall(); 
     }, numMessages * 800 + 11000); // 25s total cycle: 10s lock + 1.5s pending + 2.5s messages + 11s wait
-  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom]);
+  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls]);
 
   const startNewBall = useCallback(() => {
     idRef.current += 1;
@@ -664,6 +672,12 @@ const BanterStream = ({
     scrollToBottom();
     addFriendPicks(ballId);
 
+    // Sync ball state to multiplayer
+    onBallStateChange?.(
+      { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
+      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+    );
+
     clearInterval(countdownRef.current);
     let count = LOCK_TIME;
     countdownRef.current = setInterval(() => {
@@ -681,7 +695,7 @@ const BanterStream = ({
         setTimeout(() => resolveBall(ballId), 1500);
       }
     }, 1000);
-  }, [addFriendPicks, resolveBall, scrollToBottom]);
+  }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
 
   const handlePredict = useCallback((ballId: number, pick: string) => {
     setBalls(prev => prev.map(b =>
