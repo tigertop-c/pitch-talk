@@ -854,6 +854,7 @@ const BanterStream = ({
                 // Commentary guess card
                 // Hide commentary guess card when prediction is active
                 if (isCommentaryGuess && c.commentaryGuessData && !isPredictionActive) {
+                  const gd = c.commentaryGuessData;
                   return (
                     <motion.div
                       key={`chat-${c.id}`}
