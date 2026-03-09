@@ -358,10 +358,12 @@ const BanterStream = ({
             : b
         ));
         overParticipation.current[user.name] = true;
+        // Store AI/friend pick in DB for cross-client consistency
+        onAiPick?.(ballId, pick, user.name);
         scrollToBottom();
       }, delays[i] || 2000);
     });
-  }, [activeFriends, scrollToBottom]);
+  }, [activeFriends, scrollToBottom, onAiPick]);
 
   const checkPickWon = (pick: string, result: string) =>
     (pick === "Dot" && result === "dot") ||
