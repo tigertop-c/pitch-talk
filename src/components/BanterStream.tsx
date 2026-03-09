@@ -6,6 +6,7 @@ import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
 import ChatInput, { type TeamId, type UserChatStyle } from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
+import { type GameSnapshot } from "@/hooks/useMultiplayer";
 import { playBallActiveSound, isSoundMuted } from "@/lib/sounds";
 
 interface BallBlock {
@@ -44,6 +45,10 @@ export interface FriendDef {
 }
 
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
+
+const RESULT_RUNS: Record<string, number> = {
+  dot: 0, single: 1, double: 2, triple: 3, four: 4, six: 6, wicket: 0, wide: 1, noball: 1,
+};
 
 // Friendly squad reactions (not toxic banter)
 const SQUAD_REACTIONS: Record<string, string[]> = {
@@ -226,13 +231,15 @@ interface BanterStreamProps {
   onToggleSound?: () => void;
   onFirstOverComplete?: () => void;
   onBallStateChange?: (ball: { id: number; label: string; state: "idle" | "pending" | "resolved"; openedAt: number; result: { label: string; type: string } | null }, matchState: { runs: number; wickets: number; overs: number; balls: number; currentBowler: string; target: number | null }) => void;
+  isHost: boolean;
+  gameSnapshot?: GameSnapshot | null;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
-  onBallStateChange,
+  onBallStateChange, isHost, gameSnapshot,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -261,7 +268,7 @@ const BanterStream = ({
   const activeBallIdRef = useRef<number | null>(null);
   const userIsScrolledUp = useRef(false);
   const firstOverFired = useRef(false);
-  const resolveBallRef = useRef<(ballId: number) => void>(() => {});
+  const resolveBallRef = useRef<(ballId: number, hostResult?: { label: string; type: string }) => void>(() => {});
   const startNewBallRef = useRef<() => void>(() => {});
 
   // Over tracking
@@ -382,8 +389,20 @@ const BanterStream = ({
     }));
   }, []);
 
-  const resolveBall = useCallback((ballId: number) => {
-    const event = onNextBall();
+  const resolveBall = useCallback((ballId: number, hostResult?: { label: string; type: string }) => {
+    let event: BallEvent;
+    if (hostResult) {
+      // Non-host: use host's result from snapshot
+      event = {
+        over: 0, ball: 0,
+        result: hostResult.type as BallEvent["result"],
+        runs: RESULT_RUNS[hostResult.type] || 0,
+        label: hostResult.label,
+      };
+    } else {
+      // Host: generate locally
+      event = onNextBall();
+    }
     ballCountRef.current += 1;
     const isLegal = event.result !== "wide" && event.result !== "noball";
 
@@ -405,11 +424,13 @@ const BanterStream = ({
 
     const result: BallResult = { label: event.label, type: event.result };
 
-    // Sync resolved ball state to multiplayer
-    onBallStateChange?.(
-      { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
-      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
-    );
+    // Sync resolved ball state to multiplayer (host only)
+    if (!hostResult) {
+      onBallStateChange?.(
+        { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
+        { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+      );
+    }
 
     if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
@@ -646,12 +667,16 @@ const BanterStream = ({
     setTimeout(() => { 
       setWaitingForNext(false); 
       isOverBreak.current = false;
-      startNewBallRef.current(); 
+      if (isHost) {
+        startNewBallRef.current(); 
+      }
+      // Non-host: next ball triggered by snapshot watcher
     }, numMessages * 800 + 18000); // ~40s total: 15s lock + 1.5s pending + ~3s messages + 18s wait ≈ real T20 pace
-  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls]);
+  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls, isHost]);
   resolveBallRef.current = resolveBall;
 
   const startNewBall = useCallback(() => {
+    setWaitingForNext(false);
     idRef.current += 1;
     const ballId = idRef.current;
     activeBallIdRef.current = ballId;
@@ -680,11 +705,13 @@ const BanterStream = ({
       playBallActiveSound();
     }
 
-    // Sync ball state to multiplayer
-    onBallStateChange?.(
-      { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
-      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
-    );
+    // Sync ball state to multiplayer (host only)
+    if (isHost) {
+      onBallStateChange?.(
+        { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
+        { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+      );
+    }
 
     clearInterval(countdownRef.current);
     let count = LOCK_TIME;
@@ -700,7 +727,10 @@ const BanterStream = ({
             ? { ...b, predictionState: "pending" as PredictionState }
             : b
         ));
-        setTimeout(() => resolveBallRef.current(ballId), 1500);
+        if (isHost) {
+          setTimeout(() => resolveBallRef.current(ballId), 1500);
+        }
+        // Non-host: resolution comes from snapshot
       }
     }, 1000);
   }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
@@ -717,7 +747,10 @@ const BanterStream = ({
       setBalls(prev => prev.map(b =>
         b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
       ));
-      setTimeout(() => resolveBallRef.current(ballId), 1500);
+      if (isHost) {
+        setTimeout(() => resolveBallRef.current(ballId), 1500);
+      }
+      // Non-host: resolution comes from snapshot
     }, 2000);
   }, [resolveBall]);
 
@@ -769,9 +802,58 @@ const BanterStream = ({
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       isSystem: true,
     }]);
-    startNewBall();
+    if (isHost) {
+      startNewBall();
+    }
     return () => clearInterval(countdownRef.current);
   }, []);
+
+  // Non-host: watch game snapshot to drive game loop
+  const lastSnapBallRef = useRef<{ id: number; state: string } | null>(null);
+
+  useEffect(() => {
+    if (isHost || !gameSnapshot?.ball) return;
+
+    const snapBall = gameSnapshot.ball;
+    const prev = lastSnapBallRef.current;
+
+    if (!prev || snapBall.id !== prev.id) {
+      // New ball from host
+      if (snapBall.state === "idle" || snapBall.state === "pending") {
+        startNewBallRef.current();
+      } else if (snapBall.state === "resolved" && snapBall.result) {
+        // Missed prediction window — show result directly
+        startNewBallRef.current();
+        setTimeout(() => {
+          const currentBallId = activeBallIdRef.current;
+          if (currentBallId) {
+            resolveBallRef.current(currentBallId, snapBall.result!);
+          }
+        }, 500);
+      }
+    } else if (
+      snapBall.id === prev.id &&
+      snapBall.state === "resolved" &&
+      prev.state !== "resolved" &&
+      snapBall.result
+    ) {
+      // Ball we're tracking got resolved by host
+      clearInterval(countdownRef.current);
+      const currentBallId = activeBallIdRef.current;
+      if (currentBallId) {
+        setBalls(bprev => bprev.map(b =>
+          b.id === currentBallId && b.predictionState !== "resolved"
+            ? { ...b, predictionState: "pending" as PredictionState }
+            : b
+        ));
+        setTimeout(() => {
+          resolveBallRef.current(currentBallId, snapBall.result!);
+        }, 1500);
+      }
+    }
+
+    lastSnapBallRef.current = { id: snapBall.id, state: snapBall.state };
+  }, [isHost, gameSnapshot?.ball?.id, gameSnapshot?.ball?.state]);
 
   // Build render items
   // Build render items - track ball labels for chat context

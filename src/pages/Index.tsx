@@ -403,7 +403,7 @@ const Index = () => {
           {/* Stage: Game (same UI for host and non-host) */}
           {isGameActive && (
             <>
-              <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
+              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
               <SquadStandingsBar
                 entries={squadEntries}
                 onOpenLeaderboard={() => setActiveTab("leaderboard")}
@@ -418,7 +418,7 @@ const Index = () => {
                     />
                   )}
                   <BanterStream
-                    match={match}
+                    match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match}
                     onNextBall={nextBall}
                     onHype={handleHype}
                     onPredictionResolved={handlePredictionResolved}
@@ -435,6 +435,8 @@ const Index = () => {
                     onToggleSound={toggleSound}
                     onFirstOverComplete={handleFirstOverComplete}
                     onBallStateChange={handleBallStateChange}
+                    isHost={mp.isHost}
+                    gameSnapshot={mp.gameSnapshot}
                   />
                 </>
               ) : activeTab === "receipts" ? (
