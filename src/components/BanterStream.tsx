@@ -382,6 +382,12 @@ const BanterStream = ({
 
     const result: BallResult = { label: event.label, type: event.result };
 
+    // Sync resolved ball state to multiplayer
+    onBallStateChange?.(
+      { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
+      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+    );
+
     if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
