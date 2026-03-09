@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Reply } from "lucide-react";
+import { ChevronDown, ThumbsUp, ThumbsDown } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
 import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
