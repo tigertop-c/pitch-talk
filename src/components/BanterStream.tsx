@@ -268,7 +268,7 @@ const BanterStream = ({
   const activeBallIdRef = useRef<number | null>(null);
   const userIsScrolledUp = useRef(false);
   const firstOverFired = useRef(false);
-  const resolveBallRef = useRef<(ballId: number) => void>(() => {});
+  const resolveBallRef = useRef<(ballId: number, hostResult?: { label: string; type: string }) => void>(() => {});
   const startNewBallRef = useRef<() => void>(() => {});
 
   // Over tracking

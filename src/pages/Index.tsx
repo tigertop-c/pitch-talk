@@ -418,7 +418,7 @@ const Index = () => {
                     />
                   )}
                   <BanterStream
-                    match={match}
+                    match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match}
                     onNextBall={nextBall}
                     onHype={handleHype}
                     onPredictionResolved={handlePredictionResolved}
@@ -435,6 +435,8 @@ const Index = () => {
                     onToggleSound={toggleSound}
                     onFirstOverComplete={handleFirstOverComplete}
                     onBallStateChange={handleBallStateChange}
+                    isHost={mp.isHost}
+                    gameSnapshot={mp.gameSnapshot}
                   />
                 </>
               ) : activeTab === "receipts" ? (
