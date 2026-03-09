@@ -376,18 +376,51 @@ const Index = () => {
             </>
           )}
 
-          {/* Stage: Game — Non-Host View */}
+          {/* Stage: Game — Non-Host View (same as host) */}
           {isNonHostPlaying && (
-            <NonHostGameView
-              playerName={playerName}
-              playerAvatar={playerAvatar}
-              gameSnapshot={mp.gameSnapshot}
-              players={mp.players}
-              currentPredictions={mp.currentPredictions}
-              onPick={handleNonHostPick}
-              onScoreUpdate={handleNonHostScoreUpdate}
-              onHype={handleHype}
-            />
+            <>
+              <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
+              {activeTab === "arena" ? (
+                <>
+                  {showGameBoard && (
+                    <GameBoard
+                      players={gameBoardPlayers}
+                      maxPlayers={MAX_PLAYERS}
+                      onInvite={handleInvite}
+                    />
+                  )}
+                  <BanterStream
+                    match={match}
+                    onNextBall={nextBall}
+                    onHype={handleHype}
+                    onPredictionResolved={handlePredictionResolved}
+                    onFriendScoresUpdate={handleFriendScoresUpdate}
+                    soundMuted={soundMuted}
+                    activeFriends={activeFriends}
+                    onOverComplete={handleOverComplete}
+                    allPlayerStandings={allPlayerStandings}
+                    userTeam={userTeam}
+                    activePlayers={mp.players.length}
+                    maxPlayers={MAX_PLAYERS}
+                    roomId={mp.roomId || "SOLO"}
+                    onInvite={handleInvite}
+                    onToggleSound={toggleSound}
+                    onFirstOverComplete={handleFirstOverComplete}
+                  />
+                </>
+              ) : activeTab === "receipts" ? (
+                <ReceiptsScreen receiptData={receiptData} />
+              ) : (
+                <div className="flex-1 overflow-y-auto pt-4 pb-2">
+                  <div className="px-4 mb-4">
+                    <h2 className="text-lg font-bold text-foreground tracking-tight">🏆 Leaderboard</h2>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Who's got the best cricket brain?</p>
+                  </div>
+                  <Leaderboard entries={leaderboardEntries} />
+                </div>
+              )}
+              <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+            </>
           )}
 
           <div className="hidden sm:flex absolute bottom-1.5 left-1/2 -translate-x-1/2 z-[200] w-[120px] h-[4px] bg-foreground/20 rounded-full" />
