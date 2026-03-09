@@ -55,6 +55,26 @@ const Index = () => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
+  const [showInningsBreak, setShowInningsBreak] = useState(false);
+
+  // Handle innings completion
+  const handleInningsComplete = useCallback(() => {
+    if (match.innings === 1 && match.inningsComplete && !match.matchOver) {
+      setShowInningsBreak(true);
+      // Auto-start second innings after 5 seconds
+      setTimeout(() => {
+        startSecondInnings();
+        setShowInningsBreak(false);
+      }, 5000);
+    }
+  }, [match.innings, match.inningsComplete, match.matchOver, startSecondInnings]);
+
+  // Watch for innings completion
+  useEffect(() => {
+    if (match.inningsComplete && match.innings === 1 && !showInningsBreak) {
+      handleInningsComplete();
+    }
+  }, [match.inningsComplete, match.innings, showInningsBreak, handleInningsComplete]);
 
   // Check for saved profile on mount
   const [profileLoaded, setProfileLoaded] = useState(false);
