@@ -29,6 +29,7 @@ interface PredictionCardProps {
   onPredict: (pick: string) => void;
   isFirstPrediction?: boolean;
   totalUserPredictions?: number;
+  myTeamBatting?: boolean; // true = my team is batting, false = my team is bowling
 }
 
 const mainOutcomes = [
