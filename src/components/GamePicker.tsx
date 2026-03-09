@@ -335,18 +335,21 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
         {/* Error state */}
         {mode === "live" && error && !loading && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="ios-card p-5 text-center space-y-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="ios-card p-6 text-center space-y-3"
           >
-            <WifiOff size={24} className="mx-auto text-muted-foreground" />
-            <p className="text-[13px] text-muted-foreground">Couldn't load live matches</p>
-            <p className="text-[11px] text-muted-foreground/70">{error}</p>
+            <WifiOff size={28} className="mx-auto text-muted-foreground" />
+            <p className="text-[15px] font-semibold text-foreground">Can't reach live scores</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              We're having trouble connecting to the live match feed. No worries — you can still play with a simulated match!
+            </p>
             <button
               onClick={() => setMode("simulation")}
-              className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold"
+              className="mt-1 px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground text-[13px] font-semibold active:scale-95 transition-transform"
             >
-              Try Simulation Mode
+              <Zap size={13} className="inline mr-1.5 -mt-px" />
+              Play Simulation Instead
             </button>
           </motion.div>
         )}
@@ -354,17 +357,21 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
         {/* Empty state */}
         {mode === "live" && !loading && !error && liveMatches.length === 0 && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="ios-card p-5 text-center space-y-2"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="ios-card p-6 text-center space-y-3"
           >
-            <p className="text-lg">🏏</p>
-            <p className="text-[13px] text-muted-foreground">No upcoming matches right now</p>
+            <span className="text-3xl block">🏏</span>
+            <p className="text-[15px] font-semibold text-foreground">No live matches right now</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              There are no cricket matches scheduled at the moment. Jump into a simulation to sharpen your prediction skills!
+            </p>
             <button
               onClick={() => setMode("simulation")}
-              className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold"
+              className="mt-1 px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground text-[13px] font-semibold active:scale-95 transition-transform"
             >
-              Play Simulation
+              <Zap size={13} className="inline mr-1.5 -mt-px" />
+              Play Simulation Instead
             </button>
           </motion.div>
         )}
