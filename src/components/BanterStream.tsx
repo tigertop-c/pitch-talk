@@ -261,6 +261,8 @@ const BanterStream = ({
   const activeBallIdRef = useRef<number | null>(null);
   const userIsScrolledUp = useRef(false);
   const firstOverFired = useRef(false);
+  const resolveBallRef = useRef<(ballId: number) => void>(() => {});
+  const startNewBallRef = useRef<() => void>(() => {});
 
   // Over tracking
   const legalBallsThisOver = useRef(0);
@@ -644,9 +646,10 @@ const BanterStream = ({
     setTimeout(() => { 
       setWaitingForNext(false); 
       isOverBreak.current = false;
-      startNewBall(); 
+      startNewBallRef.current(); 
     }, numMessages * 800 + 18000); // ~40s total: 15s lock + 1.5s pending + ~3s messages + 18s wait ≈ real T20 pace
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls]);
+  resolveBallRef.current = resolveBall;
 
   const startNewBall = useCallback(() => {
     idRef.current += 1;
@@ -697,10 +700,11 @@ const BanterStream = ({
             ? { ...b, predictionState: "pending" as PredictionState }
             : b
         ));
-        setTimeout(() => resolveBall(ballId), 1500);
+        setTimeout(() => resolveBallRef.current(ballId), 1500);
       }
     }, 1000);
   }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
+  startNewBallRef.current = startNewBall;
 
   const handlePredict = useCallback((ballId: number, pick: string) => {
     setBalls(prev => prev.map(b =>
@@ -713,7 +717,7 @@ const BanterStream = ({
       setBalls(prev => prev.map(b =>
         b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
       ));
-      setTimeout(() => resolveBall(ballId), 1500);
+      setTimeout(() => resolveBallRef.current(ballId), 1500);
     }, 2000);
   }, [resolveBall]);
 
