@@ -588,30 +588,56 @@ const BanterStream = ({
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...reactionPool].sort(() => Math.random() - 0.5);
 
-    // In solo play there may be no activeFriends; avoid crashing by falling back to a system message.
-    if (activeFriends.length === 0) {
-      idRef.current += 1;
-      const chatId = idRef.current;
-      setTimeout(() => {
-        setChats(prev => ([
-          ...prev,
-          {
-            id: chatId,
-            parentBallId: ballId,
-            user: "Pitch Talk",
-            avatar: "🏏",
-            text: shuffled[0] || "What a ball!",
-            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            isSystem: true,
-          },
-        ]));
-        scrollToBottom();
-      }, 500);
+    // AI Players for solo mode - virtual players that comment and pick teams
+    const AI_PLAYERS: FriendDef[] = [
+      { name: "CricketGuru", avatar: "🧠", team: "DC" },
+      { name: "BoundaryKing", avatar: "👑", team: "MI" },
+      { name: "WicketHunter", avatar: "🎯", team: "DC" },
+      { name: "SixMachine", avatar: "💥", team: "MI" },
+    ];
+
+    // Team-specific reactions for AI players
+    const TEAM_REACTIONS: Record<string, Record<string, string[]>> = {
+      DC: {
+        four: ["SHOT! That's my DC! 🔵", "Delhi dominating! 💙", "Class from DC! 🔥"],
+        six: ["INTO THE STANDS! DC power! 🚀💙", "That's what DC do! MASSIVE! 🔵", "DC DNA right there! 💪"],
+        wicket: ["MI down! Let's go DC! 💙", "Huge for us! DC! DC! DC! 🔵", "That's the breakthrough we needed! 🎯"],
+        dot: ["Pressure building! 💪", "Good bowling from our boys! 🎯", "Keep it tight! 🔒"],
+      },
+      MI: {
+        four: ["MI class! That's how we do it! 💛", "Mumbai magic! 🌟", "Paltan power! 💪💙"],
+        six: ["ROHIT WOULD BE PROUD! 🚀💛", "MI MI MI! What a hit! 💙", "5 TIME CHAMPIONS! 👑"],
+        wicket: ["DC crumbling! MI on top! 💛", "That's our moment! Paltan! 💙", "Big wicket for Mumbai! 🔥"],
+        dot: ["Squeeeeze! 🔒", "MI bowlers doing their thing! 💪", "No runs! We're on top! 🎯"],
+      },
+    };
+
+    // In solo play, use AI players instead of real friends
+    const playersToUse = activeFriends.length === 0 ? AI_PLAYERS : activeFriends;
+    
+    // Determine if AI should send team-specific messages (for key moments)
+    const isKeyMoment = event.result === "four" || event.result === "six" || event.result === "wicket";
+    
+    // Solo mode: AI players react with team allegiance, but don't spam (random chance to comment)
+    const shouldAiComment = activeFriends.length === 0 ? Math.random() < 0.7 : true;
+    
+    if (!shouldAiComment && activeFriends.length === 0) {
+      // Skip comments occasionally in solo mode to avoid spam
+      // Still add system commentary for key moments
     } else {
       for (let i = 0; i < numMessages; i++) {
-        const user = activeFriends[Math.floor(Math.random() * activeFriends.length)];
+        const user = playersToUse[Math.floor(Math.random() * playersToUse.length)];
         idRef.current += 1;
         const chatId = idRef.current;
+
+        // For AI players, sometimes use team-specific messages
+        let messageText = shuffled[i % shuffled.length];
+        if (activeFriends.length === 0 && isKeyMoment && user.team && Math.random() < 0.6) {
+          const teamReactions = TEAM_REACTIONS[user.team]?.[event.result];
+          if (teamReactions && teamReactions.length > 0) {
+            messageText = teamReactions[Math.floor(Math.random() * teamReactions.length)];
+          }
+        }
 
         setTimeout(() => {
           setChats(prev => {
@@ -622,14 +648,15 @@ const BanterStream = ({
                 parentBallId: ballId,
                 user: user.name,
                 avatar: user.avatar,
-                text: shuffled[i % shuffled.length],
+                text: messageText,
                 timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
                 team: user.team,
+                isSystem: activeFriends.length === 0, // Mark AI messages differently
               },
             ];
           });
           scrollToBottom();
-        }, 500 + i * 800);
+        }, 500 + i * 600);
       }
     }
 
