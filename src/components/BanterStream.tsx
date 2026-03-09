@@ -699,7 +699,7 @@ const BanterStream = ({
             ? { ...b, predictionState: "pending" as PredictionState }
             : b
         ));
-        setTimeout(() => resolveBall(ballId), 1500);
+        setTimeout(() => resolveBallRef.current(ballId), 1500);
       }
     }, 1000);
   }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
