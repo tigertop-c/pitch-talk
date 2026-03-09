@@ -1054,40 +1054,6 @@ const BanterStream = ({
         </AnimatePresence>
       </div>
 
-      {/* Reply bar */}
-      <AnimatePresence>
-        {replyingTo && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 py-2 bg-secondary/50 border-t border-border">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <Reply size={12} className="text-primary flex-shrink-0" />
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Replying to <span className="font-semibold text-foreground">{replyingTo.user}</span>: {replyingTo.text}
-                  </p>
-                </div>
-                <button onClick={() => setReplyingTo(null)} className="text-[12px] text-muted-foreground px-1.5">✕</button>
-              </div>
-              <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-                {replySuggestions.map((reply) => (
-                  <button
-                    key={reply}
-                    onClick={() => { handleUserChat(reply); }}
-                    className="flex-shrink-0 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold active:scale-95 transition-all"
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} userStyle={userChatStyle} />
     </div>
