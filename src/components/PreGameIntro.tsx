@@ -52,14 +52,26 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [countdown, setCountdown] = useState(0);
 
   const tossRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new interactive sections appear
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: "smooth" });
+    }, 200);
+  };
 
   useEffect(() => {
-    if (userTeam && tossRef.current) {
-      setTimeout(() => {
-        tossRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 150);
-    }
+    if (userTeam) scrollToBottom();
   }, [userTeam]);
+
+  useEffect(() => {
+    if (tossResult) scrollToBottom();
+  }, [tossResult]);
+
+  useEffect(() => {
+    if (stage === "starting") scrollToBottom();
+  }, [stage]);
 
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
