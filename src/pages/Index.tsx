@@ -321,6 +321,9 @@ const Index = () => {
               team2={{ name: selectedMatch.team2.name, short: selectedMatch.team2.short }}
               matchNumber={selectedMatch.matchNumber}
               roomId={mp.roomId || "SOLO"}
+              isSimulation={selectedMatch.isSimulation}
+              players={mp.players}
+              onInvite={handleInvite}
             />
           )}
 
