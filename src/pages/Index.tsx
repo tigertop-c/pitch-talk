@@ -81,6 +81,7 @@ const Index = () => {
   const handleNameComplete = useCallback((name: string, avatar: string) => {
     setPlayerName(name);
     setPlayerAvatar(avatar);
+    localStorage.setItem("pitchtalk_profile", JSON.stringify({ name, avatar }));
     setStage("lobby");
   }, []);
 
