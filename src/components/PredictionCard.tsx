@@ -68,7 +68,7 @@ const HINT_MESSAGES = [
   "🏏 Tap to predict this delivery!",
 ];
 
-const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, friendPicks, userScores, onPredict, isFirstPrediction, totalUserPredictions = 0 }: PredictionCardProps) => {
+const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, friendPicks, userScores, onPredict, isFirstPrediction, totalUserPredictions = 0, myTeamBatting }: PredictionCardProps) => {
   const urgency = countdown <= 5;
   const showHint = state === "idle" && !selected && totalUserPredictions < 3;
   const won = result && selected && (
