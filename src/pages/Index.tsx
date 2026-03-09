@@ -458,6 +458,7 @@ const Index = () => {
                     isHost={mp.isHost}
                     gameSnapshot={mp.gameSnapshot}
                     onInningsComplete={handleInningsComplete}
+                    battingTeamShort={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")}
                   />
                 </>
               ) : activeTab === "receipts" ? (
