@@ -35,7 +35,7 @@ const Index = () => {
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
   const [mutedHypeTypes, setMutedHypeTypes] = useState<Set<string>>(new Set());
   const [showGameBoard, setShowGameBoard] = useState(true);
-  const { match, nextBall, crr } = useMatchState();
+  const { match, nextBall, crr, startSecondInnings } = useMatchState();
 
   const [playerName, setPlayerName] = useState("");
   const [playerAvatar, setPlayerAvatar] = useState("🏏");
