@@ -950,6 +950,7 @@ const BanterStream = ({
                     onPredict={(pick) => handlePredict(b.id, pick)}
                     isFirstPrediction={ballCountRef.current === 0}
                     totalUserPredictions={totalUserPredictions}
+                    myTeamBatting={myTeamBatting}
                   />
                 );
               }
