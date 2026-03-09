@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 
 const AVATARS = ["🦁", "🐯", "🦊", "🏏", "⚡", "🔥", "💪", "🎯", "🚀", "💅", "🦅", "🐼"];
@@ -12,24 +12,6 @@ const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 const NameEntry = ({ onComplete }: NameEntryProps) => {
   const [name, setName] = useState("");
   const [avatar, setAvatar] = useState("🏏");
-  const [loaded, setLoaded] = useState(false);
-
-  // Auto-login if saved profile exists
-  useEffect(() => {
-    const saved = localStorage.getItem("pitchtalk_profile");
-    if (saved) {
-      try {
-        const { name: savedName, avatar: savedAvatar } = JSON.parse(saved);
-        if (savedName?.trim().length >= 2) {
-          onComplete(savedName, savedAvatar || "🏏");
-          return;
-        }
-      } catch {}
-    }
-    setLoaded(true);
-  }, [onComplete]);
-
-  if (!loaded) return null;
 
   const canContinue = name.trim().length >= 2;
 

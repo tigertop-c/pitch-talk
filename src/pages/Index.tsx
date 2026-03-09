@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { motion } from "framer-motion";
 import LiveHeader from "@/components/LiveHeader";
 import BanterStream from "@/components/BanterStream";
 import type { FriendDef } from "@/components/BanterStream";
@@ -10,8 +11,6 @@ import Leaderboard, { type LeaderboardEntry } from "@/components/Leaderboard";
 import PreGameIntro from "@/components/PreGameIntro";
 import HypeOverlay from "@/components/HypeOverlay";
 import NameEntry from "@/components/NameEntry";
-import RoomLobby from "@/components/RoomLobby";
-
 import { useMatchState } from "@/hooks/useMatchState";
 import { useMultiplayer, type GameSnapshot } from "@/hooks/useMultiplayer";
 import { type PredictionRecord, type ReceiptData } from "@/components/ShareableReceipt";
@@ -20,10 +19,15 @@ import type { TeamId } from "@/components/ChatInput";
 
 const MAX_PLAYERS = 10;
 
-type AppStage = "name" | "lobby" | "picker" | "pregame" | "game";
+// Flow: picker → name (if needed) → pregame (auto-create/join room) → game
+type AppStage = "picker" | "name" | "pregame" | "game";
 
 const Index = () => {
-  const [stage, setStage] = useState<AppStage>("name");
+  // Check URL for room code to join
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomCodeFromUrl = urlParams.get("room")?.toUpperCase().trim() || null;
+
+  const [stage, setStage] = useState<AppStage>(roomCodeFromUrl ? "name" : "picker");
   const [activeTab, setActiveTab] = useState<TabId>("arena");
   const [selectedMatch, setSelectedMatch] = useState<UpcomingMatch | null>(null);
   const [userTeam, setUserTeam] = useState<TeamId>("DC");
@@ -34,6 +38,7 @@ const Index = () => {
 
   const [playerName, setPlayerName] = useState("");
   const [playerAvatar, setPlayerAvatar] = useState("🏏");
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(roomCodeFromUrl);
 
   const mp = useMultiplayer();
 
@@ -49,6 +54,25 @@ const Index = () => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
+
+  // Check for saved profile on mount
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const savedProfileRef = useRef<{ name: string; avatar: string } | null>(null);
+  
+  useEffect(() => {
+    const saved = localStorage.getItem("pitchtalk_profile");
+    if (saved) {
+      try {
+        const { name, avatar } = JSON.parse(saved);
+        if (name?.trim().length >= 2) {
+          savedProfileRef.current = { name: name.trim(), avatar: avatar || "🏏" };
+          setPlayerName(name.trim());
+          setPlayerAvatar(avatar || "🏏");
+        }
+      } catch {}
+    }
+    setProfileLoaded(true);
+  }, []);
 
   // For solo/host mode, use simulated friends from multiplayer players
   const activeFriends: FriendDef[] = useMemo(() => {
@@ -77,38 +101,65 @@ const Index = () => {
     setHypeType(null);
   }, []);
 
-  // Name entry complete
-  const handleNameComplete = useCallback((name: string, avatar: string) => {
+  // After picking a match, check if we have a name; if yes, auto-create room and go to pregame
+  const handleSelectMatch = useCallback(async (m: UpcomingMatch) => {
+    setSelectedMatch(m);
+    if (savedProfileRef.current) {
+      // Already have a name, auto-create room and go to pregame
+      const name = savedProfileRef.current.name;
+      const avatar = savedProfileRef.current.avatar;
+      setPlayerName(name);
+      setPlayerAvatar(avatar);
+      await mp.createRoom(name, avatar);
+      setStage("pregame");
+    } else {
+      // Need name first
+      setStage("name");
+    }
+  }, [mp]);
+
+  // Name entry complete — then create/join room and go to pregame
+  const handleNameComplete = useCallback(async (name: string, avatar: string) => {
     setPlayerName(name);
     setPlayerAvatar(avatar);
     localStorage.setItem("pitchtalk_profile", JSON.stringify({ name, avatar }));
-    setStage("lobby");
-  }, []);
+    savedProfileRef.current = { name, avatar };
 
-  // Room actions
-  const handleCreateRoom = useCallback(async () => {
-    await mp.createRoom(playerName, playerAvatar);
-  }, [mp, playerName, playerAvatar]);
+    if (pendingJoinCode) {
+      // Joining via URL deep link
+      const success = await mp.joinRoom(pendingJoinCode, name, avatar);
+      if (success) {
+        setPendingJoinCode(null);
+        // Clean URL
+        window.history.replaceState({}, "", window.location.pathname);
+        setStage("pregame");
+      }
+    } else if (selectedMatch) {
+      // Creating room after picking match
+      await mp.createRoom(name, avatar);
+      setStage("pregame");
+    }
+  }, [mp, pendingJoinCode, selectedMatch]);
 
-  const handleJoinRoom = useCallback(async (code: string) => {
-    await mp.joinRoom(code, playerName, playerAvatar);
-  }, [mp, playerName, playerAvatar]);
-
-  const handleStartGame = useCallback(() => {
-    // Host moves to match picker
-    setStage("picker");
-  }, []);
-
-  const handleSelectMatch = useCallback((m: UpcomingMatch) => {
-    setSelectedMatch(m);
-    setStage("pregame");
-  }, []);
+  // For deep-link joiners who already have a saved profile
+  useEffect(() => {
+    if (profileLoaded && pendingJoinCode && savedProfileRef.current && stage === "name") {
+      const { name, avatar } = savedProfileRef.current;
+      (async () => {
+        const success = await mp.joinRoom(pendingJoinCode, name, avatar);
+        if (success) {
+          setPendingJoinCode(null);
+          window.history.replaceState({}, "", window.location.pathname);
+          setStage("pregame");
+        }
+      })();
+    }
+  }, [profileLoaded, pendingJoinCode, stage]);
 
   const handleGameStart = useCallback((team: TeamId) => {
     setUserTeam(team);
     mp.updateMyTeam(team);
     setStage("game");
-    // If host, start the game for everyone
     if (mp.isHost) {
       mp.startGame();
     }
@@ -150,7 +201,9 @@ const Index = () => {
 
   const handleInvite = useCallback(() => {
     const matchLabel = selectedMatch ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}` : "the match";
-    const text = `🏏 Join my Pitch Talk room! Code: ${mp.roomId}\n\nPredict every ball, play with the squad 🧠🔥\n${window.location.origin}`;
+    const roomCode = mp.roomId || "";
+    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    const text = `🏏 Join my Pitch Talk room for ${matchLabel}!\n\nPredict every ball, play with the squad 🧠🔥\n\n👉 ${shareUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }, [selectedMatch, mp.roomId]);
 
@@ -174,20 +227,10 @@ const Index = () => {
     mp.updateGameSnapshot(snapshot);
   }, [mp]);
 
-  // Non-host pick handler
-  const handleNonHostPick = useCallback((ballId: number, pick: string) => {
-    mp.submitPick(ballId, pick, playerName);
-  }, [mp, playerName]);
-
-  const handleNonHostScoreUpdate = useCallback((wins: number, total: number, streak: number) => {
-    mp.updateMyScore(wins, total, streak);
-  }, [mp]);
-
   // Listen for host starting game (non-host)
   const gamePhase = mp.gameSnapshot?.phase;
-  const isNonHostInGame = !mp.isHost && gamePhase === "game" && stage === "lobby";
+  const isNonHostInGame = !mp.isHost && gamePhase === "game" && stage === "pregame";
   if (isNonHostInGame) {
-    // Auto-advance non-host to game when host starts
     setTimeout(() => setStage("game"), 0);
   }
 
@@ -275,8 +318,9 @@ const Index = () => {
   ];
 
   const isGameActive = stage === "game";
-  const isHostPlaying = mp.isHost && isGameActive;
-  const isNonHostPlaying = !mp.isHost && isGameActive && mp.roomId;
+
+  // Don't render until profile check is done
+  if (!profileLoaded) return null;
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-[hsl(220,15%,12%)]">
@@ -287,33 +331,17 @@ const Index = () => {
         <div className="flex flex-col h-full relative overflow-hidden sm:pt-[2px]">
           <HypeOverlay type={hypeType} onDismiss={handleDismissHype} onMute={handleMuteHype} />
 
-          {/* Stage: Name Entry */}
-          {stage === "name" && (
-            <NameEntry onComplete={handleNameComplete} />
-          )}
-
-          {/* Stage: Room Lobby */}
-          {stage === "lobby" && (
-            <RoomLobby
-              playerName={playerName}
-              playerAvatar={playerAvatar}
-              isHost={mp.isHost}
-              roomId={mp.roomId}
-              players={mp.players}
-              isLoading={mp.isLoading}
-              error={mp.error}
-              onCreateRoom={handleCreateRoom}
-              onJoinRoom={handleJoinRoom}
-              onStartGame={handleStartGame}
-            />
-          )}
-
-          {/* Stage: Match Picker (host only) */}
+          {/* Stage: Match Picker (first screen) */}
           {stage === "picker" && (
             <GamePicker onSelectMatch={handleSelectMatch} />
           )}
 
-          {/* Stage: Pre-game intro (host picks team) */}
+          {/* Stage: Name Entry (if not saved) */}
+          {stage === "name" && (
+            <NameEntry onComplete={handleNameComplete} />
+          )}
+
+          {/* Stage: Pre-game intro (team pick + squad + invite) */}
           {stage === "pregame" && selectedMatch && (
             <PreGameIntro
               onStart={handleGameStart}
@@ -328,8 +356,33 @@ const Index = () => {
             />
           )}
 
-          {/* Stage: Game — Host View */}
-          {isHostPlaying && (
+          {/* Stage: Pre-game for joiners (no match selected yet, waiting for host) */}
+          {stage === "pregame" && !selectedMatch && mp.roomId && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-10">
+              <motion.span
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                className="text-4xl mb-4"
+              >🏏</motion.span>
+              <p className="text-lg font-bold text-foreground mb-2">You're in! 🎉</p>
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                Room <span className="font-bold text-foreground">{mp.roomId}</span> — waiting for host to start the game...
+              </p>
+              <div className="space-y-2 w-full max-w-xs">
+                {mp.players.map(p => (
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-secondary">
+                    <span className="text-lg">{p.avatar}</span>
+                    <span className="text-[13px] font-semibold text-foreground flex-1">{p.name}</span>
+                    {p.isHost && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">Host</span>}
+                    {p.name === playerName && !p.isHost && <span className="text-[9px] text-muted-foreground">You</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Stage: Game (same UI for host and non-host) */}
+          {isGameActive && (
             <>
               <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
               {activeTab === "arena" ? (
@@ -359,53 +412,6 @@ const Index = () => {
                     onToggleSound={toggleSound}
                     onFirstOverComplete={handleFirstOverComplete}
                     onBallStateChange={handleBallStateChange}
-                  />
-                </>
-              ) : activeTab === "receipts" ? (
-                <ReceiptsScreen receiptData={receiptData} />
-              ) : (
-                <div className="flex-1 overflow-y-auto pt-4 pb-2">
-                  <div className="px-4 mb-4">
-                    <h2 className="text-lg font-bold text-foreground tracking-tight">🏆 Leaderboard</h2>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Who's got the best cricket brain?</p>
-                  </div>
-                  <Leaderboard entries={leaderboardEntries} />
-                </div>
-              )}
-              <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-            </>
-          )}
-
-          {/* Stage: Game — Non-Host View (same as host) */}
-          {isNonHostPlaying && (
-            <>
-              <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
-              {activeTab === "arena" ? (
-                <>
-                  {showGameBoard && (
-                    <GameBoard
-                      players={gameBoardPlayers}
-                      maxPlayers={MAX_PLAYERS}
-                      onInvite={handleInvite}
-                    />
-                  )}
-                  <BanterStream
-                    match={match}
-                    onNextBall={nextBall}
-                    onHype={handleHype}
-                    onPredictionResolved={handlePredictionResolved}
-                    onFriendScoresUpdate={handleFriendScoresUpdate}
-                    soundMuted={soundMuted}
-                    activeFriends={activeFriends}
-                    onOverComplete={handleOverComplete}
-                    allPlayerStandings={allPlayerStandings}
-                    userTeam={userTeam}
-                    activePlayers={mp.players.length}
-                    maxPlayers={MAX_PLAYERS}
-                    roomId={mp.roomId || "SOLO"}
-                    onInvite={handleInvite}
-                    onToggleSound={toggleSound}
-                    onFirstOverComplete={handleFirstOverComplete}
                   />
                 </>
               ) : activeTab === "receipts" ? (
