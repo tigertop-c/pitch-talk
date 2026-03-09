@@ -389,8 +389,20 @@ const BanterStream = ({
     }));
   }, []);
 
-  const resolveBall = useCallback((ballId: number) => {
-    const event = onNextBall();
+  const resolveBall = useCallback((ballId: number, hostResult?: { label: string; type: string }) => {
+    let event: BallEvent;
+    if (hostResult) {
+      // Non-host: use host's result from snapshot
+      event = {
+        over: 0, ball: 0,
+        result: hostResult.type as BallEvent["result"],
+        runs: RESULT_RUNS[hostResult.type] || 0,
+        label: hostResult.label,
+      };
+    } else {
+      // Host: generate locally
+      event = onNextBall();
+    }
     ballCountRef.current += 1;
     const isLegal = event.result !== "wide" && event.result !== "noball";
 
@@ -412,11 +424,13 @@ const BanterStream = ({
 
     const result: BallResult = { label: event.label, type: event.result };
 
-    // Sync resolved ball state to multiplayer
-    onBallStateChange?.(
-      { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
-      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
-    );
+    // Sync resolved ball state to multiplayer (host only)
+    if (!hostResult) {
+      onBallStateChange?.(
+        { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
+        { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+      );
+    }
 
     if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
