@@ -587,25 +587,49 @@ const BanterStream = ({
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...reactionPool].sort(() => Math.random() - 0.5);
 
-    for (let i = 0; i < numMessages; i++) {
-      const user = activeFriends[Math.floor(Math.random() * activeFriends.length)];
+    // In solo play there may be no activeFriends; avoid crashing by falling back to a system message.
+    if (activeFriends.length === 0) {
       idRef.current += 1;
       const chatId = idRef.current;
-      
       setTimeout(() => {
-        setChats(prev => {
-          return [...prev, {
+        setChats(prev => ([
+          ...prev,
+          {
             id: chatId,
             parentBallId: ballId,
-            user: user.name,
-            avatar: user.avatar,
-            text: shuffled[i % shuffled.length],
+            user: "Pitch Talk",
+            avatar: "🏏",
+            text: shuffled[0] || "What a ball!",
             timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            team: user.team,
-          }];
-        });
+            isSystem: true,
+          },
+        ]));
         scrollToBottom();
-      }, 500 + i * 800);
+      }, 500);
+    } else {
+      for (let i = 0; i < numMessages; i++) {
+        const user = activeFriends[Math.floor(Math.random() * activeFriends.length)];
+        idRef.current += 1;
+        const chatId = idRef.current;
+
+        setTimeout(() => {
+          setChats(prev => {
+            return [
+              ...prev,
+              {
+                id: chatId,
+                parentBallId: ballId,
+                user: user.name,
+                avatar: user.avatar,
+                text: shuffled[i % shuffled.length],
+                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+                team: user.team,
+              },
+            ];
+          });
+          scrollToBottom();
+        }, 500 + i * 800);
+      }
     }
 
     // Add commentary for key moments with guess-the-style game
