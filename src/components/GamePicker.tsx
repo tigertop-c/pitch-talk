@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Zap } from "lucide-react";
-import { useCricketMatches, type CricApiMatch } from "@/hooks/useCricketMatches";
-import { Skeleton } from "@/components/ui/skeleton";
 import cskLogo from "@/assets/teams/csk.png";
 import dcLogo from "@/assets/teams/dc.png";
 import gtLogo from "@/assets/teams/gt.png";
