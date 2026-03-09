@@ -676,6 +676,7 @@ const BanterStream = ({
   resolveBallRef.current = resolveBall;
 
   const startNewBall = useCallback(() => {
+    setWaitingForNext(false);
     idRef.current += 1;
     const ballId = idRef.current;
     activeBallIdRef.current = ballId;
