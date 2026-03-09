@@ -52,14 +52,26 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [countdown, setCountdown] = useState(0);
 
   const tossRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new interactive sections appear
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollContainerRef.current?.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: "smooth" });
+    }, 200);
+  };
 
   useEffect(() => {
-    if (userTeam && tossRef.current) {
-      setTimeout(() => {
-        tossRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 150);
-    }
+    if (userTeam) scrollToBottom();
   }, [userTeam]);
+
+  useEffect(() => {
+    if (tossResult) scrollToBottom();
+  }, [tossResult]);
+
+  useEffect(() => {
+    if (stage === "starting") scrollToBottom();
+  }, [stage]);
 
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
@@ -134,7 +146,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-5 pt-4 pb-6 space-y-4">
 
         {/* Hero */}
         <motion.div
