@@ -24,10 +24,19 @@ export interface MatchState {
   ballEvents: BallEvent[];
   batsmen: [Batsman, Batsman];
   target: number | null;
+  innings: 1 | 2;
+  inningsComplete: boolean;
+  matchOver: boolean;
+  firstInningsScore: number | null;
 }
 
-const BOWLERS = ["Bumrah", "Archer", "Boult", "Nortje", "Kuldeep"];
-const BATSMEN_POOL = ["Shaw", "Pant", "Warner", "Marsh", "Axar", "Powell", "Stubbs", "Agarwal", "Salt", "Hope"];
+const MAX_OVERS = 5;
+const MAX_WICKETS = 10;
+
+const BOWLERS_1 = ["Bumrah", "Archer", "Boult", "Nortje", "Kuldeep"];
+const BOWLERS_2 = ["Starc", "Rabada", "Rashid", "Shami", "Chahal"];
+const BATSMEN_POOL_1 = ["Shaw", "Pant", "Warner", "Marsh", "Axar", "Powell", "Stubbs", "Agarwal", "Salt", "Hope", "Fraser-McGurk"];
+const BATSMEN_POOL_2 = ["Rohit", "Ishan", "SKY", "Hardik", "Tim David", "Brevis", "Tilak", "Nehal", "Jofra", "Coetzee", "Kumar"];
 
 const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number; legal: boolean }[] = [
   { result: "dot", runs: 0, label: "DOT BALL", weight: 32, legal: true },
@@ -55,29 +64,49 @@ export function formatBall(overs: number, balls: number) {
   return `${overs}.${balls}`;
 }
 
-export function useMatchState() {
-  const nextBatsmanIdx = useRef(2);
-  const [match, setMatch] = useState<MatchState>({
+function makeInitialState(innings: 1 | 2, firstInningsScore: number | null): MatchState {
+  const pool = innings === 1 ? BATSMEN_POOL_1 : BATSMEN_POOL_2;
+  const bowlers = innings === 1 ? BOWLERS_1 : BOWLERS_2;
+  return {
     runs: 0,
     wickets: 0,
     overs: 0,
     balls: 0,
-    currentBowler: "Bumrah",
+    currentBowler: bowlers[0],
     ballEvents: [],
     batsmen: [
-      { name: BATSMEN_POOL[0], runs: 0, balls: 0, isOnStrike: true },
-      { name: BATSMEN_POOL[1], runs: 0, balls: 0, isOnStrike: false },
+      { name: pool[0], runs: 0, balls: 0, isOnStrike: true },
+      { name: pool[1], runs: 0, balls: 0, isOnStrike: false },
     ],
-    target: 185,
-  });
+    target: innings === 2 && firstInningsScore !== null ? firstInningsScore + 1 : null,
+    innings,
+    inningsComplete: false,
+    matchOver: false,
+    firstInningsScore,
+  };
+}
+
+export function useMatchState() {
+  const nextBatsmanIdx = useRef(2);
+  const [match, setMatch] = useState<MatchState>(() => makeInitialState(1, null));
 
   const ballIdRef = useRef(0);
+
+  const startSecondInnings = useCallback(() => {
+    nextBatsmanIdx.current = 2;
+    setMatch(prev => makeInitialState(2, prev.runs));
+  }, []);
 
   const nextBall = useCallback((): BallEvent => {
     const outcome = weightedRandom();
     ballIdRef.current += 1;
 
     setMatch((prev) => {
+      if (prev.inningsComplete || prev.matchOver) return prev;
+
+      const bowlers = prev.innings === 1 ? BOWLERS_1 : BOWLERS_2;
+      const batsmenPool = prev.innings === 1 ? BATSMEN_POOL_1 : BATSMEN_POOL_2;
+
       const isLegal = outcome.result !== "wide" && outcome.result !== "noball";
       let newBalls = isLegal ? prev.balls + 1 : prev.balls;
       let newOvers = prev.overs;
@@ -86,7 +115,7 @@ export function useMatchState() {
       if (newBalls > 6) {
         newBalls = 1;
         newOvers += 1;
-        newBowler = BOWLERS[Math.floor(Math.random() * BOWLERS.length)];
+        newBowler = bowlers[Math.floor(Math.random() * bowlers.length)];
       }
 
       const event: BallEvent = {
@@ -101,39 +130,66 @@ export function useMatchState() {
       let newBatsmen: [Batsman, Batsman] = [{ ...prev.batsmen[0] }, { ...prev.batsmen[1] }];
       const strikerIdx = newBatsmen[0].isOnStrike ? 0 : 1;
 
+      const newWickets = prev.wickets + (outcome.result === "wicket" ? 1 : 0);
+      const newRuns = prev.runs + outcome.runs;
+
       if (outcome.result === "wicket") {
-        // New batsman comes in
-        const newName = BATSMEN_POOL[nextBatsmanIdx.current % BATSMEN_POOL.length];
+        const newName = batsmenPool[nextBatsmanIdx.current % batsmenPool.length];
         nextBatsmanIdx.current += 1;
         newBatsmen[strikerIdx] = { name: newName, runs: 0, balls: 0, isOnStrike: true };
         if (isLegal) newBatsmen[strikerIdx].balls = 1;
       } else {
         newBatsmen[strikerIdx].runs += outcome.runs;
         if (isLegal) newBatsmen[strikerIdx].balls += 1;
-        // Rotate strike on odd runs or end of over
         const oddRuns = outcome.runs % 2 === 1;
         const endOfOver = newBalls === 6 && isLegal;
         if (oddRuns !== endOfOver) {
-          // XOR: swap strike
           newBatsmen[0].isOnStrike = !newBatsmen[0].isOnStrike;
           newBatsmen[1].isOnStrike = !newBatsmen[1].isOnStrike;
         }
       }
 
+      // Check innings completion
+      const totalOvers = newOvers + (newBalls === 6 ? 1 : 0);
+      const actualOvers = newBalls === 6 ? totalOvers : newOvers;
+      const actualBalls = newBalls === 6 ? 0 : newBalls;
+      
+      // Overs done when we complete 6 legal balls of the last over
+      const oversComplete = (newBalls === 6 && newOvers + 1 >= MAX_OVERS);
+      const allOut = newWickets >= MAX_WICKETS;
+      
+      // Second innings: target chased
+      const targetChased = prev.innings === 2 && prev.target !== null && newRuns >= prev.target;
+
+      const inningsComplete = oversComplete || allOut || targetChased;
+      const matchOver = prev.innings === 2 && inningsComplete;
+
+      // Normalize overs display
+      let displayOvers = newOvers;
+      let displayBalls = newBalls;
+      if (newBalls === 6) {
+        displayOvers = newOvers + 1;
+        displayBalls = 0;
+      }
+
       return {
-        runs: prev.runs + outcome.runs,
-        wickets: prev.wickets + (outcome.result === "wicket" ? 1 : 0),
-        overs: newOvers,
-        balls: newBalls,
+        runs: newRuns,
+        wickets: newWickets,
+        overs: displayOvers,
+        balls: displayBalls,
         currentBowler: newBowler,
         ballEvents: [...prev.ballEvents.slice(-20), event],
         batsmen: newBatsmen,
         target: prev.target,
+        innings: prev.innings,
+        inningsComplete,
+        matchOver,
+        firstInningsScore: prev.firstInningsScore,
       };
     });
 
     return {
-      over: 0, // actual value set in state
+      over: 0,
       ball: 0,
       result: outcome.result,
       runs: outcome.runs,
@@ -145,5 +201,5 @@ export function useMatchState() {
     ? (match.runs / (match.overs + match.balls / 6)).toFixed(2)
     : "0.00";
 
-  return { match, nextBall, crr };
+  return { match, nextBall, crr, startSecondInnings };
 }

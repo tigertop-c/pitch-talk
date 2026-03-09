@@ -14,8 +14,9 @@ interface LiveHeaderProps {
 }
 
 const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing }: LiveHeaderProps) => {
+  const MAX_OVERS = 5; // 5 overs per innings
   const totalOvers = match.overs + match.balls / 6;
-  const remainingOvers = 20 - totalOvers;
+  const remainingOvers = MAX_OVERS - totalOvers;
   const remainingRuns = match.target ? match.target - match.runs : null;
   const rrr = match.target && remainingOvers > 0
     ? (remainingRuns! / remainingOvers).toFixed(2)
@@ -103,7 +104,8 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
             <div className="text-[9px] text-muted-foreground uppercase tracking-wide">CRR</div>
             <div className="text-base font-bold text-primary leading-tight">{crr}</div>
           </div>
-          {isChasing && rrr && (
+          {/* RRR only shown in second innings chase */}
+          {isChasing && rrr && remainingRuns !== null && remainingRuns > 0 && (
             <div className="text-right">
               <div className="text-[9px] text-muted-foreground uppercase tracking-wide">RRR</div>
               <div className="text-base font-bold text-destructive leading-tight">{rrr}</div>
@@ -112,11 +114,17 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
         </div>
       </div>
 
-      {/* Row 3: Target info - only show during chase */}
+      {/* Row 3: Target info - only show during second innings (chase) */}
       {isChasing && match.target && remainingRuns !== null && remainingRuns > 0 && (
         <div className="mt-1 text-[11px] text-muted-foreground">
           Need <span className="text-foreground font-semibold">{remainingRuns}</span> off{" "}
           <span className="text-foreground font-semibold">{Math.ceil(remainingOvers * 6)}</span> balls
+        </div>
+      )}
+      {/* First innings indicator */}
+      {!isChasing && (
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          1st Innings • Setting target
         </div>
       )}
 

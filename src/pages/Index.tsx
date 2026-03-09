@@ -35,7 +35,7 @@ const Index = () => {
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
   const [mutedHypeTypes, setMutedHypeTypes] = useState<Set<string>>(new Set());
   const [showGameBoard, setShowGameBoard] = useState(true);
-  const { match, nextBall, crr } = useMatchState();
+  const { match, nextBall, crr, startSecondInnings } = useMatchState();
 
   const [playerName, setPlayerName] = useState("");
   const [playerAvatar, setPlayerAvatar] = useState("🏏");
@@ -55,6 +55,26 @@ const Index = () => {
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
+  const [showInningsBreak, setShowInningsBreak] = useState(false);
+
+  // Handle innings completion
+  const handleInningsComplete = useCallback(() => {
+    if (match.innings === 1 && match.inningsComplete && !match.matchOver) {
+      setShowInningsBreak(true);
+      // Auto-start second innings after 5 seconds
+      setTimeout(() => {
+        startSecondInnings();
+        setShowInningsBreak(false);
+      }, 5000);
+    }
+  }, [match.innings, match.inningsComplete, match.matchOver, startSecondInnings]);
+
+  // Watch for innings completion
+  useEffect(() => {
+    if (match.inningsComplete && match.innings === 1 && !showInningsBreak) {
+      handleInningsComplete();
+    }
+  }, [match.inningsComplete, match.innings, showInningsBreak, handleInningsComplete]);
 
   // Check for saved profile on mount
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -401,9 +421,9 @@ const Index = () => {
           )}
 
           {/* Stage: Game (same UI for host and non-host) */}
-          {isGameActive && (
+          {isGameActive && !showInningsBreak && !match.matchOver && (
             <>
-              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
+              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} />
               <SquadStandingsBar
                 entries={squadEntries}
                 onOpenLeaderboard={() => setActiveTab("leaderboard")}
@@ -437,6 +457,7 @@ const Index = () => {
                     onBallStateChange={handleBallStateChange}
                     isHost={mp.isHost}
                     gameSnapshot={mp.gameSnapshot}
+                    onInningsComplete={handleInningsComplete}
                   />
                 </>
               ) : activeTab === "receipts" ? (
@@ -452,6 +473,70 @@ const Index = () => {
               )}
               <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
             </>
+          )}
+
+          {/* Innings Break Screen */}
+          {isGameActive && showInningsBreak && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 bg-gradient-to-b from-primary/20 to-background">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", damping: 15 }}
+                className="text-center"
+              >
+                <span className="text-5xl mb-4 block">🏏</span>
+                <h2 className="text-2xl font-black text-foreground mb-2">INNINGS BREAK</h2>
+                <p className="text-lg font-bold text-primary mb-4">
+                  {selectedMatch?.team1.short || "DC"}: {match.runs}/{match.wickets}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {selectedMatch?.team2.short || "MI"} need <span className="text-foreground font-bold">{match.runs + 1}</span> to win
+                </p>
+                <p className="text-xs text-muted-foreground animate-pulse mt-6">
+                  2nd innings starting in a few seconds...
+                </p>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Match Over Screen */}
+          {isGameActive && match.matchOver && (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 bg-gradient-to-b from-neon/20 to-background">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", damping: 15 }}
+                className="text-center"
+              >
+                <span className="text-5xl mb-4 block">🏆</span>
+                <h2 className="text-2xl font-black text-foreground mb-2">MATCH OVER</h2>
+                {match.target && match.runs >= match.target ? (
+                  <p className="text-lg font-bold text-neon mb-4">
+                    {selectedMatch?.team2.short || "MI"} wins by {10 - match.wickets} wickets!
+                  </p>
+                ) : (
+                  <p className="text-lg font-bold text-primary mb-4">
+                    {selectedMatch?.team1.short || "DC"} wins by {match.firstInningsScore! - match.runs} runs!
+                  </p>
+                )}
+                <div className="bg-secondary/50 rounded-2xl px-6 py-4 mt-4">
+                  <p className="text-[11px] text-muted-foreground mb-2">Your Predictions</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {predictions.filter(p => p.won === true).length}/{predictions.filter(p => p.won !== null).length} correct
+                  </p>
+                  {bestStreak > 0 && (
+                    <p className="text-sm text-neon mt-1">🔥 Best streak: {bestStreak}</p>
+                  )}
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => window.location.reload()}
+                  className="mt-6 px-6 py-3 bg-primary text-primary-foreground rounded-full font-bold text-sm"
+                >
+                  Play Again
+                </motion.button>
+              </motion.div>
+            </div>
           )}
 
           <div className="hidden sm:flex absolute bottom-1.5 left-1/2 -translate-x-1/2 z-[200] w-[120px] h-[4px] bg-foreground/20 rounded-full" />
