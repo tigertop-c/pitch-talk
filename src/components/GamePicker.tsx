@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Clock, ChevronRight, Users, Zap, WifiOff } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Clock, ChevronRight, Users, Zap, WifiOff, Share2 } from "lucide-react";
 import { useCricketMatches, type CricApiMatch } from "@/hooks/useCricketMatches";
 import { Skeleton } from "@/components/ui/skeleton";
 import cskLogo from "@/assets/teams/csk.png";
