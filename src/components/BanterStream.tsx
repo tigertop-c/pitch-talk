@@ -645,7 +645,7 @@ const BanterStream = ({
       setWaitingForNext(false); 
       isOverBreak.current = false;
       startNewBall(); 
-    }, numMessages * 800 + 11000); // 25s total cycle: 10s lock + 1.5s pending + 2.5s messages + 11s wait
+    }, numMessages * 800 + 18000); // ~40s total: 15s lock + 1.5s pending + ~3s messages + 18s wait ≈ real T20 pace
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls]);
 
   const startNewBall = useCallback(() => {
