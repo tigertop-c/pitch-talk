@@ -320,22 +320,25 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                   </button>
                 </div>
 
-                {/* Start simulation button */}
-                {userTeam && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.2 }}
-                    className="pt-1"
+                {/* Start simulation button — always visible */}
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.2 }}
+                  className="pt-1"
+                >
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={handleStartSimulation}
+                    className="w-full py-4 rounded-2xl bg-primary text-primary-foreground text-[16px] font-bold shadow-lg shadow-primary/25 active:bg-primary/90 transition-all flex items-center justify-center gap-2"
                   >
-                    <motion.button
-                      whileTap={{ scale: 0.96 }}
-                      onClick={handleStartSimulation}
-                      className="w-full py-4 rounded-2xl bg-primary text-primary-foreground text-[16px] font-bold shadow-lg shadow-primary/25 active:bg-primary/90 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Play size={18} />
-                      Start 5-Over Simulation
-                    </motion.button>
-                  </motion.div>
-                )}
+                    <Play size={18} />
+                    Start 5-Over Simulation
+                  </motion.button>
+                  {!userTeam && (
+                    <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                      Pick a team above, or we'll default to {team1.short} 🏏
+                    </p>
+                  )}
+                </motion.div>
               </motion.div>
             )}
 
