@@ -666,6 +666,12 @@ const BanterStream = ({
     scrollToBottom();
     addFriendPicks(ballId);
 
+    // Sync ball state to multiplayer
+    onBallStateChange?.(
+      { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
+      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+    );
+
     clearInterval(countdownRef.current);
     let count = LOCK_TIME;
     countdownRef.current = setInterval(() => {
