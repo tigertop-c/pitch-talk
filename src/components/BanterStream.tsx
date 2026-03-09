@@ -802,9 +802,58 @@ const BanterStream = ({
       timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
       isSystem: true,
     }]);
-    startNewBall();
+    if (isHost) {
+      startNewBall();
+    }
     return () => clearInterval(countdownRef.current);
   }, []);
+
+  // Non-host: watch game snapshot to drive game loop
+  const lastSnapBallRef = useRef<{ id: number; state: string } | null>(null);
+
+  useEffect(() => {
+    if (isHost || !gameSnapshot?.ball) return;
+
+    const snapBall = gameSnapshot.ball;
+    const prev = lastSnapBallRef.current;
+
+    if (!prev || snapBall.id !== prev.id) {
+      // New ball from host
+      if (snapBall.state === "idle" || snapBall.state === "pending") {
+        startNewBallRef.current();
+      } else if (snapBall.state === "resolved" && snapBall.result) {
+        // Missed prediction window — show result directly
+        startNewBallRef.current();
+        setTimeout(() => {
+          const currentBallId = activeBallIdRef.current;
+          if (currentBallId) {
+            resolveBallRef.current(currentBallId, snapBall.result!);
+          }
+        }, 500);
+      }
+    } else if (
+      snapBall.id === prev.id &&
+      snapBall.state === "resolved" &&
+      prev.state !== "resolved" &&
+      snapBall.result
+    ) {
+      // Ball we're tracking got resolved by host
+      clearInterval(countdownRef.current);
+      const currentBallId = activeBallIdRef.current;
+      if (currentBallId) {
+        setBalls(bprev => bprev.map(b =>
+          b.id === currentBallId && b.predictionState !== "resolved"
+            ? { ...b, predictionState: "pending" as PredictionState }
+            : b
+        ));
+        setTimeout(() => {
+          resolveBallRef.current(currentBallId, snapBall.result!);
+        }, 1500);
+      }
+    }
+
+    lastSnapBallRef.current = { id: snapBall.id, state: snapBall.state };
+  }, [isHost, gameSnapshot?.ball?.id, gameSnapshot?.ball?.state]);
 
   // Build render items
   // Build render items - track ball labels for chat context
