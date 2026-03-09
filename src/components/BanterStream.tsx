@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { isAiPlayer } from "@/lib/aiPlayers";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ThumbsUp, ThumbsDown } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
@@ -236,13 +237,14 @@ interface BanterStreamProps {
   gameSnapshot?: GameSnapshot | null;
   onInningsComplete?: () => void;
   battingTeamShort?: string;
+  onAiPick?: (ballId: number, pick: string, playerName: string) => void;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
-  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort,
+  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, onAiPick,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -357,10 +359,12 @@ const BanterStream = ({
             : b
         ));
         overParticipation.current[user.name] = true;
+        // Store AI/friend pick in DB for cross-client consistency
+        onAiPick?.(ballId, pick, user.name);
         scrollToBottom();
       }, delays[i] || 2000);
     });
-  }, [activeFriends, scrollToBottom]);
+  }, [activeFriends, scrollToBottom, onAiPick]);
 
   const checkPickWon = (pick: string, result: string) =>
     (pick === "Dot" && result === "dot") ||
@@ -590,14 +594,6 @@ const BanterStream = ({
     const numMessages = 1 + Math.floor(Math.random() * 2);
     const shuffled = [...reactionPool].sort(() => Math.random() - 0.5);
 
-    // AI Players for solo mode - virtual players that comment and pick teams
-    const AI_PLAYERS: FriendDef[] = [
-      { name: "CricketGuru", avatar: "🧠", team: "DC" },
-      { name: "BoundaryKing", avatar: "👑", team: "MI" },
-      { name: "WicketHunter", avatar: "🎯", team: "DC" },
-      { name: "SixMachine", avatar: "💥", team: "MI" },
-    ];
-
     // Team-specific reactions for AI players
     const TEAM_REACTIONS: Record<string, Record<string, string[]>> = {
       DC: {
@@ -614,18 +610,18 @@ const BanterStream = ({
       },
     };
 
-    // In solo play, use AI players instead of real friends
-    const playersToUse = activeFriends.length === 0 ? AI_PLAYERS : activeFriends;
+    // Use activeFriends (which now includes AI players from DB)
+    const playersToUse = activeFriends;
     
     // Determine if AI should send team-specific messages (for key moments)
     const isKeyMoment = event.result === "four" || event.result === "six" || event.result === "wicket";
     
-    // Solo mode: AI players react with team allegiance, but don't spam (random chance to comment)
-    const shouldAiComment = activeFriends.length === 0 ? Math.random() < 0.7 : true;
+    // AI players react with team allegiance, but don't spam
+    const hasOnlyAiPlayers = activeFriends.every(f => isAiPlayer(f.name));
+    const shouldComment = hasOnlyAiPlayers ? Math.random() < 0.7 : true;
     
-    if (!shouldAiComment && activeFriends.length === 0) {
-      // Skip comments occasionally in solo mode to avoid spam
-      // Still add system commentary for key moments
+    if (!shouldComment && hasOnlyAiPlayers) {
+      // Skip comments occasionally to avoid spam
     } else {
       for (let i = 0; i < numMessages; i++) {
         const user = playersToUse[Math.floor(Math.random() * playersToUse.length)];
@@ -634,7 +630,7 @@ const BanterStream = ({
 
         // For AI players, sometimes use team-specific messages
         let messageText = shuffled[i % shuffled.length];
-        if (activeFriends.length === 0 && isKeyMoment && user.team && Math.random() < 0.6) {
+        if (isAiPlayer(user.name) && isKeyMoment && user.team && Math.random() < 0.6) {
           const teamReactions = TEAM_REACTIONS[user.team]?.[event.result];
           if (teamReactions && teamReactions.length > 0) {
             messageText = teamReactions[Math.floor(Math.random() * teamReactions.length)];
@@ -653,7 +649,7 @@ const BanterStream = ({
                 text: messageText,
                 timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
                 team: user.team,
-                isSystem: activeFriends.length === 0, // Mark AI messages differently
+                isSystem: isAiPlayer(user.name),
               },
             ];
           });
