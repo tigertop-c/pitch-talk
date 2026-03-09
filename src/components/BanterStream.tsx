@@ -661,14 +661,10 @@ const BanterStream = ({
       }
     }
 
-    // Add commentary for key moments with guess-the-style game
+    // Add commentary for key moments with guess-the-style game (merged into single system message)
     const commentaryPool = COMMENTARY_LINES[event.result];
-    if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5) || (event.result === "dot" && Math.random() < 0.15))) {
+    if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5))) {
       const line = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
-      idRef.current += 1;
-      const commentaryId = idRef.current;
-      
-      // Create the guess card
       idRef.current += 1;
       const guessId = idRef.current;
       const options = getCommentaryOptions(line.style);
@@ -677,20 +673,11 @@ const BanterStream = ({
         setChats(prev => [
           ...prev,
           {
-            id: commentaryId,
-            parentBallId: ballId,
-            user: "Commentary Box",
-            avatar: "🎙️",
-            text: line.text,
-            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            isSystem: true,
-          },
-          {
             id: guessId,
             parentBallId: ballId,
-            user: "Commentary Box",
+            user: "Commentary",
             avatar: "🎙️",
-            text: "Guess the commentary style!",
+            text: line.text,
             timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
             isSystem: true,
             isCommentaryGuess: true,
@@ -704,7 +691,7 @@ const BanterStream = ({
           },
         ]);
         scrollToBottom();
-      }, numMessages * 800 + 600);
+      }, numMessages * 600 + 400);
     }
 
     // Set contextual waiting message
@@ -845,16 +832,6 @@ const BanterStream = ({
   }, [onToggleSound]);
 
   useEffect(() => {
-    idRef.current += 1;
-    setChats([{
-      id: idRef.current,
-      parentBallId: 0,
-      user: "Pitch Talk",
-      avatar: "🏏",
-      text: "SOUND_TOGGLE",
-      timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-      isSystem: true,
-    }]);
     if (isHost) {
       startNewBall();
     }
@@ -975,12 +952,12 @@ const BanterStream = ({
 
               if (item.type === "ball-divider" && item.dividerLabel) {
                 return (
-                  <div key={`divider-${item.dividerLabel}`} className="flex items-center gap-2 px-5 pt-2 pb-0.5">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <div key={`divider-${item.dividerLabel}`} className="flex items-center gap-2 px-4 pt-1.5 pb-0.5">
+                    <div className="h-px flex-1 bg-border/50" />
+                    <span className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider">
                       {item.dividerLabel}
                     </span>
-                    <div className="h-px flex-1 bg-border" />
+                    <div className="h-px flex-1 bg-border/50" />
                   </div>
                 );
               }
@@ -996,8 +973,7 @@ const BanterStream = ({
                 const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
                 const isCommentaryGuess = c.isCommentaryGuess && c.commentaryGuessData;
 
-                // Commentary guess card
-                // Hide commentary guess card when prediction is active
+                // Commentary guess card - compact combined view with text + guess
                 if (isCommentaryGuess && c.commentaryGuessData && !isPredictionActive) {
                   const gd = c.commentaryGuessData;
                   return (
@@ -1006,18 +982,22 @@ const BanterStream = ({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ ...spring }}
-                      className="px-5 py-1.5"
+                      className="px-4 py-1.5"
                     >
-                      <div className="ml-9 p-2.5 rounded-xl bg-primary/5 border border-primary/10">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-semibold text-primary">🎙️ Guess the style!</span>
+                      <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                        {/* Commentary text */}
+                        <p className="text-[12px] text-foreground leading-relaxed mb-2">{c.text}</p>
+                        
+                        {/* Guess section */}
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-[10px] font-semibold text-primary">Guess the style</span>
                           {commentaryScore.total > 0 && (
-                            <span className="text-[10px] text-muted-foreground font-medium">
-                              {commentaryScore.correct}/{commentaryScore.total} correct
+                            <span className="text-[9px] text-muted-foreground">
+                              {commentaryScore.correct}/{commentaryScore.total}
                             </span>
                           )}
                         </div>
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1">
                           {gd.options.map(opt => {
                             const isSelected = gd.selectedOption === opt;
                             const isCorrectAnswer = gd.answered && opt === STYLE_LABELS[gd.correctStyle as CommentaryStyle];
@@ -1027,55 +1007,48 @@ const BanterStream = ({
                                 whileTap={gd.answered ? {} : { scale: 0.95 }}
                                 onClick={() => !gd.answered && handleCommentaryGuess(c.id, opt)}
                                 disabled={gd.answered}
-                                className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+                                className={`flex-1 py-1.5 px-1.5 rounded-lg text-[10px] font-semibold transition-all ${
                                   gd.answered
                                     ? isCorrectAnswer
-                                      ? "bg-neon/15 text-neon ring-1 ring-neon/30"
+                                      ? "bg-neon/15 text-neon"
                                       : isSelected && !gd.wasCorrect
-                                      ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
-                                      : "bg-secondary/50 text-muted-foreground opacity-50"
+                                      ? "bg-destructive/10 text-destructive"
+                                      : "bg-secondary/50 text-muted-foreground opacity-40"
                                     : "bg-secondary text-foreground active:bg-muted"
                                 }`}
                               >
-                                {opt}
-                                {gd.answered && isCorrectAnswer && " ✅"}
-                                {gd.answered && isSelected && !gd.wasCorrect && " ❌"}
+                                {opt.replace(" 🫖", "").replace(" 🦘", "").replace(" 🌴", "").replace(" 🇮🇳", "")}
                               </motion.button>
                             );
                           })}
                         </div>
                         {gd.answered && (
-                          <motion.p
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className={`text-[10px] mt-1.5 font-medium ${gd.wasCorrect ? "text-neon" : "text-muted-foreground"}`}
-                          >
-                            {gd.wasCorrect ? "🎯 Nice ear! You know your commentary!" : `It was ${STYLE_LABELS[gd.correctStyle as CommentaryStyle]} style!`}
-                          </motion.p>
+                          <p className={`text-[9px] mt-1 font-medium ${gd.wasCorrect ? "text-neon" : "text-muted-foreground"}`}>
+                            {gd.wasCorrect ? "🎯 Correct!" : `It was ${STYLE_LABELS[gd.correctStyle as CommentaryStyle].split(" ")[0]}`}
+                          </p>
                         )}
                       </div>
                     </motion.div>
                   );
                 }
 
-                const teamColor = c.team === "DC" ? "text-[hsl(211,100%,50%)]" : c.team === "MI" ? "text-[hsl(211,80%,40%)]" : "";
                 return (
                   <motion.div
                     key={`chat-${c.id}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ ...spring }}
-                    className={`px-5 py-1 group transition-opacity duration-300 ${isPredictionActive ? "opacity-40" : "opacity-100"}`}
+                    className={`px-4 py-0.5 group transition-opacity duration-300 ${isPredictionActive ? "opacity-40" : "opacity-100"}`}
                   >
-                    <div className="flex items-start gap-2.5">
-                      <div className={`w-7 h-7 flex items-center justify-center rounded-full text-[11px] flex-shrink-0 ${
+                    <div className="flex items-start gap-2">
+                      <div className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] flex-shrink-0 ${
                         isSystem ? "bg-primary/15" : "bg-secondary"
                       }`}>
                         {c.avatar}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[12px] font-semibold ${
+                        <div className="flex items-center gap-1">
+                          <span className={`text-[11px] font-semibold ${
                             isSystem ? "text-primary" : isYou ? "text-primary" : "text-foreground"
                           }`}>{c.user}</span>
                           {c.team && !isSystem && (
@@ -1084,29 +1057,29 @@ const BanterStream = ({
                             }`}>{c.team}</span>
                           )}
                           {!isYou && !isSystem && userScores[c.user]?.total > 0 && (
-                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                            <span className="text-[8px] font-medium text-muted-foreground">
                               {userScores[c.user].wins}/{userScores[c.user].total}
                             </span>
                           )}
-                          <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">
+                          <span className="text-[9px] text-muted-foreground ml-auto flex-shrink-0">
                             {c.timestamp}
                           </span>
                         </div>
                         {isSoundToggle ? (
                           <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-[12px] text-muted-foreground italic">
-                              {soundMuted ? "🔇 Sounds are OFF." : "🔊 Sounds are ON — enjoy the vibe!"}
+                            <p className="text-[11px] text-muted-foreground italic">
+                              {soundMuted ? "🔇 Sounds OFF" : "🔊 Sounds ON"}
                             </p>
                             <button
                               onClick={handleToggleSound}
-                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-foreground active:scale-95 transition-transform"
+                              className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-secondary text-foreground active:scale-95 transition-transform"
                             >
-                              {soundMuted ? "🔊 Turn On" : "🔇 Mute"}
+                              {soundMuted ? "Turn On" : "Mute"}
                             </button>
                           </div>
                         ) : (
-                          <p className={`text-[14px] mt-0.5 leading-relaxed ${
-                            isSystem ? "text-muted-foreground italic text-[12px]" : "text-foreground"
+                          <p className={`text-[12px] mt-0.5 leading-snug ${
+                            isSystem ? "text-muted-foreground italic text-[11px]" : "text-foreground"
                           }`}>{c.text}</p>
                         )}
                         {!isSystem && !isYou && (
