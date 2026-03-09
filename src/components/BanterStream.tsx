@@ -235,13 +235,14 @@ interface BanterStreamProps {
   isHost: boolean;
   gameSnapshot?: GameSnapshot | null;
   onInningsComplete?: () => void;
+  battingTeamShort?: string;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
-  onBallStateChange, isHost, gameSnapshot, onInningsComplete,
+  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -921,6 +922,9 @@ const BanterStream = ({
   };
 
 
+  // Determine if user's team is batting
+  const myTeamBatting = battingTeamShort ? userTeam === battingTeamShort : undefined;
+
   // Check if any ball prediction is currently actionable (idle state)
   const isPredictionActive = balls.some(b => b.predictionState === "idle" || b.predictionState === "locked");
 
@@ -946,6 +950,7 @@ const BanterStream = ({
                     onPredict={(pick) => handlePredict(b.id, pick)}
                     isFirstPrediction={ballCountRef.current === 0}
                     totalUserPredictions={totalUserPredictions}
+                    myTeamBatting={myTeamBatting}
                   />
                 );
               }
