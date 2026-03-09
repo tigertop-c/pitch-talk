@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 
-export type TeamId = "DC" | "MI";
+export type TeamId = "CSK" | "DC" | "GT" | "KKR" | "LSG" | "MI" | "PBKS" | "RCB" | "RR" | "SRH";
 export type UserChatStyle = "hype" | "expert" | "troll" | "neutral";
 
 interface MatchContext {
