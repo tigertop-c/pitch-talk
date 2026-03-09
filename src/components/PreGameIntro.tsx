@@ -223,7 +223,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
             </div>
           </motion.div>
 
-          {/* Team Selection — all 10 IPL teams */}
+          {/* Pick which team you support (only the 2 match teams) */}
           <AnimatePresence mode="wait">
             {stage === "welcome" && (
               <motion.div
@@ -232,84 +232,92 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                 transition={{ ...spring, delay: 0.5 }}
                 className="space-y-3"
               >
+                {/* Matchup display */}
                 <div className="ios-card p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Pick Your Team</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ {team1.short} vs {team2.short}</p>
                   <p className="text-[15px] font-semibold text-foreground mb-3">Who are you supporting?</p>
-                  <div className="grid grid-cols-5 gap-2">
-                    {ALL_TEAMS.map(t => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { id: team1.short as TeamId, name: team1.name, short: team1.short, logo: ALL_TEAMS.find(t => t.short === team1.short)?.logo },
+                      { id: team2.short as TeamId, name: team2.name, short: team2.short, logo: ALL_TEAMS.find(t => t.short === team2.short)?.logo },
+                    ].map(t => (
                       <motion.button
                         key={t.id}
-                        whileTap={{ scale: 0.92 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setUserTeam(t.id)}
-                        className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl transition-all duration-200 ${
+                        className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
                           userTeam === t.id
                             ? "bg-primary/15 ring-2 ring-primary shadow-sm"
                             : "bg-secondary/50 active:bg-muted"
                         }`}
                       >
-                        <img src={t.logo} alt={t.short} className="w-9 h-9 object-contain" />
-                        <span className={`text-[9px] font-bold ${userTeam === t.id ? "text-primary" : "text-muted-foreground"}`}>{t.short}</span>
+                        {t.logo && <img src={t.logo} alt={t.short} className="w-14 h-14 object-contain" />}
+                        <span className={`text-[13px] font-bold ${userTeam === t.id ? "text-primary" : "text-foreground"}`}>{t.short}</span>
                       </motion.button>
                     ))}
                   </div>
-                  {userTeam && (
-                    <motion.p
-                      initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={spring}
-                      className="text-[11px] text-primary mt-2.5 text-center font-medium"
-                    >
-                      💙 {ALL_TEAMS.find(t => t.id === userTeam)?.name} — locked in!
-                    </motion.p>
-                  )}
                 </div>
 
-                {/* Squad / Friends section */}
-                {userTeam && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring}
-                    className="ios-card p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">👥 Your Squad</p>
-                        <p className="text-[13px] font-semibold text-foreground mt-0.5">
-                          {squadMembers.length} {squadMembers.length === 1 ? "player" : "players"} in the room
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleInviteWhatsApp}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:bg-[hsl(142,70%,45%,0.2)] transition-all active:scale-95"
+                {/* Squad / Friends + Invite section — show immediately */}
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.1 }}
+                  className="ios-card p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">👥 Your Squad</p>
+                      <p className="text-[13px] font-semibold text-foreground mt-0.5">
+                        {squadMembers.length} {squadMembers.length === 1 ? "player" : "players"} in the room
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleInviteWhatsApp}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:bg-[hsl(142,70%,45%,0.2)] transition-all active:scale-95"
+                    >
+                      <UserPlus size={12} />
+                      Invite
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {squadMembers.map((m, i) => (
+                      <motion.div
+                        key={m.name}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ ...spring, delay: 0.05 * i }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-secondary/40"
                       >
-                        <UserPlus size={12} />
-                        Invite
-                      </button>
-                    </div>
+                        <span className="text-base">{m.avatar}</span>
+                        <span className="text-[13px] font-semibold text-foreground flex-1">{m.name}</span>
+                        {m.isBot ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">JOINED</span>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
 
-                    {/* Player list */}
-                    <div className="space-y-1.5">
-                      {squadMembers.map((m, i) => (
-                        <motion.div
-                          key={m.name}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ ...spring, delay: 0.05 * i }}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-secondary/40"
-                        >
-                          <span className="text-base">{m.avatar}</span>
-                          <span className="text-[13px] font-semibold text-foreground flex-1">{m.name}</span>
-                          {m.isBot ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
-                          ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">JOINED</span>
-                          )}
-                        </motion.div>
-                      ))}
-                    </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Invite more friends or start anytime — AI players fill the gaps!
+                  </p>
+                </motion.div>
 
-                    <p className="text-[10px] text-muted-foreground text-center">
-                      Invite more friends or start anytime — AI players fill the gaps!
-                    </p>
-                  </motion.div>
-                )}
+                {/* Room code */}
+                <div className="ios-card p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Room Code</p>
+                    <p className="text-lg font-black tracking-[0.15em] text-foreground">{roomId}</p>
+                  </div>
+                  <button
+                    onClick={handleInviteWhatsApp}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold bg-[hsl(142,70%,45%,0.12)] text-[hsl(142,70%,35%)] active:scale-95 transition-transform"
+                  >
+                    <MessageCircle size={14} />
+                    Share
+                  </button>
+                </div>
 
                 {/* Start simulation button */}
                 {userTeam && (
