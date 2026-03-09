@@ -16,6 +16,7 @@ import { useMultiplayer, type GameSnapshot } from "@/hooks/useMultiplayer";
 import { type PredictionRecord, type ReceiptData } from "@/components/ShareableReceipt";
 import { setSoundMuted } from "@/lib/sounds";
 import type { TeamId } from "@/components/ChatInput";
+import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
 
 const MAX_PLAYERS = 10;
 
@@ -317,6 +318,24 @@ const Index = () => {
     })),
   ];
 
+  const squadEntries: SquadEntry[] = useMemo(() => [
+    {
+      name: playerName || "You",
+      avatar: playerAvatar,
+      wins: predictions.filter(p => p.won === true).length,
+      total: predictions.filter(p => p.won !== null).length,
+      streak: currentStreak,
+      isYou: true,
+    },
+    ...activeFriends.map(f => ({
+      name: f.name,
+      avatar: f.avatar,
+      wins: friendScores[f.name]?.wins || 0,
+      total: friendScores[f.name]?.total || 0,
+      streak: friendScores[f.name]?.streak || 0,
+    })),
+  ], [predictions, activeFriends, friendScores, currentStreak, playerName, playerAvatar]);
+
   const isGameActive = stage === "game";
 
   // Don't render until profile check is done
@@ -385,6 +404,10 @@ const Index = () => {
           {isGameActive && (
             <>
               <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
+              <SquadStandingsBar
+                entries={squadEntries}
+                onOpenLeaderboard={() => setActiveTab("leaderboard")}
+              />
               {activeTab === "arena" ? (
                 <>
                   {showGameBoard && (
