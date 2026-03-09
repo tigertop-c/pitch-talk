@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Clock, ChevronRight, Users, Zap, Wifi, WifiOff } from "lucide-react";
 import { useCricketMatches, type CricApiMatch } from "@/hooks/useCricketMatches";
 import { Skeleton } from "@/components/ui/skeleton";
