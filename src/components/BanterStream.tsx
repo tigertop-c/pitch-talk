@@ -547,29 +547,8 @@ const BanterStream = ({
       idRef.current += 1;
       const chatId = idRef.current;
       
-      const shouldReply = i === 1 && Math.random() < 0.3;
-      
       setTimeout(() => {
         setChats(prev => {
-          let replyData: ChatItem["replyTo"] | undefined;
-          if (shouldReply && prev.length > 0) {
-            const recentChats = prev.filter(c => !c.isSystem && c.user !== user.name).slice(-5);
-            if (recentChats.length > 0) {
-              const target = recentChats[Math.floor(Math.random() * recentChats.length)];
-              const replies = getSmartReplies(target.text, user.team || "DC", target.team);
-              replyData = { user: target.user, text: target.text };
-              return [...prev, {
-                id: chatId,
-                parentBallId: ballId,
-                user: user.name,
-                avatar: user.avatar,
-                text: replies[Math.floor(Math.random() * replies.length)],
-                timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-                replyTo: replyData,
-                team: user.team,
-              }];
-            }
-          }
           return [...prev, {
             id: chatId,
             parentBallId: ballId,
