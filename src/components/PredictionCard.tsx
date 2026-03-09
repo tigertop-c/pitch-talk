@@ -198,55 +198,112 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
           </motion.div>
         )}
 
-        {/* Prediction buttons */}
+        {/* Prediction buttons - biased sizing based on team context */}
         {(state === "idle" || state === "locked") && (
           <>
-            <div className="grid grid-cols-5 gap-1.5 mb-1.5">
-              {mainOutcomes.map((o) => {
-                const isSelected = selected === o.label;
-                return (
-                  <motion.button
-                    key={o.label}
-                    whileTap={{ scale: 0.92 }}
-                    onClick={() => handleClick(o.label)}
-                    disabled={state === "locked"}
-                    className={`flex flex-col items-center gap-0.5 py-2.5 px-1 rounded-xl text-[10px] font-semibold uppercase transition-all duration-200 ${
-                      isSelected
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-[1.02]"
-                        : state === "locked"
-                        ? "opacity-35 " + o.color
-                        : o.color + " active:bg-muted"
-                    }`}
-                  >
-                    <o.icon size={15} strokeWidth={1.8} />
-                    {o.label}
-                  </motion.button>
-                );
-              })}
-            </div>
-            <div className="flex gap-1.5 mb-2">
-              {secondaryOutcomes.map((o) => {
-                const isSelected = selected === o.label;
-                return (
-                  <motion.button
-                    key={o.label}
-                    whileTap={{ scale: 0.92 }}
-                    onClick={() => handleClick(o.label)}
-                    disabled={state === "locked"}
-                    className={`flex items-center gap-1 py-1.5 px-2.5 rounded-lg text-[9px] font-semibold uppercase transition-all duration-200 ${
-                      isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : state === "locked"
-                        ? "opacity-35 bg-secondary text-muted-foreground"
-                        : "bg-secondary/60 text-muted-foreground active:bg-muted"
-                    }`}
-                  >
-                    <o.icon size={10} />
-                    {o.label}
-                  </motion.button>
-                );
-              })}
-            </div>
+            {(() => {
+              // Batting bias: Boundary, Six, Single are "good" → larger. Dot, Wicket smaller.
+              // Bowling bias: Wicket, Dot are "good" → larger. Six, Boundary smaller.
+              // Wide/No Ball always favor batting (free runs).
+              const battingFavored = new Set(["Boundary", "Six", "Single"]);
+              const bowlingFavored = new Set(["Wicket", "Dot"]);
+
+              const getMainSize = (label: string): "lg" | "md" | "sm" => {
+                if (myTeamBatting === undefined) return "md";
+                if (myTeamBatting) {
+                  if (battingFavored.has(label)) return "lg";
+                  if (bowlingFavored.has(label)) return "sm";
+                  return "md";
+                } else {
+                  if (bowlingFavored.has(label)) return "lg";
+                  if (battingFavored.has(label)) return "sm";
+                  return "md";
+                }
+              };
+
+              const getSecSize = (label: string): "lg" | "md" | "sm" => {
+                if (myTeamBatting === undefined) return "md";
+                // Wide/No Ball = free runs (good for batting)
+                if (myTeamBatting && (label === "Wide" || label === "No Ball")) return "lg";
+                if (!myTeamBatting && (label === "Wide" || label === "No Ball")) return "sm";
+                return "md";
+              };
+
+              const mainSizeClasses: Record<string, string> = {
+                lg: "py-3 px-1.5 rounded-xl text-[11px]",
+                md: "py-2.5 px-1 rounded-xl text-[10px]",
+                sm: "py-2 px-1 rounded-xl text-[9px] opacity-80",
+              };
+
+              const mainIconSize: Record<string, number> = { lg: 17, md: 15, sm: 13 };
+
+              // Sort main outcomes: favored ones first for visual priority
+              const sortedMain = [...mainOutcomes].sort((a, b) => {
+                const sA = getMainSize(a.label);
+                const sB = getMainSize(b.label);
+                const order = { lg: 0, md: 1, sm: 2 };
+                return order[sA] - order[sB];
+              });
+
+              const secSizeClasses: Record<string, string> = {
+                lg: "py-2 px-3 rounded-lg text-[10px]",
+                md: "py-1.5 px-2.5 rounded-lg text-[9px]",
+                sm: "py-1 px-2 rounded-lg text-[8px] opacity-70",
+              };
+
+              return (
+                <>
+                  <div className="grid grid-cols-5 gap-1.5 mb-1.5">
+                    {sortedMain.map((o) => {
+                      const isSelected = selected === o.label;
+                      const size = getMainSize(o.label);
+                      return (
+                        <motion.button
+                          key={o.label}
+                          whileTap={{ scale: 0.92 }}
+                          onClick={() => handleClick(o.label)}
+                          disabled={state === "locked"}
+                          className={`flex flex-col items-center gap-0.5 font-semibold uppercase transition-all duration-200 ${mainSizeClasses[size]} ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-[1.02]"
+                              : state === "locked"
+                              ? "opacity-35 " + o.color
+                              : o.color + " active:bg-muted"
+                          }`}
+                        >
+                          <o.icon size={mainIconSize[size]} strokeWidth={1.8} />
+                          {o.label}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-1.5 mb-2">
+                    {secondaryOutcomes.map((o) => {
+                      const isSelected = selected === o.label;
+                      const size = getSecSize(o.label);
+                      return (
+                        <motion.button
+                          key={o.label}
+                          whileTap={{ scale: 0.92 }}
+                          onClick={() => handleClick(o.label)}
+                          disabled={state === "locked"}
+                          className={`flex items-center gap-1 font-semibold uppercase transition-all duration-200 ${secSizeClasses[size]} ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : state === "locked"
+                              ? "opacity-35 bg-secondary text-muted-foreground"
+                              : "bg-secondary/60 text-muted-foreground active:bg-muted"
+                          }`}
+                        >
+                          <o.icon size={size === "lg" ? 12 : 10} />
+                          {o.label}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
           </>
         )}
 
