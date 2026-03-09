@@ -705,11 +705,13 @@ const BanterStream = ({
       playBallActiveSound();
     }
 
-    // Sync ball state to multiplayer
-    onBallStateChange?.(
-      { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
-      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
-    );
+    // Sync ball state to multiplayer (host only)
+    if (isHost) {
+      onBallStateChange?.(
+        { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
+        { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+      );
+    }
 
     clearInterval(countdownRef.current);
     let count = LOCK_TIME;
