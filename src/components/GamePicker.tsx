@@ -59,38 +59,31 @@ function getTeamShort(name: string, shortname?: string): string {
   return name.slice(0, 3).toUpperCase();
 }
 
-const SIMULATION_MATCHES: UpcomingMatch[] = [
-  {
-    id: "sim-dc-mi",
-    team1: { name: "Delhi Capitals", short: "DC", logo: dcLogo },
-    team2: { name: "Mumbai Indians", short: "MI", logo: miLogo },
-    startTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
-    venue: "Arun Jaitley Stadium, Delhi",
-    matchNumber: 32,
-    liveRooms: 12,
-    isSimulation: true,
-  },
-  {
-    id: "sim-csk-rcb",
-    team1: { name: "Chennai Super Kings", short: "CSK", logo: cskLogo },
-    team2: { name: "Royal Challengers Bengaluru", short: "RCB", logo: rcbLogo },
-    startTime: new Date(Date.now() + 6 * 60 * 60 * 1000),
-    venue: "M.A. Chidambaram Stadium",
-    matchNumber: 33,
-    liveRooms: 5,
-    isSimulation: true,
-  },
-  {
-    id: "sim-kkr-srh",
-    team1: { name: "Kolkata Knight Riders", short: "KKR", logo: kkrLogo },
-    team2: { name: "Sunrisers Hyderabad", short: "SRH", logo: srhLogo },
-    startTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    venue: "Eden Gardens, Kolkata",
-    matchNumber: 34,
-    liveRooms: 0,
-    isSimulation: true,
-  },
+const ALL_IPL_TEAMS = [
+  { id: "CSK", name: "Chennai Super Kings", short: "CSK", logo: cskLogo },
+  { id: "DC", name: "Delhi Capitals", short: "DC", logo: dcLogo },
+  { id: "GT", name: "Gujarat Titans", short: "GT", logo: gtLogo },
+  { id: "KKR", name: "Kolkata Knight Riders", short: "KKR", logo: kkrLogo },
+  { id: "LSG", name: "Lucknow Super Giants", short: "LSG", logo: lsgLogo },
+  { id: "MI", name: "Mumbai Indians", short: "MI", logo: miLogo },
+  { id: "PBKS", name: "Punjab Kings", short: "PBKS", logo: pbksLogo },
+  { id: "RCB", name: "Royal Challengers Bengaluru", short: "RCB", logo: rcbLogo },
+  { id: "RR", name: "Rajasthan Royals", short: "RR", logo: rrLogo },
+  { id: "SRH", name: "Sunrisers Hyderabad", short: "SRH", logo: srhLogo },
 ];
+
+const VENUES: Record<string, string> = {
+  CSK: "M.A. Chidambaram Stadium, Chennai",
+  DC: "Arun Jaitley Stadium, Delhi",
+  GT: "Narendra Modi Stadium, Ahmedabad",
+  KKR: "Eden Gardens, Kolkata",
+  LSG: "Ekana Cricket Stadium, Lucknow",
+  MI: "Wankhede Stadium, Mumbai",
+  PBKS: "IS Bindra Stadium, Mohali",
+  RCB: "M. Chinnaswamy Stadium, Bengaluru",
+  RR: "Sawai Mansingh Stadium, Jaipur",
+  SRH: "Rajiv Gandhi Intl Stadium, Hyderabad",
+};
 
 function apiMatchToUpcoming(m: CricApiMatch, index: number): UpcomingMatch {
   const t1Info = m.teamInfo?.[0];
