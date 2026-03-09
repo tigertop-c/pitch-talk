@@ -89,10 +89,8 @@ interface GamePickerProps {
 }
 
 const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
-  const [mode, setMode] = useState<"live" | "simulation">("live");
   const [simTeam1, setSimTeam1] = useState<string | null>(null);
   const [simTeam2, setSimTeam2] = useState<string | null>(null);
-  const { matches, loading, error } = useCricketMatches();
 
   const liveMatches = matches.map((m, i) => apiMatchToUpcoming(m, i));
 
