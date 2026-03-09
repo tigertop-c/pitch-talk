@@ -704,6 +704,7 @@ const BanterStream = ({
       }
     }, 1000);
   }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
+  startNewBallRef.current = startNewBall;
 
   const handlePredict = useCallback((ballId: number, pick: string) => {
     setBalls(prev => prev.map(b =>
