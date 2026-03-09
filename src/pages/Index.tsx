@@ -11,7 +11,7 @@ import PreGameIntro from "@/components/PreGameIntro";
 import HypeOverlay from "@/components/HypeOverlay";
 import NameEntry from "@/components/NameEntry";
 import RoomLobby from "@/components/RoomLobby";
-import NonHostGameView from "@/components/NonHostGameView";
+
 import { useMatchState } from "@/hooks/useMatchState";
 import { useMultiplayer, type GameSnapshot } from "@/hooks/useMultiplayer";
 import { type PredictionRecord, type ReceiptData } from "@/components/ShareableReceipt";
