@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AI_PLAYERS } from "@/lib/aiPlayers";
 
 export interface MultiplayerPlayer {
   id: string;
