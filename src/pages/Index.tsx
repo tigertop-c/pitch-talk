@@ -16,6 +16,7 @@ import { useMultiplayer, type GameSnapshot } from "@/hooks/useMultiplayer";
 import { type PredictionRecord, type ReceiptData } from "@/components/ShareableReceipt";
 import { setSoundMuted } from "@/lib/sounds";
 import type { TeamId } from "@/components/ChatInput";
+import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
 
 const MAX_PLAYERS = 10;
 
