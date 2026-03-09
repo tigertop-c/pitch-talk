@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { isAiPlayer } from "@/lib/aiPlayers";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ThumbsUp, ThumbsDown } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
