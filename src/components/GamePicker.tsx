@@ -344,57 +344,15 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
           </div>
         )}
 
-        {/* ─── SIMULATION SECTION ─── */}
+        {/* ─── QUICK GAME SECTION ─── */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               <Zap size={10} className="inline mr-1 -mt-px" />
-              Simulate a Match
+              Quick Game (5 Overs)
             </span>
             <div className="flex-1 h-px bg-border" />
           </div>
-
-          {/* Matchup preview or prompt */}
-          {simTeam1 && simTeam2 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={spring}
-              className="ios-card p-5"
-            >
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium text-center mb-3">Your Matchup</p>
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex flex-col items-center gap-1.5">
-                  <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam1)!.logo} alt={simTeam1} className="w-16 h-16 object-contain" />
-                  <span className="text-[14px] font-bold text-foreground">{simTeam1}</span>
-                </div>
-                <span className="text-xl font-black text-muted-foreground/50">vs</span>
-                <div className="flex flex-col items-center gap-1.5">
-                  <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam2)!.logo} alt={simTeam2} className="w-16 h-16 object-contain" />
-                  <span className="text-[14px] font-bold text-foreground">{simTeam2}</span>
-                </div>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={handleStartSim}
-                className="w-full mt-4 py-3.5 rounded-2xl bg-primary text-primary-foreground text-[15px] font-bold shadow-lg shadow-primary/25 active:shadow-md flex items-center justify-center gap-2"
-              >
-                <Zap size={16} />
-                Start Simulation
-              </motion.button>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={spring}
-              className="ios-card p-4"
-            >
-              <p className="text-[13px] text-foreground font-semibold">
-                {!simTeam1 ? "Pick the first team" : "Now pick the opponent"}
-              </p>
-            </motion.div>
-          )}
 
           {/* Team grid */}
           <div className="grid grid-cols-5 gap-2">
@@ -434,8 +392,73 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
               Tap another team to set the opponent
             </motion.p>
           )}
+
+          {!simTeam1 && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center text-[11px] text-muted-foreground"
+            >
+              Pick two teams to start a quick 5-over game
+            </motion.p>
+          )}
+
+          {/* Matchup preview */}
+          {simTeam1 && simTeam2 && (
+            <motion.div
+              ref={matchupRef}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={spring}
+              className="ios-card p-4"
+            >
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium text-center mb-3">Your Matchup</p>
+              <div className="flex items-center justify-center gap-4">
+                <div className="flex flex-col items-center gap-1.5">
+                  <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam1)!.logo} alt={simTeam1} className="w-14 h-14 object-contain" />
+                  <span className="text-[13px] font-bold text-foreground">{simTeam1}</span>
+                </div>
+                <span className="text-lg font-black text-muted-foreground/50">vs</span>
+                <div className="flex flex-col items-center gap-1.5">
+                  <img src={ALL_IPL_TEAMS.find(t => t.id === simTeam2)!.logo} alt={simTeam2} className="w-14 h-14 object-contain" />
+                  <span className="text-[13px] font-bold text-foreground">{simTeam2}</span>
+                </div>
+              </div>
+
+              {/* Invite nudge */}
+              <div className="mt-3 p-2.5 rounded-xl bg-neon/5 border border-neon/15 text-center">
+                <p className="text-[11px] text-foreground font-medium">🏏 More fun with friends!</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Invite your squad after starting to predict together</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Extra bottom padding so content isn't hidden behind sticky button */}
+          {simTeam1 && simTeam2 && <div className="h-20" />}
         </div>
       </div>
+
+      {/* Sticky start button */}
+      <AnimatePresence>
+        {simTeam1 && simTeam2 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            className="sticky bottom-0 px-4 pb-5 pt-3 bg-gradient-to-t from-background via-background to-transparent"
+          >
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleStartSim}
+              className="w-full py-4 rounded-2xl bg-primary text-primary-foreground text-[15px] font-bold shadow-lg shadow-primary/25 active:shadow-md flex items-center justify-center gap-2"
+            >
+              <Zap size={16} />
+              Start {simTeam1} vs {simTeam2} Game
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
