@@ -799,6 +799,9 @@ const BanterStream = ({
     ? getSmartReplies(replyingTo.text, userTeam, replyingTo.team)
     : [];
 
+  // Check if any ball prediction is currently actionable (idle state)
+  const isPredictionActive = balls.some(b => b.predictionState === "idle" || b.predictionState === "locked");
+
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${shakeScreen ? "animate-shake" : ""}`}>
       <div className="relative flex-1 overflow-hidden">
@@ -849,7 +852,8 @@ const BanterStream = ({
                 const isCommentaryGuess = c.isCommentaryGuess && c.commentaryGuessData;
 
                 // Commentary guess card
-                if (isCommentaryGuess && c.commentaryGuessData) {
+                // Hide commentary guess card when prediction is active
+                if (isCommentaryGuess && c.commentaryGuessData && !isPredictionActive) {
                   const gd = c.commentaryGuessData;
                   return (
                     <motion.div
@@ -916,7 +920,7 @@ const BanterStream = ({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ ...spring }}
-                    className="px-5 py-1 group"
+                    className={`px-5 py-1 group transition-opacity duration-300 ${isPredictionActive ? "opacity-40" : "opacity-100"}`}
                   >
                     <div className="flex items-start gap-2.5">
                       <div className={`w-7 h-7 flex items-center justify-center rounded-full text-[11px] flex-shrink-0 ${
