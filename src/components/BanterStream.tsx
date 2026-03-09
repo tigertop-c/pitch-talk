@@ -46,6 +46,10 @@ export interface FriendDef {
 
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
 
+const RESULT_RUNS: Record<string, number> = {
+  dot: 0, single: 1, double: 2, triple: 3, four: 4, six: 6, wicket: 0, wide: 1, noball: 1,
+};
+
 // Friendly squad reactions (not toxic banter)
 const SQUAD_REACTIONS: Record<string, string[]> = {
   dot: ["Dot ball! Keep it tight 🎯", "Pressure building! 🔒", "Nothing doing there 🏏", "Good bowling, tough to score 💪"],
