@@ -103,7 +103,8 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
             <div className="text-[9px] text-muted-foreground uppercase tracking-wide">CRR</div>
             <div className="text-base font-bold text-primary leading-tight">{crr}</div>
           </div>
-          {isChasing && rrr && (
+          {/* RRR only shown in second innings chase */}
+          {isChasing && rrr && remainingRuns !== null && remainingRuns > 0 && (
             <div className="text-right">
               <div className="text-[9px] text-muted-foreground uppercase tracking-wide">RRR</div>
               <div className="text-base font-bold text-destructive leading-tight">{rrr}</div>

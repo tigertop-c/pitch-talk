@@ -13,4 +13,4 @@ export const checkPickWon = (pick: string | null, result: string): boolean => {
   );
 };
 
-export const LOCK_TIME = 15; // seconds — real T20 bowlers take ~40s between balls; 15s prediction + 2s lock + 1.5s pending + ~3s messages + ~18s wait ≈ 40s
+export const LOCK_TIME = 10; // seconds — 30% faster: ~28s total cycle vs ~40s real T20 pace
