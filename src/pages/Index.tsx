@@ -386,6 +386,10 @@ const Index = () => {
           {isGameActive && (
             <>
               <LiveHeader match={match} crr={crr} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={selectedMatch?.team1.short || "DC"} isChasing={match.target !== null} />
+              <SquadStandingsBar
+                entries={squadEntries}
+                onOpenLeaderboard={() => setActiveTab("leaderboard")}
+              />
               {activeTab === "arena" ? (
                 <>
                   {showGameBoard && (
