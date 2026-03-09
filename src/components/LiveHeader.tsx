@@ -112,11 +112,17 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
         </div>
       </div>
 
-      {/* Row 3: Target info - only show during chase */}
+      {/* Row 3: Target info - only show during second innings (chase) */}
       {isChasing && match.target && remainingRuns !== null && remainingRuns > 0 && (
         <div className="mt-1 text-[11px] text-muted-foreground">
           Need <span className="text-foreground font-semibold">{remainingRuns}</span> off{" "}
           <span className="text-foreground font-semibold">{Math.ceil(remainingOvers * 6)}</span> balls
+        </div>
+      )}
+      {/* First innings indicator */}
+      {!isChasing && (
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          1st Innings • Setting target
         </div>
       )}
 
