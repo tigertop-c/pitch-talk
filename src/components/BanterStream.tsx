@@ -184,7 +184,7 @@ function getCommentaryOptions(correct: CommentaryStyle): string[] {
   return options.sort(() => Math.random() - 0.5);
 }
 
-const LOCK_TIME = 10;
+const LOCK_TIME = 15; // 15s prediction window — real T20 pace ~40s/ball
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 interface BanterStreamProps {
@@ -645,7 +645,7 @@ const BanterStream = ({
       setWaitingForNext(false); 
       isOverBreak.current = false;
       startNewBall(); 
-    }, numMessages * 800 + 11000); // 25s total cycle: 10s lock + 1.5s pending + 2.5s messages + 11s wait
+    }, numMessages * 800 + 18000); // ~40s total: 15s lock + 1.5s pending + ~3s messages + 18s wait ≈ real T20 pace
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls]);
 
   const startNewBall = useCallback(() => {
