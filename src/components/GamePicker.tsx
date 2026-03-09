@@ -513,5 +513,6 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
       </div>
     </div>
   );
+};
 
 export default GamePicker;
