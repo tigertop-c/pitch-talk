@@ -922,6 +922,9 @@ const BanterStream = ({
   };
 
 
+  // Determine if user's team is batting
+  const myTeamBatting = battingTeamShort ? userTeam === battingTeamShort : undefined;
+
   // Check if any ball prediction is currently actionable (idle state)
   const isPredictionActive = balls.some(b => b.predictionState === "idle" || b.predictionState === "locked");
 
