@@ -95,15 +95,12 @@ const Index = () => {
     setProfileLoaded(true);
   }, []);
 
-  // For solo/host mode, use simulated friends from multiplayer players
+  // For solo/host mode, use other players from multiplayer (includes AI bots)
   const activeFriends: FriendDef[] = useMemo(() => {
-    if (mp.roomId && mp.players.length > 1) {
-      return mp.players
-        .filter(p => p.name !== playerName)
-        .map(p => ({ name: p.name, avatar: p.avatar, team: (p.teamPicked as TeamId) || "DC" }));
-    }
-    return [];
-  }, [mp.roomId, mp.players, playerName]);
+    return mp.players
+      .filter(p => p.name !== playerName)
+      .map(p => ({ name: p.name, avatar: p.avatar, team: (p.teamPicked as TeamId) || "DC" }));
+  }, [mp.players, playerName]);
 
   const [friendScores, setFriendScores] = useState<Record<string, { wins: number; total: number; streak: number; bestStreak: number }>>({});
 
