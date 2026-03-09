@@ -695,7 +695,7 @@ const BanterStream = ({
         setTimeout(() => resolveBall(ballId), 1500);
       }
     }, 1000);
-  }, [addFriendPicks, resolveBall, scrollToBottom]);
+  }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
 
   const handlePredict = useCallback((ballId: number, pick: string) => {
     setBalls(prev => prev.map(b =>
