@@ -456,6 +456,7 @@ const Index = () => {
                     gameSnapshot={mp.gameSnapshot}
                     onInningsComplete={handleInningsComplete}
                     battingTeamShort={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")}
+                    onAiPick={(ballId, pick, name) => mp.submitPick(ballId, pick, name)}
                   />
                 </>
               ) : activeTab === "receipts" ? (
