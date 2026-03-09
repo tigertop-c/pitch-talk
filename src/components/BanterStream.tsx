@@ -236,13 +236,14 @@ interface BanterStreamProps {
   gameSnapshot?: GameSnapshot | null;
   onInningsComplete?: () => void;
   battingTeamShort?: string;
+  onAiPick?: (ballId: number, pick: string, playerName: string) => void;
 }
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
-  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort,
+  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, onAiPick,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
