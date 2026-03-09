@@ -83,41 +83,6 @@ const VENUES: Record<string, string> = {
   SRH: "Rajiv Gandhi Intl Stadium, Hyderabad",
 };
 
-function apiMatchToUpcoming(m: CricApiMatch, index: number): UpcomingMatch {
-  const t1Info = m.teamInfo?.[0];
-  const t2Info = m.teamInfo?.[1];
-  const team1Name = t1Info?.name || m.teams?.[0] || "Team A";
-  const team2Name = t2Info?.name || m.teams?.[1] || "Team B";
-
-  return {
-    id: m.id,
-    team1: {
-      name: team1Name,
-      short: getTeamShort(team1Name, t1Info?.shortname),
-      logo: getTeamLogo(team1Name, t1Info?.shortname, t1Info?.img),
-    },
-    team2: {
-      name: team2Name,
-      short: getTeamShort(team2Name, t2Info?.shortname),
-      logo: getTeamLogo(team2Name, t2Info?.shortname, t2Info?.img),
-    },
-    startTime: new Date(m.dateTimeGMT),
-    venue: m.venue || "TBD",
-    matchNumber: index + 1,
-    liveRooms: m.matchStarted && !m.matchEnded ? Math.floor(Math.random() * 20) + 3 : 0,
-    isSimulation: false,
-    status: m.status,
-  };
-}
-
-function formatTimeUntil(date: Date): string {
-  const diff = date.getTime() - Date.now();
-  if (diff <= 0) return "LIVE NOW";
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
-}
 
 interface GamePickerProps {
   onSelectMatch: (match: UpcomingMatch) => void;
