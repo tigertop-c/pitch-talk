@@ -952,12 +952,12 @@ const BanterStream = ({
 
               if (item.type === "ball-divider" && item.dividerLabel) {
                 return (
-                  <div key={`divider-${item.dividerLabel}`} className="flex items-center gap-2 px-5 pt-2 pb-0.5">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <div key={`divider-${item.dividerLabel}`} className="flex items-center gap-2 px-4 pt-1.5 pb-0.5">
+                    <div className="h-px flex-1 bg-border/50" />
+                    <span className="text-[8px] font-semibold text-muted-foreground uppercase tracking-wider">
                       {item.dividerLabel}
                     </span>
-                    <div className="h-px flex-1 bg-border" />
+                    <div className="h-px flex-1 bg-border/50" />
                   </div>
                 );
               }
