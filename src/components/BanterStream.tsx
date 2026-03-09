@@ -661,14 +661,10 @@ const BanterStream = ({
       }
     }
 
-    // Add commentary for key moments with guess-the-style game
+    // Add commentary for key moments with guess-the-style game (merged into single system message)
     const commentaryPool = COMMENTARY_LINES[event.result];
-    if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5) || (event.result === "dot" && Math.random() < 0.15))) {
+    if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5))) {
       const line = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
-      idRef.current += 1;
-      const commentaryId = idRef.current;
-      
-      // Create the guess card
       idRef.current += 1;
       const guessId = idRef.current;
       const options = getCommentaryOptions(line.style);
@@ -677,20 +673,11 @@ const BanterStream = ({
         setChats(prev => [
           ...prev,
           {
-            id: commentaryId,
-            parentBallId: ballId,
-            user: "Commentary Box",
-            avatar: "🎙️",
-            text: line.text,
-            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-            isSystem: true,
-          },
-          {
             id: guessId,
             parentBallId: ballId,
-            user: "Commentary Box",
+            user: "Commentary",
             avatar: "🎙️",
-            text: "Guess the commentary style!",
+            text: line.text,
             timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
             isSystem: true,
             isCommentaryGuess: true,
@@ -704,7 +691,7 @@ const BanterStream = ({
           },
         ]);
         scrollToBottom();
-      }, numMessages * 800 + 600);
+      }, numMessages * 600 + 400);
     }
 
     // Set contextual waiting message
