@@ -672,6 +672,11 @@ const BanterStream = ({
     scrollToBottom();
     addFriendPicks(ballId);
 
+    // Sound: new prediction is active
+    if (!isSoundMuted()) {
+      playBallActiveSound();
+    }
+
     // Sync ball state to multiplayer
     onBallStateChange?.(
       { id: ballId, label, state: "idle", openedAt: Date.now(), result: null },
