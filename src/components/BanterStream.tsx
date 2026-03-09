@@ -184,7 +184,7 @@ function getCommentaryOptions(correct: CommentaryStyle): string[] {
   return options.sort(() => Math.random() - 0.5);
 }
 
-const LOCK_TIME = 10;
+const LOCK_TIME = 15; // 15s prediction window — real T20 pace ~40s/ball
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 interface BanterStreamProps {
