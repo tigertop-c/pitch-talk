@@ -973,8 +973,7 @@ const BanterStream = ({
                 const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
                 const isCommentaryGuess = c.isCommentaryGuess && c.commentaryGuessData;
 
-                // Commentary guess card
-                // Hide commentary guess card when prediction is active
+                // Commentary guess card - compact combined view with text + guess
                 if (isCommentaryGuess && c.commentaryGuessData && !isPredictionActive) {
                   const gd = c.commentaryGuessData;
                   return (
@@ -983,18 +982,22 @@ const BanterStream = ({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ ...spring }}
-                      className="px-5 py-1.5"
+                      className="px-4 py-1.5"
                     >
-                      <div className="ml-9 p-2.5 rounded-xl bg-primary/5 border border-primary/10">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[11px] font-semibold text-primary">🎙️ Guess the style!</span>
+                      <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                        {/* Commentary text */}
+                        <p className="text-[12px] text-foreground leading-relaxed mb-2">{c.text}</p>
+                        
+                        {/* Guess section */}
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-[10px] font-semibold text-primary">Guess the style</span>
                           {commentaryScore.total > 0 && (
-                            <span className="text-[10px] text-muted-foreground font-medium">
-                              {commentaryScore.correct}/{commentaryScore.total} correct
+                            <span className="text-[9px] text-muted-foreground">
+                              {commentaryScore.correct}/{commentaryScore.total}
                             </span>
                           )}
                         </div>
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1">
                           {gd.options.map(opt => {
                             const isSelected = gd.selectedOption === opt;
                             const isCorrectAnswer = gd.answered && opt === STYLE_LABELS[gd.correctStyle as CommentaryStyle];
@@ -1004,31 +1007,25 @@ const BanterStream = ({
                                 whileTap={gd.answered ? {} : { scale: 0.95 }}
                                 onClick={() => !gd.answered && handleCommentaryGuess(c.id, opt)}
                                 disabled={gd.answered}
-                                className={`flex-1 py-2 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+                                className={`flex-1 py-1.5 px-1.5 rounded-lg text-[10px] font-semibold transition-all ${
                                   gd.answered
                                     ? isCorrectAnswer
-                                      ? "bg-neon/15 text-neon ring-1 ring-neon/30"
+                                      ? "bg-neon/15 text-neon"
                                       : isSelected && !gd.wasCorrect
-                                      ? "bg-destructive/10 text-destructive ring-1 ring-destructive/30"
-                                      : "bg-secondary/50 text-muted-foreground opacity-50"
+                                      ? "bg-destructive/10 text-destructive"
+                                      : "bg-secondary/50 text-muted-foreground opacity-40"
                                     : "bg-secondary text-foreground active:bg-muted"
                                 }`}
                               >
-                                {opt}
-                                {gd.answered && isCorrectAnswer && " ✅"}
-                                {gd.answered && isSelected && !gd.wasCorrect && " ❌"}
+                                {opt.replace(" 🫖", "").replace(" 🦘", "").replace(" 🌴", "").replace(" 🇮🇳", "")}
                               </motion.button>
                             );
                           })}
                         </div>
                         {gd.answered && (
-                          <motion.p
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className={`text-[10px] mt-1.5 font-medium ${gd.wasCorrect ? "text-neon" : "text-muted-foreground"}`}
-                          >
-                            {gd.wasCorrect ? "🎯 Nice ear! You know your commentary!" : `It was ${STYLE_LABELS[gd.correctStyle as CommentaryStyle]} style!`}
-                          </motion.p>
+                          <p className={`text-[9px] mt-1 font-medium ${gd.wasCorrect ? "text-neon" : "text-muted-foreground"}`}>
+                            {gd.wasCorrect ? "🎯 Correct!" : `It was ${STYLE_LABELS[gd.correctStyle as CommentaryStyle].split(" ")[0]}`}
+                          </p>
                         )}
                       </div>
                     </motion.div>
