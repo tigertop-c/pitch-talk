@@ -688,7 +688,7 @@ const BanterStream = ({
       setWaitingMessage({ emoji: msgPool.emoji, text: pickedMsg });
       setWaitingForNext(true); 
       scrollToBottom(); 
-    }, numMessages * 800 + 1500);
+    }, numMessages * 600 + 1000);
     setTimeout(() => { 
       setWaitingForNext(false); 
       isOverBreak.current = false;
@@ -696,7 +696,7 @@ const BanterStream = ({
         startNewBallRef.current(); 
       }
       // Non-host: next ball triggered by snapshot watcher
-    }, numMessages * 800 + 18000); // ~40s total: 15s lock + 1.5s pending + ~3s messages + 18s wait ≈ real T20 pace
+    }, numMessages * 600 + WAIT_AFTER_BALL); // ~28s total cycle: 10s lock + 1.5s pending + ~2s messages + 12s wait
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls, isHost]);
   resolveBallRef.current = resolveBall;
 
