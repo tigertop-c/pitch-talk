@@ -803,9 +803,6 @@ const BanterStream = ({
     balls: match.balls,
   };
 
-  const replySuggestions = replyingTo
-    ? getSmartReplies(replyingTo.text, userTeam, replyingTo.team)
-    : [];
 
   // Check if any ball prediction is currently actionable (idle state)
   const isPredictionActive = balls.some(b => b.predictionState === "idle" || b.predictionState === "locked");
