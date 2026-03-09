@@ -5,6 +5,26 @@ export const setSoundMuted = (m: boolean) => { _muted = m; };
 
 const audioCtx = () => new (window.AudioContext || (window as any).webkitAudioContext)();
 
+export const playBallActiveSound = () => {
+  if (_muted) return;
+  try {
+    const ctx = audioCtx();
+    const notes = [587.33, 739.99, 880]; // D5, F#5, A5 ascending chime
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.3);
+      osc.start(ctx.currentTime + i * 0.12);
+      osc.stop(ctx.currentTime + i * 0.12 + 0.3);
+    });
+  } catch (e) {}
+};
+
 export const playWinSound = () => {
   if (_muted) return;
   try {
@@ -83,5 +103,22 @@ export const playClickSound = () => {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.08);
+  } catch (e) {}
+};
+
+export const playHypeHorn = () => {
+  if (_muted) return;
+  try {
+    const horn = new Audio("/sounds/ipl_horn.mp3");
+    horn.volume = 0.6;
+    horn.play();
+    setTimeout(() => {
+      let step = 0;
+      const interval = setInterval(() => {
+        step++;
+        horn.volume = Math.max(0, 0.6 * (1 - step / 30));
+        if (step >= 30) { clearInterval(interval); horn.pause(); horn.currentTime = 0; }
+      }, 100);
+    }, 3000);
   } catch (e) {}
 };
