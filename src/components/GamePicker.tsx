@@ -217,8 +217,16 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
   const [simTeam1, setSimTeam1] = useState<string | null>(null);
   const [simTeam2, setSimTeam2] = useState<string | null>(null);
   const { matches, loading, error } = useCricketMatches();
+  const matchupRef = useRef<HTMLDivElement>(null);
 
   const liveMatches = matches.map((m, i) => apiMatchToUpcoming(m, i));
+
+  // Auto-scroll to matchup preview when both teams are selected
+  useEffect(() => {
+    if (simTeam1 && simTeam2 && matchupRef.current) {
+      matchupRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [simTeam1, simTeam2]);
 
   const handleSimTeamPick = (teamId: string) => {
     if (!simTeam1) {
