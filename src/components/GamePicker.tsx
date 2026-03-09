@@ -92,7 +92,7 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
   const [simTeam1, setSimTeam1] = useState<string | null>(null);
   const [simTeam2, setSimTeam2] = useState<string | null>(null);
 
-  const liveMatches = matches.map((m, i) => apiMatchToUpcoming(m, i));
+  
 
   const handleSimTeamPick = (teamId: string) => {
     if (!simTeam1) {
