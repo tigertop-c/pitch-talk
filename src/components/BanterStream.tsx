@@ -6,6 +6,7 @@ import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
 import ChatInput, { type TeamId, type UserChatStyle } from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
+import { type GameSnapshot } from "@/hooks/useMultiplayer";
 import { playBallActiveSound, isSoundMuted } from "@/lib/sounds";
 
 interface BallBlock {
