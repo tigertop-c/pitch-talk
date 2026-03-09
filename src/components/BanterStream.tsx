@@ -832,16 +832,6 @@ const BanterStream = ({
   }, [onToggleSound]);
 
   useEffect(() => {
-    idRef.current += 1;
-    setChats([{
-      id: idRef.current,
-      parentBallId: 0,
-      user: "Pitch Talk",
-      avatar: "🏏",
-      text: "SOUND_TOGGLE",
-      timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
-      isSystem: true,
-    }]);
     if (isHost) {
       startNewBall();
     }
