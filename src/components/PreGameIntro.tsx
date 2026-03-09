@@ -159,7 +159,8 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   };
 
   const handleStartSimulation = () => {
-    if (!userTeam) return;
+    const team = userTeam || (team1.short as TeamId);
+    setUserTeam(team);
     setStage("starting");
     setCountdown(5);
   };
