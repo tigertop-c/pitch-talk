@@ -646,7 +646,7 @@ const BanterStream = ({
       isOverBreak.current = false;
       startNewBall(); 
     }, numMessages * 800 + 11000); // 25s total cycle: 10s lock + 1.5s pending + 2.5s messages + 11s wait
-  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom]);
+  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls]);
 
   const startNewBall = useCallback(() => {
     idRef.current += 1;
