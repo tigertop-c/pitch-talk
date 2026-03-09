@@ -952,13 +952,6 @@ const BanterStream = ({
                             {c.timestamp}
                           </span>
                         </div>
-                        {c.replyTo && (
-                          <div className="mt-0.5 mb-0.5 pl-2 border-l-2 border-primary/30">
-                            <p className="text-[10px] text-muted-foreground truncate">
-                              <span className="font-semibold">{c.replyTo.user}:</span> {c.replyTo.text}
-                            </p>
-                          </div>
-                        )}
                         {isSoundToggle ? (
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-[12px] text-muted-foreground italic">
@@ -977,13 +970,30 @@ const BanterStream = ({
                           }`}>{c.text}</p>
                         )}
                         {!isSystem && !isYou && (
-                          <button
-                            onClick={() => handleReply(c)}
-                            className="mt-0.5 flex items-center gap-0.5 text-[10px] text-muted-foreground active:text-primary transition-all"
-                          >
-                            <Reply size={10} />
-                            Reply
-                          </button>
+                          <div className="mt-1 flex items-center gap-2">
+                            <button
+                              onClick={() => handleReaction(c.id, "up")}
+                              className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-all active:scale-95 ${
+                                chatReactions[c.id]?.myVote === "up"
+                                  ? "bg-primary/15 text-primary font-semibold"
+                                  : "text-muted-foreground hover:bg-secondary"
+                              }`}
+                            >
+                              <ThumbsUp size={10} />
+                              {(chatReactions[c.id]?.up || 0) > 0 && <span>{chatReactions[c.id].up}</span>}
+                            </button>
+                            <button
+                              onClick={() => handleReaction(c.id, "down")}
+                              className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-all active:scale-95 ${
+                                chatReactions[c.id]?.myVote === "down"
+                                  ? "bg-destructive/15 text-destructive font-semibold"
+                                  : "text-muted-foreground hover:bg-secondary"
+                              }`}
+                            >
+                              <ThumbsDown size={10} />
+                              {(chatReactions[c.id]?.down || 0) > 0 && <span>{chatReactions[c.id].down}</span>}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
