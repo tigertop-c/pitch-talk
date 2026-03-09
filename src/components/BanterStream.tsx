@@ -747,7 +747,10 @@ const BanterStream = ({
       setBalls(prev => prev.map(b =>
         b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
       ));
-      setTimeout(() => resolveBallRef.current(ballId), 1500);
+      if (isHost) {
+        setTimeout(() => resolveBallRef.current(ballId), 1500);
+      }
+      // Non-host: resolution comes from snapshot
     }, 2000);
   }, [resolveBall]);
 
