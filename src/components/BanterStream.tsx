@@ -410,8 +410,10 @@ const BanterStream = ({
       // Host: generate locally
       event = onNextBall();
     }
-    ballCountRef.current += 1;
     const isLegal = event.result !== "wide" && event.result !== "noball";
+    if (isLegal) {
+      ballCountRef.current += 1;
+    }
 
     setLastBallResult(event.result);
 
