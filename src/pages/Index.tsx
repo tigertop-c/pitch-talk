@@ -12,11 +12,15 @@ import PreGameIntro from "@/components/PreGameIntro";
 import HypeOverlay from "@/components/HypeOverlay";
 import NameEntry from "@/components/NameEntry";
 import { useMatchState } from "@/hooks/useMatchState";
+import { useLiveMatchState } from "@/hooks/useLiveMatchState";
 import { useMultiplayer, type GameSnapshot } from "@/hooks/useMultiplayer";
 import { type PredictionRecord, type ReceiptData } from "@/components/ShareableReceipt";
 import { setSoundMuted } from "@/lib/sounds";
 import type { TeamId } from "@/components/ChatInput";
 import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
+
+// When VITE_USE_MOCK_DATA=true, all matches run as simulations (no real API polling).
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
 
 const MAX_PLAYERS = 10;
 
@@ -35,7 +39,12 @@ const Index = () => {
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
   const [mutedHypeTypes, setMutedHypeTypes] = useState<Set<string>>(new Set());
   const [showGameBoard, setShowGameBoard] = useState(true);
-  const { match, nextBall, crr, startSecondInnings } = useMatchState();
+  // Always call both hooks (rules of hooks — no conditional calls).
+  // We pick which result to expose based on whether the selected match is real.
+  const sim = useMatchState();
+  const isRealMatch = !!(selectedMatch && !selectedMatch.isSimulation && !USE_MOCK);
+  const live = useLiveMatchState(isRealMatch ? selectedMatch.id : null);
+  const { match, nextBall, crr, startSecondInnings } = isRealMatch ? live : sim;
 
   const [playerName, setPlayerName] = useState("");
   const [playerAvatar, setPlayerAvatar] = useState("🏏");

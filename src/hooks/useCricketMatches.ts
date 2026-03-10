@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { MOCK_API_RESPONSE } from "@/test/fixtures/mockMatches";
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
 
 export interface CricApiMatch {
   id: string;
@@ -59,19 +62,26 @@ export function useCricketMatches() {
         setLoading(true);
         setError(null);
 
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const fnUrl = `https://${projectId}.supabase.co/functions/v1/cricket-matches?endpoint=matches&offset=0`;
+        let response: CricApiResponse;
 
-        const res = await fetch(fnUrl, {
-          headers: {
-            "apikey": anonKey,
-            "Content-Type": "application/json",
-          },
-        });
+        if (USE_MOCK) {
+          // Use local fixture data — no network call needed
+          response = MOCK_API_RESPONSE;
+        } else {
+          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+          const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          const fnUrl = `https://${projectId}.supabase.co/functions/v1/cricket-matches?endpoint=matches&offset=0`;
 
-        if (!res.ok) throw new Error(`Function error: ${res.status}`);
-        const response = (await res.json()) as CricApiResponse;
+          const res = await fetch(fnUrl, {
+            headers: {
+              "apikey": anonKey,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!res.ok) throw new Error(`Function error: ${res.status}`);
+          response = (await res.json()) as CricApiResponse;
+        }
 
         if (response.status !== "success") {
           throw new Error("API returned non-success status");

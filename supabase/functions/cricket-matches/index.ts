@@ -24,9 +24,16 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const endpoint = url.searchParams.get("endpoint") || "matches";
-    const offset = url.searchParams.get("offset") || "0";
 
-    const apiUrl = `${CRIC_API_BASE}/${endpoint}?apikey=${apiKey}&offset=${offset}`;
+    // Forward all query params (except 'endpoint') to CricAPI so callers
+    // can pass id=, offset=, etc. without the edge function needing to know about them.
+    const forwardedParams = new URLSearchParams();
+    forwardedParams.set("apikey", apiKey!);
+    url.searchParams.forEach((val, key) => {
+      if (key !== "endpoint") forwardedParams.set(key, val);
+    });
+
+    const apiUrl = `${CRIC_API_BASE}/${endpoint}?${forwardedParams.toString()}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
 
