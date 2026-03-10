@@ -270,6 +270,13 @@ export function useMultiplayer() {
     return [];
   }, [roomId]);
 
+  const removeAIPlayers = useCallback(async () => {
+    if (!roomId || !isHost) return;
+    const aiNames = AI_PLAYERS.map(a => a.name);
+    await supabase.from("room_players").delete().eq("room_id", roomId).in("player_name", aiNames);
+    await fetchPlayers(roomId);
+  }, [roomId, isHost]);
+
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
@@ -279,6 +286,6 @@ export function useMultiplayer() {
     currentPredictions, isLoading, error,
     createRoom, joinRoom, updateGameSnapshot, submitPick,
     updateMyScore, updateMyTeam, startGame, fetchPredictionsForBall,
-    setError,
+    setError, removeAIPlayers,
   };
 }
