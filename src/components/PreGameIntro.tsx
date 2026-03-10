@@ -54,12 +54,7 @@ const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
-const BOT_SQUAD = [
-  { name: "Virat_Fan99", avatar: "🔥" },
-  { name: "DhoniFTW", avatar: "💛" },
-  { name: "BumrahArmy", avatar: "🎯" },
-  { name: "SixerKing", avatar: "💥" },
-];
+// AI players are now sourced from @/lib/aiPlayers
 
 function useCountdown(targetDate: Date) {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, targetDate.getTime() - Date.now()));
