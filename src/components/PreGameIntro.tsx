@@ -36,7 +36,7 @@ interface MultiplayerPlayer {
 }
 
 interface PreGameIntroProps {
-  onStart: (team: TeamId) => void;
+  onStart: (team: TeamId, overs: number) => void;
   matchStartTime: Date;
   team1: { name: string; short: string };
   team2: { name: string; short: string };
@@ -78,6 +78,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [tossResult, setTossResult] = useState<string | null>(null);
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const [selectedOvers, setSelectedOvers] = useState(2);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -131,10 +132,10 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0 && userTeam) {
-      const t = setTimeout(() => onStart(userTeam), 400);
+      const t = setTimeout(() => onStart(userTeam, selectedOvers), 400);
       return () => clearTimeout(t);
     }
-  }, [stage, countdown, onStart, userTeam]);
+  }, [stage, countdown, onStart, userTeam, selectedOvers]);
 
   useEffect(() => {
     if (stage === "starting") {
@@ -192,26 +193,25 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
               className="flex items-center justify-center gap-2 mb-3"
             >
               <Zap size={24} className="text-primary" />
-              <span className="text-2xl font-black tracking-tight text-foreground">Simulation Mode</span>
+              <span className="text-2xl font-black tracking-tight text-foreground">Practice Match</span>
             </motion.div>
             <motion.p
               initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...spring, delay: 0.3 }}
               className="text-sm text-muted-foreground"
             >
-              IPL 2025 • 5-Over Match
+              IPL 2025 • {team1.short} vs {team2.short} • Not a real match
             </motion.p>
           </motion.div>
 
-          {/* How simulation works */}
+          {/* How it works */}
           <motion.div
             initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.4 }}
             className="ios-card p-4 space-y-2"
           >
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">⚡ How Simulation Works</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">⚡ How It Works</p>
             <div className="space-y-1.5">
               {[
                 { emoji: "🎲", text: "Every delivery is randomly generated — no scripted outcomes" },
-                { emoji: "🏏", text: "5 overs, 30 deliveries — quick-fire cricket action" },
                 { emoji: "🎯", text: "Predict each ball before it's bowled — Dot, Boundary, Six, Wicket & more" },
                 { emoji: "🤖", text: "Play with friends or AI opponents who predict alongside you" },
               ].map((item, i) => (
@@ -312,38 +312,55 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                   <p className="text-[10px] text-muted-foreground text-center">
                     {hasAiPlayers ? "AI players fill the gaps — or invite friends!" : "Invite friends to join your room!"}
                   </p>
+                  {/* Room code inline — compact, de-emphasised */}
+                  <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-muted-foreground">Room:</span>
+                    <span className="text-[10px] font-bold tracking-widest text-foreground/60">{roomId}</span>
+                    <button
+                      onClick={handleInviteWhatsApp}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:scale-95 transition-transform ml-1"
+                    >
+                      <MessageCircle size={9} />
+                      Share
+                    </button>
+                  </div>
                 </motion.div>
 
-                {/* Room code */}
-                <div className="ios-card p-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-medium">Room Code</p>
-                    <p className="text-lg font-black tracking-[0.15em] text-foreground">{roomId}</p>
-                  </div>
-                  <button
-                    onClick={handleInviteWhatsApp}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-semibold bg-[hsl(142,70%,45%,0.12)] text-[hsl(142,70%,35%)] active:scale-95 transition-transform"
-                  >
-                    <MessageCircle size={14} />
-                    Share
-                  </button>
-                </div>
-
-                {/* Start simulation button — always visible */}
+                {/* Overs picker + Start button */}
                 <motion.div
                   initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.2 }}
-                  className="pt-1"
+                  className="ios-card p-4 space-y-3"
                 >
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">⏱ How many overs?</p>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <motion.button
+                          key={n}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setSelectedOvers(n)}
+                          className={`flex-1 py-2 rounded-xl text-[13px] font-bold transition-all duration-150 ${
+                            selectedOvers === n
+                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                              : "bg-secondary text-foreground active:bg-muted"
+                          }`}
+                        >
+                          {n}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
                   <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={handleStartSimulation}
                     className="w-full py-4 rounded-2xl bg-primary text-primary-foreground text-[16px] font-bold shadow-lg shadow-primary/25 active:bg-primary/90 transition-all flex items-center justify-center gap-2"
                   >
                     <Play size={18} />
-                    Start 5-Over Simulation
+                    Start {selectedOvers}-Over Game
                   </motion.button>
                   {!userTeam && (
-                    <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                    <p className="text-[10px] text-muted-foreground text-center -mt-1">
                       Pick a team above, or we'll default to {team1.short} 🏏
                     </p>
                   )}
@@ -377,7 +394,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                   {countdown > 0 ? countdown : "GO!"}
                 </motion.div>
                 <p className="text-[13px] text-muted-foreground font-medium">
-                  5 overs of pure prediction chaos 🎲
+                  {selectedOvers} {selectedOvers === 1 ? "over" : "overs"} of pure prediction chaos 🎲
                 </p>
               </motion.div>
             )}

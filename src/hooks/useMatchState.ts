@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { TEAM_ROSTERS } from "../data/iplRosters";
 
 export interface BallEvent {
   over: number;
@@ -30,24 +31,20 @@ export interface MatchState {
   firstInningsScore: number | null;
 }
 
-const MAX_OVERS = 5;
 const MAX_WICKETS = 10;
 
-const BOWLERS_1 = ["Bumrah", "Archer", "Boult", "Nortje", "Kuldeep"];
-const BOWLERS_2 = ["Starc", "Rabada", "Rashid", "Shami", "Chahal"];
-const BATSMEN_POOL_1 = ["Shaw", "Pant", "Warner", "Marsh", "Axar", "Powell", "Stubbs", "Agarwal", "Salt", "Hope", "Fraser-McGurk"];
-const BATSMEN_POOL_2 = ["Rohit", "Ishan", "SKY", "Hardik", "Tim David", "Brevis", "Tilak", "Nehal", "Jofra", "Coetzee", "Kumar"];
-
+// Weights tuned for T20 powerplay-style scoring: ~8–10 RPO, 60–100 runs in 5 overs.
+// Expected runs per ball ≈ (0*20 + 1*22 + 2*10 + 3*4 + 4*18 + 6*12 + 0*5 + 1*5 + 1*4) / 100 ≈ 1.65
 const BALL_OUTCOMES: { result: BallEvent["result"]; runs: number; label: string; weight: number; legal: boolean }[] = [
-  { result: "dot", runs: 0, label: "DOT BALL", weight: 32, legal: true },
-  { result: "single", runs: 1, label: "SINGLE", weight: 23, legal: true },
-  { result: "double", runs: 2, label: "TWO RUNS", weight: 8, legal: true },
-  { result: "triple", runs: 3, label: "THREE RUNS", weight: 2, legal: true },
-  { result: "four", runs: 4, label: "FOUR! 🟢", weight: 14, legal: true },
-  { result: "six", runs: 6, label: "SIX! 🔵", weight: 8, legal: true },
-  { result: "wicket", runs: 0, label: "WICKET! 🔴", weight: 5, legal: true },
-  { result: "wide", runs: 1, label: "WIDE", weight: 5, legal: false },
-  { result: "noball", runs: 1, label: "NO BALL", weight: 3, legal: false },
+  { result: "dot",    runs: 0, label: "DOT BALL",    weight: 20, legal: true  },
+  { result: "single", runs: 1, label: "SINGLE",      weight: 22, legal: true  },
+  { result: "double", runs: 2, label: "TWO RUNS",    weight: 10, legal: true  },
+  { result: "triple", runs: 3, label: "THREE RUNS",  weight: 4,  legal: true  },
+  { result: "four",   runs: 4, label: "FOUR! 🟢",    weight: 18, legal: true  },
+  { result: "six",    runs: 6, label: "SIX! 🔵",     weight: 12, legal: true  },
+  { result: "wicket", runs: 0, label: "WICKET! 🔴",  weight: 5,  legal: true  },
+  { result: "wide",   runs: 1, label: "WIDE",        weight: 5,  legal: false },
+  { result: "noball", runs: 1, label: "NO BALL",     weight: 4,  legal: false },
 ];
 
 function weightedRandom() {
@@ -64,19 +61,37 @@ export function formatBall(overs: number, balls: number) {
   return `${overs}.${balls}`;
 }
 
-function makeInitialState(innings: 1 | 2, firstInningsScore: number | null): MatchState {
-  const pool = innings === 1 ? BATSMEN_POOL_1 : BATSMEN_POOL_2;
-  const bowlers = innings === 1 ? BOWLERS_1 : BOWLERS_2;
+/** Build team-specific player pools.
+ *  Innings 1: team1 bats, team2 bowls.
+ *  Innings 2: team2 bats, team1 bowls.
+ */
+function buildPools(team1Short: string, team2Short: string) {
+  const t1 = TEAM_ROSTERS[team1Short] ?? TEAM_ROSTERS["MI"];
+  const t2 = TEAM_ROSTERS[team2Short] ?? TEAM_ROSTERS["DC"];
+  return {
+    inning1Batsmen: t1.batsmen.map(p => p.shortName),
+    inning1Bowlers: t2.bowlers.map(p => p.shortName),
+    inning2Batsmen: t2.batsmen.map(p => p.shortName),
+    inning2Bowlers: t1.bowlers.map(p => p.shortName),
+  };
+}
+
+function makeInitialState(
+  innings: 1 | 2,
+  firstInningsScore: number | null,
+  batsmen: string[],
+  bowlers: string[]
+): MatchState {
   return {
     runs: 0,
     wickets: 0,
     overs: 0,
     balls: 0,
-    currentBowler: bowlers[0],
+    currentBowler: bowlers[0] ?? "Bowler",
     ballEvents: [],
     batsmen: [
-      { name: pool[0], runs: 0, balls: 0, isOnStrike: true },
-      { name: pool[1], runs: 0, balls: 0, isOnStrike: false },
+      { name: batsmen[0] ?? "Batsman1", runs: 0, balls: 0, isOnStrike: true },
+      { name: batsmen[1] ?? "Batsman2", runs: 0, balls: 0, isOnStrike: false },
     ],
     target: innings === 2 && firstInningsScore !== null ? firstInningsScore + 1 : null,
     innings,
@@ -86,15 +101,36 @@ function makeInitialState(innings: 1 | 2, firstInningsScore: number | null): Mat
   };
 }
 
-export function useMatchState() {
+export function useMatchState(maxOvers = 5) {
+  const maxOversRef = useRef(maxOvers);
+  maxOversRef.current = maxOvers;
+
+  // Team-specific player pools (refs so nextBall always reads latest values)
+  const poolsRef = useRef(buildPools("MI", "DC"));
+
   const nextBatsmanIdx = useRef(2);
-  const [match, setMatch] = useState<MatchState>(() => makeInitialState(1, null));
+  const [match, setMatch] = useState<MatchState>(() => {
+    const p = poolsRef.current;
+    return makeInitialState(1, null, p.inning1Batsmen, p.inning1Bowlers);
+  });
 
   const ballIdRef = useRef(0);
 
+  /** Call this when the game is about to start so the correct team rosters are used. */
+  const resetWithTeams = useCallback((team1Short: string, team2Short: string) => {
+    poolsRef.current = buildPools(team1Short, team2Short);
+    nextBatsmanIdx.current = 2;
+    ballIdRef.current = 0;
+    const p = poolsRef.current;
+    setMatch(makeInitialState(1, null, p.inning1Batsmen, p.inning1Bowlers));
+  }, []);
+
   const startSecondInnings = useCallback(() => {
     nextBatsmanIdx.current = 2;
-    setMatch(prev => makeInitialState(2, prev.runs));
+    setMatch(prev => {
+      const p = poolsRef.current;
+      return makeInitialState(2, prev.runs, p.inning2Batsmen, p.inning2Bowlers);
+    });
   }, []);
 
   const nextBall = useCallback((): BallEvent => {
@@ -104,17 +140,17 @@ export function useMatchState() {
     setMatch((prev) => {
       if (prev.inningsComplete || prev.matchOver) return prev;
 
-      const bowlers = prev.innings === 1 ? BOWLERS_1 : BOWLERS_2;
-      const batsmenPool = prev.innings === 1 ? BATSMEN_POOL_1 : BATSMEN_POOL_2;
+      const pools = poolsRef.current;
+      const bowlers = prev.innings === 1 ? pools.inning1Bowlers : pools.inning2Bowlers;
+      const batsmenPool = prev.innings === 1 ? pools.inning1Batsmen : pools.inning2Batsmen;
 
       const isLegal = outcome.result !== "wide" && outcome.result !== "noball";
       let newBalls = isLegal ? prev.balls + 1 : prev.balls;
       let newOvers = prev.overs;
       let newBowler = prev.currentBowler;
 
-      if (newBalls > 6) {
-        newBalls = 1;
-        newOvers += 1;
+      // Rotate bowler at the start of each new over (prev.balls === 0 after display normalization)
+      if (isLegal && prev.balls === 0 && prev.overs > 0) {
         newBowler = bowlers[Math.floor(Math.random() * bowlers.length)];
       }
 
@@ -150,21 +186,16 @@ export function useMatchState() {
       }
 
       // Check innings completion
-      const totalOvers = newOvers + (newBalls === 6 ? 1 : 0);
-      const actualOvers = newBalls === 6 ? totalOvers : newOvers;
-      const actualBalls = newBalls === 6 ? 0 : newBalls;
-      
-      // Overs done when we complete 6 legal balls of the last over
-      const oversComplete = (newBalls === 6 && newOvers + 1 >= MAX_OVERS);
+      const oversComplete = (newBalls === 6 && newOvers + 1 >= maxOversRef.current);
       const allOut = newWickets >= MAX_WICKETS;
-      
+
       // Second innings: target chased
       const targetChased = prev.innings === 2 && prev.target !== null && newRuns >= prev.target;
 
       const inningsComplete = oversComplete || allOut || targetChased;
       const matchOver = prev.innings === 2 && inningsComplete;
 
-      // Normalize overs display
+      // Normalize overs display: ball 6 is shown as next over, 0 balls
       let displayOvers = newOvers;
       let displayBalls = newBalls;
       if (newBalls === 6) {
@@ -201,5 +232,5 @@ export function useMatchState() {
     ? (match.runs / (match.overs + match.balls / 6)).toFixed(2)
     : "0.00";
 
-  return { match, nextBall, crr, startSecondInnings };
+  return { match, nextBall, crr, startSecondInnings, resetWithTeams };
 }

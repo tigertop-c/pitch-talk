@@ -11,10 +11,11 @@ interface LiveHeaderProps {
   onToggleSound: () => void;
   battingTeam?: string;
   isChasing?: boolean;
+  maxOvers?: number;
 }
 
-const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing }: LiveHeaderProps) => {
-  const MAX_OVERS = 5; // 5 overs per innings
+const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing, maxOvers = 5 }: LiveHeaderProps) => {
+  const MAX_OVERS = maxOvers;
   const totalOvers = match.overs + match.balls / 6;
   const remainingOvers = MAX_OVERS - totalOvers;
   const remainingRuns = match.target ? match.target - match.runs : null;

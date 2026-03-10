@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, ChevronDown, ChevronUp, UserPlus } from "lucide-react";
 
 export interface SquadEntry {
   name: string;
@@ -14,11 +14,13 @@ export interface SquadEntry {
 interface SquadStandingsBarProps {
   entries: SquadEntry[];
   onOpenLeaderboard?: () => void;
+  onInvite?: () => void;
+  spotsLeft?: number;
 }
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
-const SquadStandingsBar = ({ entries, onOpenLeaderboard }: SquadStandingsBarProps) => {
+const SquadStandingsBar = ({ entries, onOpenLeaderboard, onInvite, spotsLeft }: SquadStandingsBarProps) => {
   const [expanded, setExpanded] = useState(false);
 
   // Sort by wins desc, then accuracy desc
@@ -61,6 +63,16 @@ const SquadStandingsBar = ({ entries, onOpenLeaderboard }: SquadStandingsBarProp
             </div>
           ))}
         </div>
+        {onInvite && spotsLeft && spotsLeft > 0 && (
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => { e.stopPropagation(); onInvite(); }}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-neon/15 text-neon flex-shrink-0"
+          >
+            <UserPlus size={9} />
+            Invite
+          </motion.button>
+        )}
         {expanded ? (
           <ChevronUp size={12} className="text-muted-foreground flex-shrink-0" />
         ) : (

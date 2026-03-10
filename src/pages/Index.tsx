@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import LiveHeader from "@/components/LiveHeader";
 import BanterStream from "@/components/BanterStream";
 import type { FriendDef } from "@/components/BanterStream";
-import GameBoard, { type GameBoardPlayer } from "@/components/GameBoard";
 import GamePicker, { type UpcomingMatch } from "@/components/GamePicker";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import ReceiptsScreen from "@/components/ReceiptsScreen";
@@ -18,6 +17,8 @@ import { type PredictionRecord, type ReceiptData } from "@/components/ShareableR
 import { setSoundMuted } from "@/lib/sounds";
 import type { TeamId } from "@/components/ChatInput";
 import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
+import PlayerMomentCard from "@/components/PlayerMomentCard";
+import { getPlayerPhoto } from "@/data/iplRosters";
 
 // When VITE_USE_MOCK_DATA=true, all matches run as simulations (no real API polling).
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
@@ -38,10 +39,11 @@ const Index = () => {
   const [userTeam, setUserTeam] = useState<TeamId>("DC");
   const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
   const [mutedHypeTypes, setMutedHypeTypes] = useState<Set<string>>(new Set());
-  const [showGameBoard, setShowGameBoard] = useState(true);
+  const [selectedOvers, setSelectedOvers] = useState(2);
   // Always call both hooks (rules of hooks — no conditional calls).
   // We pick which result to expose based on whether the selected match is real.
-  const sim = useMatchState();
+  const sim = useMatchState(selectedOvers);
+  const { resetWithTeams: resetSimWithTeams } = sim;
   const isRealMatch = !!(selectedMatch && !selectedMatch.isSimulation && !USE_MOCK);
   const live = useLiveMatchState(isRealMatch ? selectedMatch.id : null);
   const { match, nextBall, crr, startSecondInnings } = isRealMatch ? live : sim;
@@ -62,6 +64,14 @@ const Index = () => {
   }, []);
 
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
+
+  // Player moment card (shows player photo on six, four, wicket)
+  const [playerMoment, setPlayerMoment] = useState<{
+    photoUrl: string | null;
+    name: string;
+    caption: string;
+  } | null>(null);
+  const prevBallEventsLenRef = useRef(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [showInningsBreak, setShowInningsBreak] = useState(false);
@@ -84,6 +94,52 @@ const Index = () => {
       handleInningsComplete();
     }
   }, [match.inningsComplete, match.innings, showInningsBreak, handleInningsComplete]);
+
+  // Show player moment card on key ball events (six, four, wicket)
+  useEffect(() => {
+    if (stage !== "game") return;
+    const len = match.ballEvents.length;
+    if (len === prevBallEventsLenRef.current) return;
+    prevBallEventsLenRef.current = len;
+
+    const lastEvent = match.ballEvents[len - 1];
+    if (!lastEvent) return;
+
+    const striker = match.batsmen.find(b => b.isOnStrike);
+
+    let moment: typeof playerMoment = null;
+    if (lastEvent.result === "six") {
+      moment = {
+        photoUrl: getPlayerPhoto(striker?.name ?? ""),
+        name: striker?.name ?? "",
+        caption: "SIX! 🔵",
+      };
+    } else if (lastEvent.result === "four" && Math.random() < 0.65) {
+      moment = {
+        photoUrl: getPlayerPhoto(striker?.name ?? ""),
+        name: striker?.name ?? "",
+        caption: "FOUR! 🟢",
+      };
+    } else if (lastEvent.result === "wicket") {
+      // After wicket the striker slot is already the incoming batsman
+      moment = {
+        photoUrl: getPlayerPhoto(striker?.name ?? ""),
+        name: striker?.name ?? "",
+        caption: "New Batsman 🏏",
+      };
+    }
+
+    if (moment) setPlayerMoment(moment);
+  }, [match.ballEvents, match.batsmen, stage]);
+
+  // Stable dismiss handler — avoids new reference on every render.
+  const handleDismissPlayerMoment = useCallback(() => setPlayerMoment(null), []);
+
+  // Clear player moment when innings resets
+  useEffect(() => {
+    setPlayerMoment(null);
+    prevBallEventsLenRef.current = 0;
+  }, [match.innings]);
 
   // Check for saved profile on mount
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -183,18 +239,23 @@ const Index = () => {
     }
   }, [profileLoaded, pendingJoinCode, stage]);
 
-  const handleGameStart = useCallback((team: TeamId) => {
+  const handleGameStart = useCallback((team: TeamId, overs: number = 2) => {
     setUserTeam(team);
+    setSelectedOvers(overs);
     mp.updateMyTeam(team);
+    // Reset the simulation with the correct team rosters before the game starts
+    const t1 = selectedMatch?.team1.short ?? "MI";
+    const t2 = selectedMatch?.team2.short ?? "DC";
+    resetSimWithTeams(t1, t2);
+    prevBallEventsLenRef.current = 0;
+    setPlayerMoment(null);
     setStage("game");
     if (mp.isHost) {
       mp.startGame();
     }
-  }, [mp]);
+  }, [mp, selectedMatch, resetSimWithTeams]);
 
-  const handleFirstOverComplete = useCallback(() => {
-    setShowGameBoard(false);
-  }, []);
+  const handleFirstOverComplete = useCallback(() => {}, []);
 
   const handlePredictionResolved = useCallback((record: PredictionRecord) => {
     setPredictions(prev => [...prev, record]);
@@ -261,30 +322,6 @@ const Index = () => {
     setTimeout(() => setStage("game"), 0);
   }
 
-  // Build standings for leaderboard
-  const gameBoardPlayers: GameBoardPlayer[] = useMemo(() => [
-    {
-      name: playerName || "You",
-      avatar: playerAvatar,
-      accuracy: predictions.filter(p => p.won !== null).length > 0
-        ? Math.round((predictions.filter(p => p.won === true).length / predictions.filter(p => p.won !== null).length) * 100)
-        : 0,
-      totalPredictions: predictions.filter(p => p.won !== null).length,
-      active: true,
-      warned: false,
-      isYou: true,
-    },
-    ...activeFriends.map(f => ({
-      name: f.name,
-      avatar: f.avatar,
-      accuracy: friendScores[f.name]?.total > 0
-        ? Math.round((friendScores[f.name].wins / friendScores[f.name].total) * 100)
-        : 0,
-      totalPredictions: friendScores[f.name]?.total || 0,
-      active: true,
-      warned: false,
-    })),
-  ], [predictions, activeFriends, friendScores, playerName, playerAvatar]);
 
   const allPlayerStandings = useMemo(() => [
     {
@@ -430,48 +467,58 @@ const Index = () => {
           {/* Stage: Game (same UI for host and non-host) */}
           {isGameActive && !showInningsBreak && !match.matchOver && (
             <>
-              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} />
+              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} maxOvers={selectedOvers} />
               <SquadStandingsBar
                 entries={squadEntries}
                 onOpenLeaderboard={() => setActiveTab("leaderboard")}
+                onInvite={handleInvite}
+                spotsLeft={MAX_PLAYERS - mp.players.length}
               />
-              {activeTab === "arena" ? (
-                <>
-                  {showGameBoard && (
-                    <GameBoard
-                      players={gameBoardPlayers}
-                      maxPlayers={MAX_PLAYERS}
-                      onInvite={handleInvite}
-                    />
-                  )}
-                  <BanterStream
-                    match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match}
-                    onNextBall={nextBall}
-                    onHype={handleHype}
-                    onPredictionResolved={handlePredictionResolved}
-                    onFriendScoresUpdate={handleFriendScoresUpdate}
-                    soundMuted={soundMuted}
-                    activeFriends={activeFriends}
-                    onOverComplete={handleOverComplete}
-                    allPlayerStandings={allPlayerStandings}
-                    userTeam={userTeam}
-                    activePlayers={mp.players.length}
-                    maxPlayers={MAX_PLAYERS}
-                    roomId={mp.roomId || "SOLO"}
-                    onInvite={handleInvite}
-                    onToggleSound={toggleSound}
-                    onFirstOverComplete={handleFirstOverComplete}
-                    onBallStateChange={handleBallStateChange}
-                    isHost={mp.isHost}
-                    gameSnapshot={mp.gameSnapshot}
-                    onInningsComplete={handleInningsComplete}
-                    battingTeamShort={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")}
-                    onAiPick={(ballId, pick, name) => mp.submitPick(ballId, pick, name)}
+              {/* Player Moment Card — slides up on six, four, wicket */}
+              <AnimatePresence>
+                {playerMoment && (
+                  <PlayerMomentCard
+                    photoUrl={playerMoment.photoUrl}
+                    playerName={playerMoment.name}
+                    caption={playerMoment.caption}
+                    onDismiss={handleDismissPlayerMoment}
                   />
-                </>
-              ) : activeTab === "receipts" ? (
+                )}
+              </AnimatePresence>
+
+              {/* Arena tab — always kept mounted so BanterStream never loses its ball counter state */}
+              <div className={activeTab === "arena" ? "flex flex-col flex-1 min-h-0 overflow-hidden" : "hidden"}>
+                <BanterStream
+                  match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match}
+                  onNextBall={nextBall}
+                  onHype={handleHype}
+                  onPredictionResolved={handlePredictionResolved}
+                  onFriendScoresUpdate={handleFriendScoresUpdate}
+                  soundMuted={soundMuted}
+                  activeFriends={activeFriends}
+                  onOverComplete={handleOverComplete}
+                  allPlayerStandings={allPlayerStandings}
+                  userTeam={userTeam}
+                  activePlayers={mp.players.length}
+                  maxPlayers={MAX_PLAYERS}
+                  roomId={mp.roomId || "SOLO"}
+                  onInvite={handleInvite}
+                  onToggleSound={toggleSound}
+                  onFirstOverComplete={handleFirstOverComplete}
+                  onBallStateChange={handleBallStateChange}
+                  isHost={mp.isHost}
+                  gameSnapshot={mp.gameSnapshot}
+                  onInningsComplete={handleInningsComplete}
+                  battingTeamShort={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")}
+                  onAiPick={(ballId, pick, name) => mp.submitPick(ballId, pick, name)}
+                />
+              </div>
+              {/* Receipts tab */}
+              {activeTab === "receipts" && (
                 <ReceiptsScreen receiptData={receiptData} />
-              ) : (
+              )}
+              {/* Leaderboard tab */}
+              {activeTab === "leaderboard" && (
                 <div className="flex-1 overflow-y-auto pt-4 pb-2">
                   <div className="px-4 mb-4">
                     <h2 className="text-lg font-bold text-foreground tracking-tight">🏆 Leaderboard</h2>
