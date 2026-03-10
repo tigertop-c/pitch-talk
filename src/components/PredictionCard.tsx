@@ -151,16 +151,6 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
                 {result.label}
               </motion.span>
             )}
-            {state === "resolved" && selected && (
-              <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", damping: 12, delay: 0.1 }}
-                className={`text-xs font-semibold ${won ? "text-neon" : "text-destructive"}`}
-              >
-                {won ? "🎯 Nailed it" : "💀 Miss"}
-              </motion.span>
-            )}
           </div>
           {state === "idle" && (
             <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -187,7 +177,34 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
           )}
         </div>
 
-        {/* Hint for new users */}
+        {/* Your prediction summary after resolution */}
+        {state === "resolved" && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-secondary/50"
+          >
+            {selected ? (
+              <>
+                <span className="text-[10px] text-muted-foreground">You picked:</span>
+                <span className={`text-[11px] font-semibold ${
+                  won
+                    ? "text-neon"
+                    : "text-muted-foreground line-through decoration-destructive/60"
+                }`}>
+                  {selected}
+                </span>
+                <span className={`text-xs ${won ? "text-neon" : "text-destructive"}`}>
+                  {won ? "🎯 Nailed it!" : "❌ Miss"}
+                </span>
+              </>
+            ) : (
+              <span className="text-[10px] text-muted-foreground/60 italic">⏭️ No prediction made</span>
+            )}
+          </motion.div>
+        )}
+
         {showHint && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
