@@ -71,7 +71,7 @@ function useCountdown(targetDate: Date) {
   return { hours, minutes, seconds, isLive: timeLeft <= 0 };
 }
 
-const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId, isSimulation, players, onInvite }: PreGameIntroProps) => {
+const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId, isSimulation, players, onInvite, onRemoveAI }: PreGameIntroProps) => {
   const [stage, setStage] = useState<Stage>("welcome");
   const [userTeam, setUserTeam] = useState<TeamId | null>(null);
   const [tossWinner, setTossWinner] = useState<string | null>(null);
