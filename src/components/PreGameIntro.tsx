@@ -94,12 +94,14 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
 
-  // Real players from multiplayer (excluding bots)
-  const realPlayers = players?.filter(p => !BOT_SQUAD.some(b => b.name === p.name)) || [];
-  // Show bots as AI players in simulation
-  const squadMembers = isSimulation
-    ? [...realPlayers.map(p => ({ name: p.name, avatar: p.avatar, isBot: false })), ...BOT_SQUAD.map(b => ({ ...b, isBot: true }))]
-    : realPlayers.map(p => ({ name: p.name, avatar: p.avatar, isBot: false }));
+  // Separate human and AI players using the shared isAiPlayer check
+  const allPlayers = players || [];
+  const squadMembers = allPlayers.map(p => ({
+    name: p.name,
+    avatar: p.avatar,
+    isBot: isAiPlayer(p.name),
+  }));
+  const hasAiPlayers = squadMembers.some(m => m.isBot);
 
   // Toss animation for non-simulation
   useEffect(() => {
