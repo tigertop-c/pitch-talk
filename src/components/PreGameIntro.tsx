@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronRight, MessageCircle, Clock, UserPlus, Zap, Play } from "lucide-react";
+import { Users, ChevronRight, MessageCircle, Clock, UserPlus, Zap, Play, Bot, X } from "lucide-react";
 import type { TeamId } from "./ChatInput";
+import { isAiPlayer, AI_PLAYERS } from "@/lib/aiPlayers";
 
 // Team logos
 import cskLogo from "@/assets/teams/csk.png";
@@ -44,6 +45,7 @@ interface PreGameIntroProps {
   isSimulation?: boolean;
   players?: MultiplayerPlayer[];
   onInvite?: () => void;
+  onRemoveAI?: () => void;
 }
 
 type Stage = "welcome" | "toss" | "target" | "starting";
@@ -52,12 +54,7 @@ const RUN_TARGETS = ["140–160", "160–180", "180–200", "200+"];
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
-const BOT_SQUAD = [
-  { name: "Virat_Fan99", avatar: "🔥" },
-  { name: "DhoniFTW", avatar: "💛" },
-  { name: "BumrahArmy", avatar: "🎯" },
-  { name: "SixerKing", avatar: "💥" },
-];
+// AI players are now sourced from @/lib/aiPlayers
 
 function useCountdown(targetDate: Date) {
   const [timeLeft, setTimeLeft] = useState(() => Math.max(0, targetDate.getTime() - Date.now()));
@@ -74,7 +71,7 @@ function useCountdown(targetDate: Date) {
   return { hours, minutes, seconds, isLive: timeLeft <= 0 };
 }
 
-const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId, isSimulation, players, onInvite }: PreGameIntroProps) => {
+const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId, isSimulation, players, onInvite, onRemoveAI }: PreGameIntroProps) => {
   const [stage, setStage] = useState<Stage>("welcome");
   const [userTeam, setUserTeam] = useState<TeamId | null>(null);
   const [tossWinner, setTossWinner] = useState<string | null>(null);
@@ -97,12 +94,14 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
 
-  // Real players from multiplayer (excluding bots)
-  const realPlayers = players?.filter(p => !BOT_SQUAD.some(b => b.name === p.name)) || [];
-  // Show bots as AI players in simulation
-  const squadMembers = isSimulation
-    ? [...realPlayers.map(p => ({ name: p.name, avatar: p.avatar, isBot: false })), ...BOT_SQUAD.map(b => ({ ...b, isBot: true }))]
-    : realPlayers.map(p => ({ name: p.name, avatar: p.avatar, isBot: false }));
+  // Separate human and AI players using the shared isAiPlayer check
+  const allPlayers = players || [];
+  const squadMembers = allPlayers.map(p => ({
+    name: p.name,
+    avatar: p.avatar,
+    isBot: isAiPlayer(p.name),
+  }));
+  const hasAiPlayers = squadMembers.some(m => m.isBot);
 
   // Toss animation for non-simulation
   useEffect(() => {
@@ -294,14 +293,24 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                         {m.isBot ? (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
                         ) : (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">JOINED</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">PLAYER</span>
                         )}
                       </motion.div>
                     ))}
                   </div>
 
+                  {hasAiPlayers && onRemoveAI && (
+                    <button
+                      onClick={onRemoveAI}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-[11px] font-medium text-muted-foreground bg-secondary/40 active:bg-secondary/60 transition-all"
+                    >
+                      <X size={12} />
+                      Remove AI players
+                    </button>
+                  )}
+
                   <p className="text-[10px] text-muted-foreground text-center">
-                    Invite more friends or start anytime — AI players fill the gaps!
+                    {hasAiPlayers ? "AI players fill the gaps — or invite friends!" : "Invite friends to join your room!"}
                   </p>
                 </motion.div>
 
