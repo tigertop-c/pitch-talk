@@ -1,0 +1,1 @@
+CREATE POLICY "room_players_delete_all" ON public.room_players FOR DELETE TO public USING (true);

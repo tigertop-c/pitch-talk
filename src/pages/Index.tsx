@@ -389,6 +389,7 @@ const Index = () => {
               isSimulation={selectedMatch.isSimulation}
               players={mp.players}
               onInvite={handleInvite}
+              onRemoveAI={mp.removeAIPlayers}
             />
           )}
 
