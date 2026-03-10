@@ -293,9 +293,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                         {m.isBot ? (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
                         ) : (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">YOU</span>
-                        ) : (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">PLAYER</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">PLAYER</span>
                         )}
                       </motion.div>
                     ))}
