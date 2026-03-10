@@ -151,16 +151,34 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
                 {result.label}
               </motion.span>
             )}
-            {state === "resolved" && selected && (
-              <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", damping: 12, delay: 0.1 }}
-                className={`text-xs font-semibold ${won ? "text-neon" : "text-destructive"}`}
-              >
-                {won ? "🎯 Nailed it" : "💀 Miss"}
-              </motion.span>
-            )}
+          </div>
+          {/* Your prediction summary after resolution */}
+          {state === "resolved" && (
+            <motion.div
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 }}
+              className="flex items-center gap-1.5"
+            >
+              {selected ? (
+                <>
+                  <span className="text-[9px] text-muted-foreground">You:</span>
+                  <span className={`text-[11px] font-semibold ${
+                    won
+                      ? "text-neon"
+                      : "text-muted-foreground line-through decoration-destructive/60"
+                  }`}>
+                    {selected}
+                  </span>
+                  <span className={`text-xs ${won ? "text-neon" : "text-destructive"}`}>
+                    {won ? "🎯" : "❌"}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[10px] text-muted-foreground/60 italic">No prediction</span>
+              )}
+            </motion.div>
+          )}
           </div>
           {state === "idle" && (
             <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
