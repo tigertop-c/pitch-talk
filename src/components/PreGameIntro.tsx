@@ -45,6 +45,7 @@ interface PreGameIntroProps {
   isSimulation?: boolean;
   players?: MultiplayerPlayer[];
   onInvite?: () => void;
+  onRemoveAI?: () => void;
 }
 
 type Stage = "welcome" | "toss" | "target" | "starting";
