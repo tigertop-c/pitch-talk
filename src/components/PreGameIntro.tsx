@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, ChevronRight, MessageCircle, Clock, UserPlus, Zap, Play } from "lucide-react";
+import { Users, ChevronRight, MessageCircle, Clock, UserPlus, Zap, Play, Bot, X } from "lucide-react";
 import type { TeamId } from "./ChatInput";
+import { isAiPlayer, AI_PLAYERS } from "@/lib/aiPlayers";
 
 // Team logos
 import cskLogo from "@/assets/teams/csk.png";
