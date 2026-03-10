@@ -293,14 +293,26 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                         {m.isBot ? (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
                         ) : (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">JOINED</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">YOU</span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">PLAYER</span>
                         )}
                       </motion.div>
                     ))}
                   </div>
 
+                  {hasAiPlayers && onRemoveAI && (
+                    <button
+                      onClick={onRemoveAI}
+                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-[11px] font-medium text-muted-foreground bg-secondary/40 active:bg-secondary/60 transition-all"
+                    >
+                      <X size={12} />
+                      Remove AI players
+                    </button>
+                  )}
+
                   <p className="text-[10px] text-muted-foreground text-center">
-                    Invite more friends or start anytime — AI players fill the gaps!
+                    {hasAiPlayers ? "AI players fill the gaps — or invite friends!" : "Invite friends to join your room!"}
                   </p>
                 </motion.div>
 
