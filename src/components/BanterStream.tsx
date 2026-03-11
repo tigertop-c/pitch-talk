@@ -751,7 +751,11 @@ const BanterStream = ({
       if (count <= 0) {
         clearInterval(countdownRef.current);
         if (isManualModeRef.current) {
-          // Manual mode: time's up — show throw button as fallback (host may not have picked yet)
+          // Manual mode: time's up — cancel any pending auto-throw, show throw button as fallback
+          if (autoThrowTimerRef.current) {
+            clearTimeout(autoThrowTimerRef.current);
+            autoThrowTimerRef.current = null;
+          }
           setBalls(prev => prev.map(b =>
             b.id === ballId && b.predictionState === "idle"
               ? { ...b, predictionState: "locked" as PredictionState }
@@ -842,7 +846,13 @@ const BanterStream = ({
     if (isHost) {
       startNewBall();
     }
-    return () => clearInterval(countdownRef.current);
+    return () => {
+      clearInterval(countdownRef.current);
+      if (autoThrowTimerRef.current) {
+        clearTimeout(autoThrowTimerRef.current);
+        autoThrowTimerRef.current = null;
+      }
+    };
   }, []);
 
   // Non-host: watch game snapshot to drive game loop
