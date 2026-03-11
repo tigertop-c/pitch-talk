@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, ChevronRight, Users, Zap, WifiOff, Share2 } from "lucide-react";
+import { Clock, ChevronRight, Users, Zap } from "lucide-react";
 import { useCricketMatches, type CricApiMatch } from "@/hooks/useCricketMatches";
 import { Skeleton } from "@/components/ui/skeleton";
 import cskLogo from "@/assets/teams/csk.png";
@@ -213,6 +213,7 @@ const MatchCard = ({ match, i, onSelect }: { match: UpcomingMatch; i: number; on
   );
 };
 
+
 const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
   const [simTeam1, setSimTeam1] = useState<string | null>(null);
   const [simTeam2, setSimTeam2] = useState<string | null>(null);
@@ -220,6 +221,12 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
   const matchupRef = useRef<HTMLDivElement>(null);
 
   const liveMatches = matches.map((m, i) => apiMatchToUpcoming(m, i));
+
+  // Show "no match" card when: done loading AND (API error, OR no matches, OR next match is >1h away)
+  const nextMatchMs = liveMatches.length > 0
+    ? Math.min(...liveMatches.map(m => m.startTime.getTime() - Date.now()))
+    : Infinity;
+  const noMatchAvailable = !loading && (!!error || liveMatches.length === 0 || nextMatchMs > 60 * 60 * 1000);
 
   // Auto-scroll to matchup preview when both teams are selected
   useEffect(() => {
@@ -304,35 +311,31 @@ const GamePicker = ({ onSelectMatch }: GamePickerProps) => {
           </div>
         )}
 
-        {error && !loading && (
+        {/* No match available — covers API error, no matches today, next match >1h away */}
+        {noMatchAvailable && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="ios-card p-4 text-center space-y-2"
+            className="ios-card p-4 space-y-3"
           >
-            <WifiOff size={20} className="mx-auto text-muted-foreground" />
-            <p className="text-[12px] font-semibold text-foreground">Can't reach live scores</p>
-            <p className="text-[11px] text-muted-foreground">
-              No worries — pick two teams below to simulate a match!
-            </p>
+            <div className="text-center space-y-1">
+              <span className="text-3xl block">🏏</span>
+              <p className="text-[13px] font-bold text-foreground">No IPL matches today</p>
+              {!error && liveMatches.length > 0 && nextMatchMs !== Infinity && nextMatchMs > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Next match in {Math.ceil(nextMatchMs / (1000 * 60 * 60))}h — practice till then!
+                </p>
+              )}
+              {(!error && liveMatches.length === 0) || error ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Pick any two teams below to practice!
+                </p>
+              ) : null}
+            </div>
           </motion.div>
         )}
 
-        {!loading && !error && liveMatches.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="ios-card p-4 text-center space-y-2"
-          >
-            <span className="text-2xl block">🏏</span>
-            <p className="text-[12px] font-semibold text-foreground">No live matches right now</p>
-            <p className="text-[11px] text-muted-foreground">
-              Pick two teams below to simulate a match!
-            </p>
-          </motion.div>
-        )}
-
-        {!loading && !error && liveMatches.length > 0 && (
+        {!loading && !error && liveMatches.length > 0 && nextMatchMs <= 60 * 60 * 1000 && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Live Matches</span>
