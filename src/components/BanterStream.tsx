@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { isAiPlayer } from "@/lib/aiPlayers";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
 import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
@@ -29,14 +29,6 @@ interface ChatItem {
   timestamp: string;
   isSystem?: boolean;
   team?: TeamId;
-  isCommentaryGuess?: boolean;
-  commentaryGuessData?: {
-    correctStyle: string;
-    options: string[];
-    answered: boolean;
-    wasCorrect: boolean | null;
-    selectedOption: string | null;
-  };
 }
 
 export interface FriendDef {
@@ -105,120 +97,82 @@ const WAITING_MESSAGES: Record<string, { emoji: string; messages: string[] }> = 
   overBreak: { emoji: "🔄", messages: ["Field changing ends...", "New bowler getting the ball...", "Drinks being carried out 🥤", "Strategic timeout chat happening...", "Captain setting the field..."] },
 };
 
-// Commentary lines tagged with style for the guessing game
-type CommentaryStyle = "british" | "aussie" | "windies" | "indian";
-interface CommentaryLine { text: string; style: CommentaryStyle; }
-
-const COMMENTARY_LINES: Record<string, CommentaryLine[]> = {
+// Commentary lines for key moments — plain text, no style guessing
+const COMMENTARY_LINES: Record<string, string[]> = {
   six: [
-    { text: "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! Absolutely ENORMOUS! 🚀", style: "indian" },
-    { text: "🎙️ Like a tracer bullet into the stands! The crowd is BERSERK!", style: "indian" },
-    { text: "🎙️ A six is like a smile — it lights up the whole ground! ☀️", style: "indian" },
-    { text: "🎙️ That ball didn't just cross the rope, it left the ZIP CODE! 📮", style: "indian" },
-    { text: "🎙️ The boys just need to bat well, bowl well, and field well to stop THAT! 😂", style: "indian" },
-    { text: "🎙️ Dhoni finishes off in style! A magnificent strike! Oh wait, wrong match! 😅", style: "indian" },
-    { text: "🎙️ Into the second tier! He's just murdered that ball and the crowd is the witness! 🔥", style: "indian" },
-    { text: "🎙️ Oh my word. That is simply… extraordinary. Into row Z, I believe. 🫖", style: "british" },
-    { text: "🎙️ Well, that's been dispatched with utter contempt. Quite magnificent.", style: "british" },
-    { text: "🎙️ He's picked that up off middle stump and deposited it into the car park. Dear oh dear.", style: "british" },
-    { text: "🎙️ It's been absolutely marvellous! That ball is never coming back! 🫖", style: "british" },
-    { text: "🎙️ That, ladies and gentlemen, is what we call agricultural… but rather effective. 🌾", style: "british" },
-    { text: "🎙️ BANG! That's been absolutely TONKED! See ya later! 🏏💥", style: "aussie" },
-    { text: "🎙️ That's out of the ground, mate! Grab yer passports, that ball's TRAVELLING!", style: "aussie" },
-    { text: "🎙️ Flat bat, full face, gone like a rocket. You BEAUTY! 🇦🇺", style: "aussie" },
-    { text: "🎙️ That's not cricket, that's DEMOLITION! The bowler needs a cuddle after that one.", style: "aussie" },
-    { text: "🎙️ If you need 24 to avoid the follow on, why not get it in four hits? He's doing just that! 😤", style: "aussie" },
-    { text: "🎙️ OH YESSS! Into the PEOPLE dem! That's CALYPSO cricket, baby! 🎶", style: "windies" },
-    { text: "🎙️ Big man hit BIG shot! The ball gone clear outta di stadium! 🌴", style: "windies" },
-    { text: "🎙️ That's ENTERTAINMENT! The crowd on their feet, music in the air! 🥁", style: "windies" },
-    { text: "🎙️ That went straight into the confectionery stall and out again! 🍬", style: "windies" },
+    "🎙️ THAT'S GONE INTO THE PEOPLE! MASSIVE! Absolutely ENORMOUS! 🚀",
+    "🎙️ Like a tracer bullet into the stands! The crowd is BERSERK!",
+    "🎙️ A six is like a smile — it lights up the whole ground! ☀️",
+    "🎙️ That ball didn't just cross the rope, it left the ZIP CODE! 📮",
+    "🎙️ The boys just need to bat well, bowl well, and field well to stop THAT! 😂",
+    "🎙️ Oh my word. That is simply… extraordinary. Into row Z, I believe. 🫖",
+    "🎙️ BANG! That's been absolutely TONKED! See ya later! 🏏💥",
+    "🎙️ That's out of the ground, mate! Grab yer passports, that ball's TRAVELLING!",
+    "🎙️ Flat bat, full face, gone like a rocket. You BEAUTY! 🇦🇺",
+    "🎙️ That's not cricket, that's DEMOLITION! The bowler needs a cuddle after that one.",
+    "🎙️ OH YESSS! Into the PEOPLE dem! That's CALYPSO cricket, baby! 🎶",
+    "🎙️ Big man hit BIG shot! The ball gone clear outta di stadium! 🌴",
+    "🎙️ That went straight into the confectionery stall and out again! 🍬",
   ],
   four: [
-    { text: "🎙️ SHOT! That's gone like a tracer bullet to the boundary! 🔥", style: "indian" },
-    { text: "🎙️ Timing so sweet, even the bowler had to admire that one!", style: "indian" },
-    { text: "🎙️ A good shot is like poetry — and that was Shakespeare! 📖", style: "indian" },
-    { text: "🎙️ The ball kissed the bat and said GOODBYE! Glorious stroke! ✨", style: "indian" },
-    { text: "🎙️ The boys just need to field well! But that went through 3 of them! 😂", style: "indian" },
-    { text: "🎙️ That's gone to the boundary faster than my commentary! Brilliant! 🏏", style: "indian" },
-    { text: "🎙️ Exquisitely done. Threaded through the covers like silk. Lovely. 🧵", style: "british" },
-    { text: "🎙️ That is a PROPER cricket shot. Textbook. Coaching manual stuff.", style: "british" },
-    { text: "🎙️ Oh, how pleasing to the eye. The fielder didn't even bother chasing.", style: "british" },
-    { text: "🎙️ Played with soft hands and gorgeous wrists. Just delightful. ☕", style: "british" },
-    { text: "🎙️ Staggering gamble! And it's come off beautifully! 🎩", style: "british" },
-    { text: "🎙️ That's what we in the business call — ridiculous running, oh wait, ridiculous BATTING! 🫖", style: "british" },
-    { text: "🎙️ CRACKED to the fence! No messing about, that's four all day! 💪", style: "aussie" },
-    { text: "🎙️ Mate, the fielder just watched that go by like a bus! 🚌", style: "aussie" },
-    { text: "🎙️ Punched off the back foot with AUTHORITY. That's class, right there.", style: "aussie" },
-    { text: "🎙️ LASH through the covers! Style, elegance, POWER! 🔥", style: "windies" },
-    { text: "🎙️ That's a FLICK of the wrists and four runs! Make it look easy, nah! 💫", style: "windies" },
+    "🎙️ SHOT! That's gone like a tracer bullet to the boundary! 🔥",
+    "🎙️ Timing so sweet, even the bowler had to admire that one!",
+    "🎙️ A good shot is like poetry — and that was Shakespeare! 📖",
+    "🎙️ The ball kissed the bat and said GOODBYE! Glorious stroke! ✨",
+    "🎙️ The boys just need to field well! But that went through 3 of them! 😂",
+    "🎙️ Exquisitely done. Threaded through the covers like silk. Lovely. 🧵",
+    "🎙️ That is a PROPER cricket shot. Textbook. Coaching manual stuff.",
+    "🎙️ Oh, how pleasing to the eye. The fielder didn't even bother chasing.",
+    "🎙️ CRACKED to the fence! No messing about, that's four all day! 💪",
+    "🎙️ Mate, the fielder just watched that go by like a bus! 🚌",
+    "🎙️ LASH through the covers! Style, elegance, POWER! 🔥",
   ],
   wicket: [
-    { text: "🎙️ HE'S GONE! And the bowler is PUMPED! That's the moment of the match!", style: "indian" },
-    { text: "🎙️ Wickets fall like autumn leaves when the pressure mounts! 🍂", style: "indian" },
-    { text: "🎙️ CLEANED HIM UP! The stumps are doing cartwheels! 🎯", style: "indian" },
-    { text: "🎙️ That's the end of the road. Long walk back. Cricket is CRUEL! 😈", style: "indian" },
-    { text: "🎙️ The boys needed to bat well. That was NOT batting well! 💀", style: "indian" },
-    { text: "🎙️ The key to winning is not losing wickets. Well, that didn't go to plan! 😂", style: "indian" },
-    { text: "🎙️ He didn't read that at ALL! Looked like he was reading the Mahabharata out there! 📚", style: "indian" },
-    { text: "🎙️ Oh, he's gone. And he knows it. That was a terrible shot, really. 😬", style: "british" },
-    { text: "🎙️ Bowled 'im! What a JAFFA! Absolute peach of a delivery. 🍑", style: "british" },
-    { text: "🎙️ Well, that's rather ruined his afternoon, hasn't it? Off you pop.", style: "british" },
-    { text: "🎙️ Stone dead. Even the batsman started walking. Nothing to see here.", style: "british" },
-    { text: "🎙️ Not so for the batsman! It's been marvellous, but not for HIM! 🫖", style: "british" },
-    { text: "🎙️ SEE YA LATER, MATE! That's absolutely PLUMB! Walk of shame! 🚶", style: "aussie" },
-    { text: "🎙️ Got 'im! The bowler's giving him a SEND-OFF! Love the aggression! 🔥", style: "aussie" },
-    { text: "🎙️ RIPPED through the gate! That's knocked back middle stump, you RIPPER!", style: "aussie" },
-    { text: "🎙️ With a slower ball — ONE OF THE GREAT BALLS! The batsman's bamboozled! 🤯", style: "aussie" },
-    { text: "🎙️ HE GONE! Pack yuh bags! The bowler ROARING! 🦁", style: "windies" },
-    { text: "🎙️ Timber! Stumps flying everywhere like Carnival decorations! 🎊", style: "windies" },
-    { text: "🎙️ You dig a hole, you fill it, mate! And that batsman just dug his OWN grave! ⚰️", style: "windies" },
+    "🎙️ HE'S GONE! And the bowler is PUMPED! That's the moment of the match!",
+    "🎙️ Wickets fall like autumn leaves when the pressure mounts! 🍂",
+    "🎙️ CLEANED HIM UP! The stumps are doing cartwheels! 🎯",
+    "🎙️ That's the end of the road. Long walk back. Cricket is CRUEL! 😈",
+    "🎙️ The boys needed to bat well. That was NOT batting well! 💀",
+    "🎙️ Oh, he's gone. And he knows it. That was a terrible shot, really. 😬",
+    "🎙️ Bowled 'im! What a JAFFA! Absolute peach of a delivery. 🍑",
+    "🎙️ Well, that's rather ruined his afternoon, hasn't it? Off you pop.",
+    "🎙️ SEE YA LATER, MATE! That's absolutely PLUMB! Walk of shame! 🚶",
+    "🎙️ Got 'im! The bowler's giving him a SEND-OFF! Love the aggression! 🔥",
+    "🎙️ RIPPED through the gate! That's knocked back middle stump, you RIPPER!",
+    "🎙️ HE GONE! Pack yuh bags! The bowler ROARING! 🦁",
+    "🎙️ Timber! Stumps flying everywhere like Carnival decorations! 🎊",
   ],
   dot: [
-    { text: "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! 😤", style: "indian" },
-    { text: "🎙️ Nothing doing! The bowler is on TOP here!", style: "indian" },
-    { text: "🎙️ The key to scoring is hitting the ball. He forgot that part! 🙃", style: "indian" },
-    { text: "🎙️ The boys need to bat well. Batting well requires HITTING the ball, bhai! 😅", style: "indian" },
-    { text: "🎙️ Defended solidly. Nothing on offer there. Good, disciplined bowling.", style: "british" },
-    { text: "🎙️ Dot ball. The squeeze is ON. Scoreboard pressure is a real thing, you know.", style: "british" },
-    { text: "🎙️ Morning, everyone. Nothing happening here. Absolutely nothing. Marvellous. ☕", style: "british" },
-    { text: "🎙️ NOTHING! Can't lay bat on ball! The pressure is ON, mate! 🔒", style: "aussie" },
-    { text: "🎙️ He's got as much chance of scoring off that as I have of fitting into my old playing whites! 😂", style: "aussie" },
-    { text: "🎙️ Nuttin' doin'! The bowler got him TIED UP in knots! 🪢", style: "windies" },
+    "🎙️ DOT BALL! Pressure building like a pressure cooker without a whistle! 😤",
+    "🎙️ Nothing doing! The bowler is on TOP here!",
+    "🎙️ The key to scoring is hitting the ball. He forgot that part! 🙃",
+    "🎙️ Defended solidly. Nothing on offer there. Good, disciplined bowling.",
+    "🎙️ Dot ball. The squeeze is ON. Scoreboard pressure is a real thing, you know.",
+    "🎙️ Morning, everyone. Nothing happening here. Absolutely nothing. Marvellous. ☕",
+    "🎙️ NOTHING! Can't lay bat on ball! The pressure is ON, mate! 🔒",
+    "🎙️ Nuttin' doin'! The bowler got him TIED UP in knots! 🪢",
   ],
   noball: [
-    { text: "🎙️ NO BALL! And it's a FREE HIT! The crowd smells BLOOD! 🩸", style: "indian" },
-    { text: "🎙️ Overstepped! That's a gift wrapped with a bow! 🎁", style: "indian" },
-    { text: "🎙️ Oh no no no, he's overstepped! FREE HIT coming up and the batsman is LICKING his lips! 😋", style: "indian" },
-    { text: "🎙️ The boys just needed to bowl well. That was NOT bowling well! Front foot, please! 🦶", style: "indian" },
-    { text: "🎙️ That's sloppy, very sloppy. And now it's a free hit. The batsman will fancy this.", style: "british" },
-    { text: "🎙️ NO BALL, mate! That's a freebie! Bowler's done his hammy AND overstepped! 🤦", style: "aussie" },
-    { text: "🎙️ Free hit! The batsman just need to bat well here! Should be straightforward! 😂", style: "aussie" },
+    "🎙️ NO BALL! And it's a FREE HIT! The crowd smells BLOOD! 🩸",
+    "🎙️ Overstepped! That's a gift wrapped with a bow! 🎁",
+    "🎙️ Oh no no no, he's overstepped! FREE HIT coming up and the batsman is LICKING his lips! 😋",
+    "🎙️ That's sloppy, very sloppy. And now it's a free hit. The batsman will fancy this.",
+    "🎙️ NO BALL, mate! That's a freebie! Bowler's done his hammy AND overstepped! 🤦",
   ],
 };
 
-const STYLE_LABELS: Record<CommentaryStyle, string> = {
-  british: "British 🫖",
-  aussie: "Aussie 🦘",
-  windies: "Caribbean 🌴",
-  indian: "Indian 🇮🇳",
-};
-
-const ALL_STYLES: CommentaryStyle[] = ["british", "aussie", "windies", "indian"];
-
-function getCommentaryOptions(correct: CommentaryStyle): string[] {
-  const others = ALL_STYLES.filter(s => s !== correct).sort(() => Math.random() - 0.5).slice(0, 2);
-  const options = [STYLE_LABELS[correct], ...others.map(s => STYLE_LABELS[s])];
-  return options.sort(() => Math.random() - 0.5);
-}
-
-const LOCK_TIME = 10; // 10s prediction window — ~30% faster than real T20 pace
-const WAIT_AFTER_BALL = 12000; // 12s wait between balls (30% faster than 18s)
+const LOCK_TIME_AUTO = 10;      // 10s prediction window in auto mode
+const LOCK_TIME_MANUAL = 20;    // 20s prediction window in manual mode (user controls pace)
+const WAIT_AFTER_BALL_AUTO = 12000;  // 12s wait between balls in auto mode
+const WAIT_AFTER_BALL_MANUAL = 3000; // 3s wait after ball in manual mode (host controls pace)
+const MULTIPLAYER_AUTO_THROW_MS = 15000; // 15s auto-throw in multiplayer after prediction
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
-  onHype?: (type: "four" | "six" | "wicket") => void;
+  onHype?: (type: "four" | "six" | "wicket", isDuck?: boolean) => void;
+  isManualMode?: boolean;
   onPredictionResolved?: (record: PredictionRecord) => void;
   onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number }>) => void;
   soundMuted: boolean;
@@ -237,14 +191,21 @@ interface BanterStreamProps {
   gameSnapshot?: GameSnapshot | null;
   onInningsComplete?: () => void;
   battingTeamShort?: string;
+  bowlingTeamShort?: string;
+  team1Short?: string;
+  team2Short?: string;
   onAiPick?: (ballId: number, pick: string, playerName: string) => void;
 }
+
+// Exported so Index.tsx can read it
+export type { BanterStreamProps };
 
 const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
-  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, onAiPick,
+  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, bowlingTeamShort, team1Short, team2Short, onAiPick,
+  isManualMode,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -257,9 +218,8 @@ const BanterStream = ({
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
-  const [chatReactions, setChatReactions] = useState<Record<number, { up: number; down: number; myVote?: "up" | "down" }>>({});
+  const [showManualButton, setShowManualButton] = useState(false); // Item 4
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [commentaryScore, setCommentaryScore] = useState({ correct: 0, total: 0 });
   const [userChatStyle, setUserChatStyle] = useState<UserChatStyle>("neutral");
   const [totalUserPredictions, setTotalUserPredictions] = useState(0);
 
@@ -274,7 +234,14 @@ const BanterStream = ({
   const userIsScrolledUp = useRef(false);
   const firstOverFired = useRef(false);
   const resolveBallRef = useRef<(ballId: number, hostResult?: { label: string; type: string }) => void>(() => {});
+  const pendingHostResolvedRef = useRef<{ ballId: number; label: string; result: { label: string; type: string }; expectedBallEventsLen: number } | null>(null);
   const startNewBallRef = useRef<() => void>(() => {});
+  // Refs for values used inside callbacks without causing stale closures
+  const isManualModeRef = useRef(isManualMode);
+  isManualModeRef.current = isManualMode;
+  const activePlayersRef = useRef(activePlayers);
+  activePlayersRef.current = activePlayers;
+  const autoThrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Over tracking
   const legalBallsThisOver = useRef(0);
@@ -377,25 +344,6 @@ const BanterStream = ({
     (pick === "Wide" && result === "wide") ||
     (pick === "No Ball" && result === "noball");
 
-  const handleCommentaryGuess = useCallback((chatId: number, selectedOption: string) => {
-    setChats(prev => prev.map(c => {
-      if (c.id === chatId && c.commentaryGuessData && !c.commentaryGuessData.answered) {
-        const isCorrect = selectedOption === STYLE_LABELS[c.commentaryGuessData.correctStyle as CommentaryStyle];
-        setCommentaryScore(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
-        return {
-          ...c,
-          commentaryGuessData: {
-            ...c.commentaryGuessData,
-            answered: true,
-            wasCorrect: isCorrect,
-            selectedOption,
-          },
-        };
-      }
-      return c;
-    }));
-  }, []);
-
   const resolveBall = useCallback((ballId: number, hostResult?: { label: string; type: string }) => {
     let event: BallEvent;
     if (hostResult) {
@@ -434,17 +382,24 @@ const BanterStream = ({
     const result: BallResult = { label: event.label, type: event.result };
 
     // Sync resolved ball state to multiplayer (host only)
-    if (!hostResult) {
-      onBallStateChange?.(
-        { id: ballId, label: balls.find(b => b.id === ballId)?.ballLabel || "", state: "resolved", openedAt: 0, result: { label: event.label, type: event.result } },
-        { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
-      );
+    if (!hostResult && isHost) {
+      pendingHostResolvedRef.current = {
+        ballId,
+        label: balls.find(b => b.id === ballId)?.ballLabel || "",
+        result: { label: event.label, type: event.result },
+        expectedBallEventsLen: match.ballEvents.length + 1,
+      };
     }
+
+    // Capture striker info for duck detection
+    const strikerBeforeEvent = match.batsmen?.find(b => b.isOnStrike);
+    const strikerRuns = strikerBeforeEvent?.runs ?? 0;
 
     if (event.result === "wicket" || event.result === "six" || event.result === "four") {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
-      onHype?.(event.result as "four" | "six" | "wicket");
+      const isDuck = event.result === "wicket" && strikerRuns === 0;
+      onHype?.(event.result as "four" | "six" | "wicket", isDuck);
 
       if (!isSoundMuted()) {
         try {
@@ -551,10 +506,10 @@ const BanterStream = ({
 
         const oversStr = `${match.overs}.${match.balls}`;
 
-        const team1Short = "DC";
-        const team2Short = "MI";
-        const team1Count = activeFriends.filter(f => f.team === team1Short).length + (userTeam === team1Short ? 1 : 0);
-        const team2Count = activeFriends.filter(f => f.team === team2Short).length + (userTeam === team2Short ? 1 : 0);
+        const team1 = team1Short || "DC";
+        const team2 = team2Short || "MI";
+        const team1Count = activeFriends.filter(f => f.team === team1).length + (userTeam === team1 ? 1 : 0);
+        const team2Count = activeFriends.filter(f => f.team === team2).length + (userTeam === team2 ? 1 : 0);
 
         const summaryData: OverSummaryData = {
           overNumber: overNum,
@@ -574,7 +529,7 @@ const BanterStream = ({
           overWickets: overWicketsRef.current,
           overBoundaries: overBoundariesRef.current,
           overExtras: overExtrasRef.current,
-          teamAllegiances: (team1Count + team2Count) >= 3 ? { team1: team1Short, team1Count, team2: team2Short, team2Count } : undefined,
+          teamAllegiances: (team1Count + team2Count) >= 3 ? { team1, team1Count, team2, team2Count } : undefined,
         };
 
         setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
@@ -612,6 +567,12 @@ const BanterStream = ({
       },
     };
 
+    const getDefaultTeamReactions = (team: string) => ({
+      four: [`Nice boundary for ${team}!`, `${team} finds the gap.`, `${team} looking sharp.`],
+      six: [`Big hit for ${team}!`, `${team} goes long.`, `${team} launches it.`],
+      wicket: [`Big wicket for ${team}!`, `${team} gets the breakthrough.`, `${team} on top now.`],
+    });
+
     // Use activeFriends (which now includes AI players from DB)
     const playersToUse = activeFriends;
     
@@ -633,7 +594,8 @@ const BanterStream = ({
         // For AI players, sometimes use team-specific messages
         let messageText = shuffled[i % shuffled.length];
         if (isAiPlayer(user.name) && isKeyMoment && user.team && Math.random() < 0.6) {
-          const teamReactions = TEAM_REACTIONS[user.team]?.[event.result];
+          const key = event.result as "four" | "six" | "wicket";
+          const teamReactions = TEAM_REACTIONS[user.team]?.[key] ?? getDefaultTeamReactions(user.team)[key];
           if (teamReactions && teamReactions.length > 0) {
             messageText = teamReactions[Math.floor(Math.random() * teamReactions.length)];
           }
@@ -660,33 +622,23 @@ const BanterStream = ({
       }
     }
 
-    // Add commentary for key moments with guess-the-style game (merged into single system message)
+    // Add commentary for key moments — plain text, no guessing
     const commentaryPool = COMMENTARY_LINES[event.result];
     if (commentaryPool && (event.result === "six" || event.result === "four" || event.result === "wicket" || (event.result === "noball" && Math.random() < 0.5))) {
       const line = commentaryPool[Math.floor(Math.random() * commentaryPool.length)];
       idRef.current += 1;
-      const guessId = idRef.current;
-      const options = getCommentaryOptions(line.style);
-
+      const commentaryId = idRef.current;
       setTimeout(() => {
         setChats(prev => [
           ...prev,
           {
-            id: guessId,
+            id: commentaryId,
             parentBallId: ballId,
             user: "Commentary",
             avatar: "🎙️",
-            text: line.text,
+            text: line,
             timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
             isSystem: true,
-            isCommentaryGuess: true,
-            commentaryGuessData: {
-              correctStyle: line.style,
-              options,
-              answered: false,
-              wasCorrect: null,
-              selectedOption: null,
-            },
           },
         ]);
         scrollToBottom();
@@ -698,27 +650,64 @@ const BanterStream = ({
     const msgPool = WAITING_MESSAGES[resultKey] || WAITING_MESSAGES.dot;
     const pickedMsg = msgPool.messages[Math.floor(Math.random() * msgPool.messages.length)];
 
-    setTimeout(() => { 
+    const waitTime = isManualModeRef.current ? WAIT_AFTER_BALL_MANUAL : WAIT_AFTER_BALL_AUTO;
+
+    setTimeout(() => {
       setWaitingMessage({ emoji: msgPool.emoji, text: pickedMsg });
-      setWaitingForNext(true); 
-      scrollToBottom(); 
+      setWaitingForNext(true);
+      scrollToBottom();
     }, numMessages * 600 + 1000);
-    setTimeout(() => { 
-      setWaitingForNext(false); 
+    setTimeout(() => {
+      setWaitingForNext(false);
       isOverBreak.current = false;
       if (isHost) {
-        startNewBallRef.current(); 
+        // After ball resolves, always auto-start next prediction window.
+        // In manual mode the "Throw Next Ball" button will appear after user picks.
+        startNewBallRef.current();
       }
       // Non-host: next ball triggered by snapshot watcher
-    }, numMessages * 600 + WAIT_AFTER_BALL); // ~28s total cycle: 10s lock + 1.5s pending + ~2s messages + 12s wait
+    }, numMessages * 600 + waitTime);
   }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls, isHost]);
   resolveBallRef.current = resolveBall;
 
+  useEffect(() => {
+    if (!isHost) return;
+    const pending = pendingHostResolvedRef.current;
+    if (!pending) return;
+    if (match.ballEvents.length < pending.expectedBallEventsLen) return;
+
+    onBallStateChange?.(
+      { id: pending.ballId, label: pending.label, state: "resolved", openedAt: 0, result: pending.result },
+      { runs: match.runs, wickets: match.wickets, overs: match.overs, balls: match.balls, currentBowler: match.currentBowler || "Bumrah", target: match.target }
+    );
+
+    pendingHostResolvedRef.current = null;
+  }, [
+    isHost,
+    onBallStateChange,
+    match.runs,
+    match.wickets,
+    match.overs,
+    match.balls,
+    match.currentBowler,
+    match.target,
+    match.ballEvents.length,
+  ]);
+
   const startNewBall = useCallback(() => {
     setWaitingForNext(false);
+    setShowManualButton(false); // hide any lingering throw button
+    // Cancel any pending auto-throw from the previous ball
+    if (autoThrowTimerRef.current) {
+      clearTimeout(autoThrowTimerRef.current);
+      autoThrowTimerRef.current = null;
+    }
+
     idRef.current += 1;
     const ballId = idRef.current;
     activeBallIdRef.current = ballId;
+
+    const lockTime = isManualModeRef.current ? LOCK_TIME_MANUAL : LOCK_TIME_AUTO;
 
     const tempBallCount = ballCountRef.current + 1;
     const overNum = Math.floor((tempBallCount - 1) / 6);
@@ -729,7 +718,7 @@ const BanterStream = ({
       id: ballId,
       ballLabel: label,
       predictionState: "idle",
-      countdown: LOCK_TIME,
+      countdown: lockTime,
       selected: null,
       result: null,
       friendPicks: [],
@@ -753,7 +742,7 @@ const BanterStream = ({
     }
 
     clearInterval(countdownRef.current);
-    let count = LOCK_TIME;
+    let count = lockTime;
     countdownRef.current = setInterval(() => {
       count -= 1;
       setBalls(prev => prev.map(b =>
@@ -761,15 +750,28 @@ const BanterStream = ({
       ));
       if (count <= 0) {
         clearInterval(countdownRef.current);
-        setBalls(prev => prev.map(b =>
-          b.id === ballId && b.predictionState === "idle"
-            ? { ...b, predictionState: "pending" as PredictionState }
-            : b
-        ));
-        if (isHost) {
-          setTimeout(() => resolveBallRef.current(ballId), 1500);
+        if (isManualModeRef.current) {
+          // Manual mode: time's up — show throw button as fallback (host may not have picked yet)
+          setBalls(prev => prev.map(b =>
+            b.id === ballId && b.predictionState === "idle"
+              ? { ...b, predictionState: "locked" as PredictionState }
+              : b
+          ));
+          if (isHost) {
+            setShowManualButton(true);
+          }
+        } else {
+          // Auto mode: lock and resolve
+          setBalls(prev => prev.map(b =>
+            b.id === ballId && b.predictionState === "idle"
+              ? { ...b, predictionState: "pending" as PredictionState }
+              : b
+          ));
+          if (isHost) {
+            setTimeout(() => resolveBallRef.current(ballId), 1500);
+          }
+          // Non-host: resolution comes from snapshot
         }
-        // Non-host: resolution comes from snapshot
       }
     }, 1000);
   }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
@@ -782,16 +784,38 @@ const BanterStream = ({
         : b
     ));
     clearInterval(countdownRef.current);
-    setTimeout(() => {
-      setBalls(prev => prev.map(b =>
-        b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
-      ));
-      if (isHost) {
-        setTimeout(() => resolveBallRef.current(ballId), 1500);
+
+    if (isManualModeRef.current && isHost) {
+      // Manual mode: prediction made — show "Throw Next Ball" button
+      // Host throws when ready; in multiplayer, auto-throw after a delay
+      setShowManualButton(true);
+      if (activePlayersRef.current > 1) {
+        // Other real players are in the room — auto-throw after grace period
+        if (autoThrowTimerRef.current) clearTimeout(autoThrowTimerRef.current);
+        autoThrowTimerRef.current = setTimeout(() => {
+          autoThrowTimerRef.current = null;
+          setShowManualButton(false);
+          setBalls(prev => prev.map(b =>
+            b.id === ballId && b.predictionState !== "resolved"
+              ? { ...b, predictionState: "pending" as PredictionState }
+              : b
+          ));
+          setTimeout(() => resolveBallRef.current(ballId), 800);
+        }, MULTIPLAYER_AUTO_THROW_MS);
       }
-      // Non-host: resolution comes from snapshot
-    }, 2000);
-  }, [resolveBall]);
+    } else {
+      // Auto mode (or non-host): proceed with immediate resolution
+      setTimeout(() => {
+        setBalls(prev => prev.map(b =>
+          b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
+        ));
+        if (isHost) {
+          setTimeout(() => resolveBallRef.current(ballId), 1500);
+        }
+        // Non-host: resolution comes from snapshot
+      }, 2000);
+    }
+  }, [isHost, resolveBall]);
 
   const handleUserChat = useCallback((text: string) => {
     detectStyle(text);
@@ -809,22 +833,6 @@ const BanterStream = ({
     setChats(prev => [...prev, newChat]);
     scrollToBottom();
   }, [userTeam, scrollToBottom, detectStyle]);
-
-  const handleReaction = useCallback((chatId: number, type: "up" | "down") => {
-    setChatReactions(prev => {
-      const existing = prev[chatId] || { up: 0, down: 0 };
-      if (existing.myVote === type) return prev; // already voted this way
-      const undoPrev = existing.myVote ? (existing.myVote === "up" ? { up: -1, down: 0 } : { up: 0, down: -1 }) : { up: 0, down: 0 };
-      return {
-        ...prev,
-        [chatId]: {
-          up: existing.up + undoPrev.up + (type === "up" ? 1 : 0),
-          down: existing.down + undoPrev.down + (type === "down" ? 1 : 0),
-          myVote: type,
-        },
-      };
-    });
-  }, []);
 
   const handleToggleSound = useCallback(() => {
     onToggleSound?.();
@@ -917,6 +925,12 @@ const BanterStream = ({
     target: match.target,
     overs: match.overs,
     balls: match.balls,
+    // Extended banter context
+    battingTeam:  (battingTeamShort as TeamId) ?? null,
+    bowlingTeam:  (bowlingTeamShort as TeamId) ?? null,
+    striker: match.batsmen?.find(b => b.isOnStrike)?.name ?? null,
+    bowler:  match.currentBowler ?? null,
+    innings: match.innings,
   };
 
 
@@ -974,66 +988,6 @@ const BanterStream = ({
                 const isYou = c.user === "You";
                 const isSystem = c.isSystem;
                 const isSoundToggle = isSystem && c.text === "SOUND_TOGGLE";
-                const isCommentaryGuess = c.isCommentaryGuess && c.commentaryGuessData;
-
-                // Commentary guess card - compact combined view with text + guess
-                if (isCommentaryGuess && c.commentaryGuessData && !isPredictionActive) {
-                  const gd = c.commentaryGuessData;
-                  return (
-                    <motion.div
-                      key={`chat-${c.id}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ ...spring }}
-                      className="px-4 py-1.5"
-                    >
-                      <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
-                        {/* Commentary text */}
-                        <p className="text-[12px] text-foreground leading-relaxed mb-2">{c.text}</p>
-                        
-                        {/* Guess section */}
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[10px] font-semibold text-primary">Guess the style</span>
-                          {commentaryScore.total > 0 && (
-                            <span className="text-[9px] text-muted-foreground">
-                              {commentaryScore.correct}/{commentaryScore.total}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          {gd.options.map(opt => {
-                            const isSelected = gd.selectedOption === opt;
-                            const isCorrectAnswer = gd.answered && opt === STYLE_LABELS[gd.correctStyle as CommentaryStyle];
-                            return (
-                              <motion.button
-                                key={opt}
-                                whileTap={gd.answered ? {} : { scale: 0.95 }}
-                                onClick={() => !gd.answered && handleCommentaryGuess(c.id, opt)}
-                                disabled={gd.answered}
-                                className={`flex-1 py-1.5 px-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-                                  gd.answered
-                                    ? isCorrectAnswer
-                                      ? "bg-neon/15 text-neon"
-                                      : isSelected && !gd.wasCorrect
-                                      ? "bg-destructive/10 text-destructive"
-                                      : "bg-secondary/50 text-muted-foreground opacity-40"
-                                    : "bg-secondary text-foreground active:bg-muted"
-                                }`}
-                              >
-                                {opt.replace(" 🫖", "").replace(" 🦘", "").replace(" 🌴", "").replace(" 🇮🇳", "")}
-                              </motion.button>
-                            );
-                          })}
-                        </div>
-                        {gd.answered && (
-                          <p className={`text-[9px] mt-1 font-medium ${gd.wasCorrect ? "text-neon" : "text-muted-foreground"}`}>
-                            {gd.wasCorrect ? "🎯 Correct!" : `It was ${STYLE_LABELS[gd.correctStyle as CommentaryStyle].split(" ")[0]}`}
-                          </p>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                }
 
                 return (
                   <motion.div
@@ -1084,32 +1038,6 @@ const BanterStream = ({
                           <p className={`text-[12px] mt-0.5 leading-snug ${
                             isSystem ? "text-muted-foreground italic text-[11px]" : "text-foreground"
                           }`}>{c.text}</p>
-                        )}
-                        {!isSystem && !isYou && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <button
-                              onClick={() => handleReaction(c.id, "up")}
-                              className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-all active:scale-95 ${
-                                chatReactions[c.id]?.myVote === "up"
-                                  ? "bg-primary/15 text-primary font-semibold"
-                                  : "text-muted-foreground hover:bg-secondary"
-                              }`}
-                            >
-                              <ThumbsUp size={10} />
-                              {(chatReactions[c.id]?.up || 0) > 0 && <span>{chatReactions[c.id].up}</span>}
-                            </button>
-                            <button
-                              onClick={() => handleReaction(c.id, "down")}
-                              className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full transition-all active:scale-95 ${
-                                chatReactions[c.id]?.myVote === "down"
-                                  ? "bg-destructive/15 text-destructive font-semibold"
-                                  : "text-muted-foreground hover:bg-secondary"
-                              }`}
-                            >
-                              <ThumbsDown size={10} />
-                              {(chatReactions[c.id]?.down || 0) > 0 && <span>{chatReactions[c.id].down}</span>}
-                            </button>
-                          </div>
                         )}
                       </div>
                     </div>
@@ -1170,6 +1098,44 @@ const BanterStream = ({
         </AnimatePresence>
       </div>
 
+
+      {/* Manual mode: "Throw Next Ball" — appears after user locks prediction, resolves the current ball */}
+      <AnimatePresence>
+        {showManualButton && isHost && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="px-4 pb-2"
+          >
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={() => {
+                // Cancel any pending auto-throw
+                if (autoThrowTimerRef.current) {
+                  clearTimeout(autoThrowTimerRef.current);
+                  autoThrowTimerRef.current = null;
+                }
+                setShowManualButton(false);
+                // Move to pending then resolve the CURRENT ball
+                const ballId = activeBallIdRef.current;
+                if (ballId !== null) {
+                  setBalls(prev => prev.map(b =>
+                    b.id === ballId && b.predictionState !== "resolved"
+                      ? { ...b, predictionState: "pending" as PredictionState }
+                      : b
+                  ));
+                  setTimeout(() => resolveBallRef.current(ballId), 800);
+                }
+              }}
+              className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-[14px] shadow-lg shadow-primary/25 flex items-center justify-center gap-2 active:scale-98 transition-transform"
+            >
+              🏏 Throw Next Ball
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} userStyle={userChatStyle} />
     </div>

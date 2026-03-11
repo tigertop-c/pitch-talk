@@ -35,8 +35,10 @@ interface MultiplayerPlayer {
   teamPicked?: string | null;
 }
 
+export type BallMode = "auto" | "manual";
+
 interface PreGameIntroProps {
-  onStart: (team: TeamId, overs: number) => void;
+  onStart: (team: TeamId, overs: number, ballMode: BallMode) => void;
   matchStartTime: Date;
   team1: { name: string; short: string };
   team2: { name: string; short: string };
@@ -78,7 +80,8 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [tossResult, setTossResult] = useState<string | null>(null);
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
-  const [selectedOvers, setSelectedOvers] = useState(2);
+  const [selectedOvers, setSelectedOvers] = useState(1); // Item 5: default 1 over
+  const [ballMode, setBallMode] = useState<BallMode>("auto"); // Item 4
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -91,9 +94,11 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   useEffect(() => { if (userTeam) scrollToBottom(); }, [userTeam]);
   useEffect(() => { if (tossResult) scrollToBottom(); }, [tossResult]);
   useEffect(() => { if (stage === "starting") scrollToBottom(); }, [stage]);
-
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
   const TEAMS = [team1.name, team2.name] as const;
+
+  const team1Logo = ALL_TEAMS.find(t => t.short === team1.short)?.logo || dcLogo;
+  const team2Logo = ALL_TEAMS.find(t => t.short === team2.short)?.logo || miLogo;
 
   // Separate human and AI players using the shared isAiPlayer check
   const allPlayers = players || [];
@@ -132,7 +137,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0 && userTeam) {
-      const t = setTimeout(() => onStart(userTeam, selectedOvers), 400);
+      const t = setTimeout(() => onStart(userTeam, selectedOvers, ballMode), 400);
       return () => clearTimeout(t);
     }
   }, [stage, countdown, onStart, userTeam, selectedOvers]);
@@ -351,6 +356,39 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                     </div>
                   </div>
 
+                  {/* Item 4: Ball mode toggle */}
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">🎮 Ball Mode</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setBallMode("auto")}
+                        className={`py-2.5 px-3 rounded-xl text-[12px] font-semibold transition-all duration-150 text-left ${
+                          ballMode === "auto"
+                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                            : "bg-secondary text-foreground active:bg-muted"
+                        }`}
+                      >
+                        <span className="block text-[15px] mb-0.5">⚡</span>
+                        Auto
+                        <span className="block text-[9px] opacity-70 mt-0.5 font-normal">Balls bowl themselves</span>
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setBallMode("manual")}
+                        className={`py-2.5 px-3 rounded-xl text-[12px] font-semibold transition-all duration-150 text-left ${
+                          ballMode === "manual"
+                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                            : "bg-secondary text-foreground active:bg-muted"
+                        }`}
+                      >
+                        <span className="block text-[15px] mb-0.5">👆</span>
+                        Manual
+                        <span className="block text-[9px] opacity-70 mt-0.5 font-normal">You throw each ball</span>
+                      </motion.button>
+                    </div>
+                  </div>
+
                   <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={handleStartSimulation}
@@ -415,9 +453,9 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
             initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...spring, delay: 0.2 }}
             className="flex items-center justify-center gap-4 mb-3"
           >
-            <img src={dcLogo} alt={team1.short} className="w-20 h-20 object-contain" />
+            <img src={team1Logo} alt={team1.short} className="w-20 h-20 object-contain" />
             <span className="text-2xl font-black text-muted-foreground tracking-tight">vs</span>
-            <img src={miLogo} alt={team2.short} className="w-20 h-20 object-contain" />
+            <img src={team2Logo} alt={team2.short} className="w-20 h-20 object-contain" />
           </motion.div>
           <motion.h1
             initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ ...spring, delay: 0.3 }}
@@ -510,14 +548,14 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                     className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
                       userTeam === team1.short ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary" : "bg-secondary text-foreground active:bg-muted"
                     }`}>
-                    <img src={dcLogo} alt="DC" className="w-12 h-12 object-contain" />
+                    <img src={team1Logo} alt={team1.short} className="w-12 h-12 object-contain" />
                     <span className="text-[14px] font-bold">{team1.name}</span>
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.96 }} onClick={() => setUserTeam(team2.short as TeamId)}
                     className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
                       userTeam === team2.short ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary" : "bg-secondary text-foreground active:bg-muted"
                     }`}>
-                    <img src={miLogo} alt="MI" className="w-12 h-12 object-contain" />
+                    <img src={team2Logo} alt={team2.short} className="w-12 h-12 object-contain" />
                     <span className="text-[14px] font-bold">{team2.name}</span>
                   </motion.button>
                 </div>

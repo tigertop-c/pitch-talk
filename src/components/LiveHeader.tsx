@@ -12,9 +12,11 @@ interface LiveHeaderProps {
   battingTeam?: string;
   isChasing?: boolean;
   maxOvers?: number;
+  team1?: { short: string; logo?: string | null };
+  team2?: { short: string; logo?: string | null };
 }
 
-const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing, maxOvers = 5 }: LiveHeaderProps) => {
+const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChasing, maxOvers = 5, team1, team2 }: LiveHeaderProps) => {
   const MAX_OVERS = maxOvers;
   const totalOvers = match.overs + match.balls / 6;
   const remainingOvers = MAX_OVERS - totalOvers;
@@ -22,6 +24,11 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
   const rrr = match.target && remainingOvers > 0
     ? (remainingRuns! / remainingOvers).toFixed(2)
     : null;
+
+  const team1Short = team1?.short ?? "DC";
+  const team2Short = team2?.short ?? "MI";
+  const team1Logo = team1?.logo || dcLogo;
+  const team2Logo = team2?.logo || miLogo;
 
   const striker = match.batsmen.find(b => b.isOnStrike) || match.batsmen[0];
   const nonStriker = match.batsmen.find(b => !b.isOnStrike) || match.batsmen[1];
@@ -53,9 +60,9 @@ const LiveHeader = ({ match, crr, soundMuted, onToggleSound, battingTeam, isChas
           <span className="text-[11px] uppercase tracking-wider text-live font-semibold">Live</span>
         </div>
         <div className="flex items-center gap-2.5">
-          <img src={dcLogo} alt="DC" className="w-7 h-7 object-contain" />
-          <span className="text-[13px] text-foreground font-semibold">DC vs MI</span>
-          <img src={miLogo} alt="MI" className="w-7 h-7 object-contain" />
+          <img src={team1Logo} alt={team1Short} className="w-7 h-7 object-contain" />
+          <span className="text-[13px] text-foreground font-semibold">{team1Short} vs {team2Short}</span>
+          <img src={team2Logo} alt={team2Short} className="w-7 h-7 object-contain" />
           <span className="text-[10px] text-muted-foreground">• IPL 2025</span>
           {/* Sound toggle */}
           <motion.button

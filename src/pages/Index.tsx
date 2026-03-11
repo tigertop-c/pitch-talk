@@ -7,7 +7,7 @@ import GamePicker, { type UpcomingMatch } from "@/components/GamePicker";
 import BottomNav, { type TabId } from "@/components/BottomNav";
 import ReceiptsScreen from "@/components/ReceiptsScreen";
 import Leaderboard, { type LeaderboardEntry } from "@/components/Leaderboard";
-import PreGameIntro from "@/components/PreGameIntro";
+import PreGameIntro, { type BallMode } from "@/components/PreGameIntro";
 import HypeOverlay from "@/components/HypeOverlay";
 import NameEntry from "@/components/NameEntry";
 import { useMatchState } from "@/hooks/useMatchState";
@@ -17,8 +17,6 @@ import { type PredictionRecord, type ReceiptData } from "@/components/ShareableR
 import { setSoundMuted } from "@/lib/sounds";
 import type { TeamId } from "@/components/ChatInput";
 import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
-import PlayerMomentCard from "@/components/PlayerMomentCard";
-import { getPlayerPhoto } from "@/data/iplRosters";
 
 // When VITE_USE_MOCK_DATA=true, all matches run as simulations (no real API polling).
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
@@ -37,9 +35,13 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("arena");
   const [selectedMatch, setSelectedMatch] = useState<UpcomingMatch | null>(null);
   const [userTeam, setUserTeam] = useState<TeamId>("DC");
-  const [hypeType, setHypeType] = useState<"four" | "six" | "wicket" | null>(null);
+  const [hypeState, setHypeState] = useState<{
+    type: "four" | "six" | "wicket";
+    isDuck?: boolean;
+  } | null>(null);
   const [mutedHypeTypes, setMutedHypeTypes] = useState<Set<string>>(new Set());
-  const [selectedOvers, setSelectedOvers] = useState(2);
+  const [selectedOvers, setSelectedOvers] = useState(1); // Item 5: default 1 over
+  const [ballMode, setBallMode] = useState<BallMode>("auto"); // Item 4
   // Always call both hooks (rules of hooks — no conditional calls).
   // We pick which result to expose based on whether the selected match is real.
   const sim = useMatchState(selectedOvers);
@@ -65,28 +67,40 @@ const Index = () => {
 
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
 
-  // Player moment card (shows player photo on six, four, wicket)
-  const [playerMoment, setPlayerMoment] = useState<{
-    photoUrl: string | null;
-    name: string;
-    caption: string;
-  } | null>(null);
-  const prevBallEventsLenRef = useRef(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [showInningsBreak, setShowInningsBreak] = useState(false);
+  const [inningsBreakCountdown, setInningsBreakCountdown] = useState(15); // Item 9
+  const inningsBreakTimerRef = useRef<ReturnType<typeof setInterval> | null>(null); // Item 9
 
-  // Handle innings completion
+  // Handle innings completion — Item 9: 15s countdown with Skip button (sim only)
   const handleInningsComplete = useCallback(() => {
     if (match.innings === 1 && match.inningsComplete && !match.matchOver) {
       setShowInningsBreak(true);
-      // Auto-start second innings after 5 seconds
-      setTimeout(() => {
-        startSecondInnings();
-        setShowInningsBreak(false);
-      }, 5000);
+      setInningsBreakCountdown(15);
+      if (inningsBreakTimerRef.current) clearInterval(inningsBreakTimerRef.current);
+      inningsBreakTimerRef.current = setInterval(() => {
+        setInningsBreakCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(inningsBreakTimerRef.current!);
+            inningsBreakTimerRef.current = null;
+            startSecondInnings();
+            setShowInningsBreak(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     }
   }, [match.innings, match.inningsComplete, match.matchOver, startSecondInnings]);
+
+  // Item 9: Skip innings break
+  const handleSkipInningsBreak = useCallback(() => {
+    if (inningsBreakTimerRef.current) clearInterval(inningsBreakTimerRef.current);
+    inningsBreakTimerRef.current = null;
+    startSecondInnings();
+    setShowInningsBreak(false);
+  }, [startSecondInnings]);
 
   // Watch for innings completion
   useEffect(() => {
@@ -94,52 +108,6 @@ const Index = () => {
       handleInningsComplete();
     }
   }, [match.inningsComplete, match.innings, showInningsBreak, handleInningsComplete]);
-
-  // Show player moment card on key ball events (six, four, wicket)
-  useEffect(() => {
-    if (stage !== "game") return;
-    const len = match.ballEvents.length;
-    if (len === prevBallEventsLenRef.current) return;
-    prevBallEventsLenRef.current = len;
-
-    const lastEvent = match.ballEvents[len - 1];
-    if (!lastEvent) return;
-
-    const striker = match.batsmen.find(b => b.isOnStrike);
-
-    let moment: typeof playerMoment = null;
-    if (lastEvent.result === "six") {
-      moment = {
-        photoUrl: getPlayerPhoto(striker?.name ?? ""),
-        name: striker?.name ?? "",
-        caption: "SIX! 🔵",
-      };
-    } else if (lastEvent.result === "four" && Math.random() < 0.65) {
-      moment = {
-        photoUrl: getPlayerPhoto(striker?.name ?? ""),
-        name: striker?.name ?? "",
-        caption: "FOUR! 🟢",
-      };
-    } else if (lastEvent.result === "wicket") {
-      // After wicket the striker slot is already the incoming batsman
-      moment = {
-        photoUrl: getPlayerPhoto(striker?.name ?? ""),
-        name: striker?.name ?? "",
-        caption: "New Batsman 🏏",
-      };
-    }
-
-    if (moment) setPlayerMoment(moment);
-  }, [match.ballEvents, match.batsmen, stage]);
-
-  // Stable dismiss handler — avoids new reference on every render.
-  const handleDismissPlayerMoment = useCallback(() => setPlayerMoment(null), []);
-
-  // Clear player moment when innings resets
-  useEffect(() => {
-    setPlayerMoment(null);
-    prevBallEventsLenRef.current = 0;
-  }, [match.innings]);
 
   // Check for saved profile on mount
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -169,19 +137,22 @@ const Index = () => {
 
   const [friendScores, setFriendScores] = useState<Record<string, { wins: number; total: number; streak: number; bestStreak: number }>>({});
 
-  const handleHype = useCallback((type: "four" | "six" | "wicket") => {
+  const handleHype = useCallback((
+    type: "four" | "six" | "wicket",
+    isDuck?: boolean,
+  ) => {
     if (mutedHypeTypes.has(type)) return;
-    setHypeType(type);
-    setTimeout(() => setHypeType(null), 5000);
+    setHypeState({ type, isDuck });
   }, [mutedHypeTypes]);
 
-  const handleMuteHype = useCallback((type: string) => {
-    setMutedHypeTypes(prev => new Set(prev).add(type));
-    setHypeType(null);
+  // Muting any hype silences all hype types for the rest of the session
+  const handleMuteHype = useCallback(() => {
+    setMutedHypeTypes(new Set(["four", "six", "wicket"]));
+    setHypeState(null);
   }, []);
 
   const handleDismissHype = useCallback(() => {
-    setHypeType(null);
+    setHypeState(null);
   }, []);
 
   // After picking a match, check if we have a name; if yes, auto-create room and go to pregame
@@ -239,16 +210,15 @@ const Index = () => {
     }
   }, [profileLoaded, pendingJoinCode, stage]);
 
-  const handleGameStart = useCallback((team: TeamId, overs: number = 2) => {
+  const handleGameStart = useCallback((team: TeamId, overs: number = 1, mode: BallMode = "auto") => {
     setUserTeam(team);
     setSelectedOvers(overs);
+    setBallMode(mode); // Item 4
     mp.updateMyTeam(team);
     // Reset the simulation with the correct team rosters before the game starts
     const t1 = selectedMatch?.team1.short ?? "MI";
     const t2 = selectedMatch?.team2.short ?? "DC";
     resetSimWithTeams(t1, t2);
-    prevBallEventsLenRef.current = 0;
-    setPlayerMoment(null);
     setStage("game");
     if (mp.isHost) {
       mp.startGame();
@@ -318,10 +288,11 @@ const Index = () => {
   // Listen for host starting game (non-host)
   const gamePhase = mp.gameSnapshot?.phase;
   const isNonHostInGame = !mp.isHost && gamePhase === "game" && stage === "pregame";
-  if (isNonHostInGame) {
-    setTimeout(() => setStage("game"), 0);
-  }
-
+  useEffect(() => {
+    if (!isNonHostInGame) return;
+    const id = setTimeout(() => setStage("game"), 0);
+    return () => clearTimeout(id);
+  }, [isNonHostInGame]);
 
   const allPlayerStandings = useMemo(() => [
     {
@@ -411,7 +382,12 @@ const Index = () => {
         <div className="hidden sm:block absolute top-[8px] left-1/2 -translate-x-1/2 z-[201] w-[90px] h-[24px] bg-[hsl(0,0%,5%)] rounded-full" />
 
         <div className="flex flex-col h-full relative overflow-hidden sm:pt-[2px]">
-          <HypeOverlay type={hypeType} onDismiss={handleDismissHype} onMute={handleMuteHype} />
+          <HypeOverlay
+            type={hypeState?.type ?? null}
+            onDismiss={handleDismissHype}
+            onMute={handleMuteHype}
+            isDuck={hypeState?.isDuck}
+          />
 
           {/* Stage: Match Picker (first screen) */}
           {stage === "picker" && (
@@ -467,25 +443,13 @@ const Index = () => {
           {/* Stage: Game (same UI for host and non-host) */}
           {isGameActive && !showInningsBreak && !match.matchOver && (
             <>
-              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} maxOvers={selectedOvers} />
+              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} maxOvers={selectedOvers} team1={selectedMatch ? { short: selectedMatch.team1.short, logo: selectedMatch.team1.logo } : undefined} team2={selectedMatch ? { short: selectedMatch.team2.short, logo: selectedMatch.team2.logo } : undefined} />
               <SquadStandingsBar
                 entries={squadEntries}
                 onOpenLeaderboard={() => setActiveTab("leaderboard")}
                 onInvite={handleInvite}
                 spotsLeft={MAX_PLAYERS - mp.players.length}
               />
-              {/* Player Moment Card — slides up on six, four, wicket */}
-              <AnimatePresence>
-                {playerMoment && (
-                  <PlayerMomentCard
-                    photoUrl={playerMoment.photoUrl}
-                    playerName={playerMoment.name}
-                    caption={playerMoment.caption}
-                    onDismiss={handleDismissPlayerMoment}
-                  />
-                )}
-              </AnimatePresence>
-
               {/* Arena tab — always kept mounted so BanterStream never loses its ball counter state */}
               <div className={activeTab === "arena" ? "flex flex-col flex-1 min-h-0 overflow-hidden" : "hidden"}>
                 <BanterStream
@@ -510,7 +474,11 @@ const Index = () => {
                   gameSnapshot={mp.gameSnapshot}
                   onInningsComplete={handleInningsComplete}
                   battingTeamShort={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")}
+                  bowlingTeamShort={match.innings === 1 ? (selectedMatch?.team2.short || "MI") : (selectedMatch?.team1.short || "DC")}
+                  team1Short={selectedMatch?.team1.short || "DC"}
+                  team2Short={selectedMatch?.team2.short || "MI"}
                   onAiPick={(ballId, pick, name) => mp.submitPick(ballId, pick, name)}
+                  isManualMode={ballMode === "manual"} /* Item 4 */
                 />
               </div>
               {/* Receipts tab */}
@@ -531,7 +499,7 @@ const Index = () => {
             </>
           )}
 
-          {/* Innings Break Screen */}
+          {/* Innings Break Screen — Item 9: 15s countdown + Skip button */}
           {isGameActive && showInningsBreak && (
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 bg-gradient-to-b from-primary/20 to-background">
               <motion.div
@@ -548,9 +516,34 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground mb-2">
                   {selectedMatch?.team2.short || "MI"} need <span className="text-foreground font-bold">{match.runs + 1}</span> to win
                 </p>
-                <p className="text-xs text-muted-foreground animate-pulse mt-6">
-                  2nd innings starting in a few seconds...
-                </p>
+
+                {/* Item 9: countdown + skip — sim only */}
+                {!isRealMatch && (
+                  <div className="mt-6 flex flex-col items-center gap-3">
+                    <motion.div
+                      key={inningsBreakCountdown}
+                      initial={{ scale: 1.2, opacity: 0.7 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="text-4xl font-black text-primary tabular-nums"
+                    >
+                      {inningsBreakCountdown}
+                    </motion.div>
+                    <p className="text-xs text-muted-foreground">2nd innings starting in {inningsBreakCountdown}s</p>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSkipInningsBreak}
+                      className="mt-1 px-5 py-2 rounded-full bg-secondary text-foreground text-[12px] font-semibold active:scale-95 transition-transform"
+                    >
+                      Skip →
+                    </motion.button>
+                  </div>
+                )}
+                {isRealMatch && (
+                  <p className="text-xs text-muted-foreground animate-pulse mt-6">
+                    2nd innings starting soon...
+                  </p>
+                )}
               </motion.div>
             </div>
           )}
