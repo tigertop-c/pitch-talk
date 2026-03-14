@@ -17,6 +17,7 @@ import { type PredictionRecord, type ReceiptData } from "@/components/ShareableR
 import { setSoundMuted, playMatchWinSound, playMatchLossSound, playInningsBreakSound } from "@/lib/sounds";
 import type { TeamId } from "@/components/ChatInput";
 import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
+import { AI_PLAYERS } from "@/lib/aiPlayers";
 
 // When VITE_USE_MOCK_DATA=true, all matches run as simulations (no real API polling).
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
@@ -304,11 +305,53 @@ const Index = () => {
   }, []);
 
   // For solo/host mode, use other players from multiplayer (includes AI bots)
+  const fallbackAiFriends: FriendDef[] = useMemo(() => {
+    if (mp.players.length > 0 || !selectedMatch) return [];
+    const fallbackTeams = [selectedMatch.team1.short as TeamId, selectedMatch.team2.short as TeamId];
+    return AI_PLAYERS.map((ai, index) => ({
+      name: ai.name,
+      avatar: ai.avatar,
+      team: fallbackTeams[index % fallbackTeams.length],
+    }));
+  }, [mp.players.length, selectedMatch]);
+
   const activeFriends: FriendDef[] = useMemo(() => {
+    if (mp.players.length === 0) {
+      return fallbackAiFriends;
+    }
     return mp.players
       .filter(p => p.name !== playerName)
       .map(p => ({ name: p.name, avatar: p.avatar, team: (p.teamPicked as TeamId) || "DC" }));
-  }, [mp.players, playerName]);
+  }, [mp.players, playerName, fallbackAiFriends]);
+
+  const displayPlayers = useMemo(() => {
+    if (mp.players.length > 0) return mp.players;
+    const localPlayerName = playerName || "You";
+    return [
+      {
+        id: "local-player",
+        name: localPlayerName,
+        avatar: playerAvatar,
+        isHost: true,
+        wins: 0,
+        total: 0,
+        streak: 0,
+        teamPicked: userTeam,
+      },
+      ...fallbackAiFriends.map((friend, index) => ({
+        id: `local-ai-${index}`,
+        name: friend.name,
+        avatar: friend.avatar,
+        isHost: false,
+        wins: 0,
+        total: 0,
+        streak: 0,
+        teamPicked: friend.team,
+      })),
+    ];
+  }, [mp.players, playerName, playerAvatar, userTeam, fallbackAiFriends]);
+
+  const displayedActivePlayers = displayPlayers.length;
 
   const [friendScores, setFriendScores] = useState<Record<string, { wins: number; total: number; streak: number; bestStreak: number }>>({});
 
@@ -339,7 +382,12 @@ const Index = () => {
       const avatar = savedProfileRef.current.avatar;
       setPlayerName(name);
       setPlayerAvatar(avatar);
-      await mp.createRoom(name, avatar, m);
+      try {
+        await mp.createRoom(name, avatar, m);
+      } catch (error) {
+        // Local quick games should still work without multiplayer if room creation fails.
+        if (!m.isSimulation) throw error;
+      }
       setStage("pregame");
     } else {
       // Need name first
@@ -365,7 +413,11 @@ const Index = () => {
       }
     } else if (selectedMatch) {
       // Creating room after picking match
-      await mp.createRoom(name, avatar, selectedMatch);
+      try {
+        await mp.createRoom(name, avatar, selectedMatch);
+      } catch (error) {
+        if (!selectedMatch.isSimulation) throw error;
+      }
       setStage("pregame");
     }
   }, [mp, pendingJoinCode, selectedMatch]);
@@ -504,6 +556,8 @@ const Index = () => {
   // Listen for host starting game (non-host)
   const gamePhase = mp.gameSnapshot?.phase;
   const isNonHostInGame = !mp.isHost && gamePhase === "game" && stage === "pregame";
+  const isLocalSoloGame = !mp.roomId;
+  const effectiveIsHost = isLocalSoloGame || mp.isHost;
   useEffect(() => {
     if (!isNonHostInGame) return;
     const id = setTimeout(() => setStage("game"), 0);
@@ -625,7 +679,7 @@ const Index = () => {
               matchNumber={selectedMatch.matchNumber}
               roomId={mp.roomId || "SOLO"}
               isSimulation={selectedMatch.isSimulation}
-              players={mp.players}
+              players={displayPlayers}
               onInvite={handleInvite}
               onRemoveAI={mp.removeAIPlayers}
             />
@@ -644,7 +698,7 @@ const Index = () => {
                 Room <span className="font-bold text-foreground">{mp.roomId}</span> — waiting for host to start the game...
               </p>
               <div className="space-y-2 w-full max-w-xs">
-                {mp.players.map(p => (
+                {displayPlayers.map(p => (
                   <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-secondary">
                     <span className="text-lg">{p.avatar}</span>
                     <span className="text-[13px] font-semibold text-foreground flex-1">{p.name}</span>
@@ -659,17 +713,17 @@ const Index = () => {
           {/* Stage: Game (same UI for host and non-host) */}
           {isGameActive && !showInningsBreak && (!match.matchOver || !!hypeState) && (
             <>
-              <LiveHeader match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !mp.isHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} maxOvers={selectedOvers} team1={selectedMatch ? { short: selectedMatch.team1.short, logo: selectedMatch.team1.logo } : undefined} team2={selectedMatch ? { short: selectedMatch.team2.short, logo: selectedMatch.team2.logo } : undefined} />
+              <LiveHeader match={!effectiveIsHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match} crr={(() => { const m = !effectiveIsHost && mp.gameSnapshot?.match ? mp.gameSnapshot.match : match; const t = m.overs + m.balls / 6; return t > 0 ? (m.runs / t).toFixed(2) : "0.00"; })()} soundMuted={soundMuted} onToggleSound={toggleSound} battingTeam={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")} isChasing={match.innings === 2} maxOvers={selectedOvers} team1={selectedMatch ? { short: selectedMatch.team1.short, logo: selectedMatch.team1.logo } : undefined} team2={selectedMatch ? { short: selectedMatch.team2.short, logo: selectedMatch.team2.logo } : undefined} />
               <SquadStandingsBar
                 entries={squadEntries}
                 onOpenLeaderboard={() => setActiveTab("leaderboard")}
                 onInvite={handleInvite}
-                spotsLeft={MAX_PLAYERS - mp.players.length}
+                spotsLeft={MAX_PLAYERS - displayedActivePlayers}
               />
               {/* Arena tab — always kept mounted so BanterStream never loses its ball counter state */}
               <div className={activeTab === "arena" ? "flex flex-col flex-1 min-h-0 overflow-hidden" : "hidden"}>
                 <BanterStream
-                  match={!mp.isHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match}
+                  match={!effectiveIsHost && mp.gameSnapshot?.match ? { ...match, runs: mp.gameSnapshot.match.runs, wickets: mp.gameSnapshot.match.wickets, overs: mp.gameSnapshot.match.overs, balls: mp.gameSnapshot.match.balls, currentBowler: mp.gameSnapshot.match.currentBowler, target: mp.gameSnapshot.match.target } : match}
                   onNextBall={nextBall}
                   onHype={handleHype}
                   onPredictionResolved={handlePredictionResolved}
@@ -679,14 +733,14 @@ const Index = () => {
                   onOverComplete={handleOverComplete}
                   allPlayerStandings={allPlayerStandings}
                   userTeam={userTeam}
-                  activePlayers={mp.players.length}
+                  activePlayers={displayedActivePlayers}
                   maxPlayers={MAX_PLAYERS}
                   roomId={mp.roomId || "SOLO"}
                   onInvite={handleInvite}
                   onToggleSound={toggleSound}
                   onFirstOverComplete={handleFirstOverComplete}
                   onBallStateChange={handleBallStateChange}
-                  isHost={mp.isHost}
+                  isHost={effectiveIsHost}
                   gameSnapshot={mp.gameSnapshot}
                   onInningsComplete={handleInningsComplete}
                   battingTeamShort={match.innings === 1 ? (selectedMatch?.team1.short || "DC") : (selectedMatch?.team2.short || "MI")}
