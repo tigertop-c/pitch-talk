@@ -35,10 +35,8 @@ interface MultiplayerPlayer {
   teamPicked?: string | null;
 }
 
-export type BallMode = "auto" | "manual";
-
 interface PreGameIntroProps {
-  onStart: (team: TeamId, overs: number, ballMode: BallMode) => void;
+  onStart: (team: TeamId, overs: number) => void;
   matchStartTime: Date;
   team1: { name: string; short: string };
   team2: { name: string; short: string };
@@ -81,7 +79,6 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [selectedOvers, setSelectedOvers] = useState(1); // Item 5: default 1 over
-  const [ballMode, setBallMode] = useState<BallMode>("auto"); // Item 4
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -137,7 +134,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0 && userTeam) {
-      const t = setTimeout(() => onStart(userTeam, selectedOvers, ballMode), 400);
+      const t = setTimeout(() => onStart(userTeam, selectedOvers), 400);
       return () => clearTimeout(t);
     }
   }, [stage, countdown, onStart, userTeam, selectedOvers]);
@@ -353,39 +350,6 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                           {n}
                         </motion.button>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Item 4: Ball mode toggle */}
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">🎮 Ball Mode</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <motion.button
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => setBallMode("auto")}
-                        className={`py-2.5 px-3 rounded-xl text-[12px] font-semibold transition-all duration-150 text-left ${
-                          ballMode === "auto"
-                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                            : "bg-secondary text-foreground active:bg-muted"
-                        }`}
-                      >
-                        <span className="block text-[15px] mb-0.5">⚡</span>
-                        Auto
-                        <span className="block text-[9px] opacity-70 mt-0.5 font-normal">Balls bowl themselves</span>
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => setBallMode("manual")}
-                        className={`py-2.5 px-3 rounded-xl text-[12px] font-semibold transition-all duration-150 text-left ${
-                          ballMode === "manual"
-                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                            : "bg-secondary text-foreground active:bg-muted"
-                        }`}
-                      >
-                        <span className="block text-[15px] mb-0.5">👆</span>
-                        Manual
-                        <span className="block text-[9px] opacity-70 mt-0.5 font-normal">You throw each ball</span>
-                      </motion.button>
                     </div>
                   </div>
 

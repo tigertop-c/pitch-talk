@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { UserPlus, MessageCircle } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 export interface OverSummaryData {
   overNumber: number;
@@ -37,7 +37,7 @@ const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 const getStreakBadge = (streak: number) => {
   if (streak >= 5) return { label: "🔥 On Fire", style: "bg-destructive/15 text-destructive" };
-  if (streak >= 3) return { label: "⚡ Hot", style: "bg-neon/15 text-neon" };
+  if (streak >= 3) return { label: "⚡ Hot", style: "bg-amber-400/15 text-amber-400" };
   return null;
 };
 
@@ -50,19 +50,29 @@ const getTitle = (accuracy: number, total: number) => {
   return { title: "Bold Guesser 🎲", style: "text-muted-foreground" };
 };
 
+const getAccuracyColor = (accuracy: number) => {
+  if (accuracy >= 70) return "text-neon";
+  if (accuracy >= 50) return "text-primary";
+  if (accuracy >= 30) return "text-amber-400";
+  return "text-muted-foreground";
+};
+
 const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
   const activeStandings = data.standings
     .filter(s => s.total > 0)
     .sort((a, b) => b.accuracy - a.accuracy || b.wins - a.wins)
-    .slice(0, 5); // Top 5 only
+    .slice(0, 5);
 
   const totalPlayers = data.standings.filter(s => s.total > 0).length;
   const needsMore = data.activePlayers < data.maxPlayers;
 
-  // Game summary stats
   const matchSummary = data.matchTarget
     ? `${data.matchRuns}/${data.matchWickets} (${data.matchOvers}) • Need ${data.matchTarget - data.matchRuns} off ${120 - (parseInt(data.matchOvers) * 6 + parseInt(data.matchOvers.split('.')[1] || '0'))} balls`
     : `${data.matchRuns}/${data.matchWickets} (${data.matchOvers})`;
+
+  // Determine over quality
+  const isExplosiveOver = (data.overRuns ?? 0) >= 15;
+  const isQuietOver = (data.overRuns ?? 0) <= 4 && (data.overWickets ?? 0) === 0;
 
   return (
     <motion.div
@@ -71,44 +81,55 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
       transition={spring}
       className="mx-4 my-2"
     >
-      <div className="ios-card p-4 border-l-4" style={{ borderLeftColor: "hsl(var(--primary))" }}>
+      <div className={`ios-card p-4 relative overflow-hidden ${
+        isExplosiveOver ? "border-l-4 border-l-neon" : "border-l-4 border-l-primary"
+      }`}>
+        {/* Decorative gradient for explosive overs */}
+        {isExplosiveOver && (
+          <div className="absolute top-0 right-0 w-32 h-32 bg-neon/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        )}
+
         {/* Header + Match Score */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 relative z-10">
           <div className="flex items-center gap-2">
-            <span className="text-sm">📊</span>
-            <span className="text-[13px] font-bold text-foreground">End of Over {data.overNumber}</span>
+            <span className="text-sm">{isExplosiveOver ? "🔥" : isQuietOver ? "🤫" : "📊"}</span>
+            <span className="text-[13px] font-black text-foreground">End of Over {data.overNumber}</span>
           </div>
-          <span className="text-[10px] text-muted-foreground font-medium px-2 py-0.5 bg-secondary rounded-full">
-            Summary
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            isExplosiveOver ? "bg-neon/15 text-neon" : "bg-secondary text-muted-foreground"
+          }`}>
+            {isExplosiveOver ? "Explosive!" : "Summary"}
           </span>
         </div>
 
-        {/* Match score + over highlights */}
-        <div className="px-2 py-1.5 mb-2 rounded-lg bg-secondary/60 text-center">
-          <span className="text-[11px] font-semibold text-foreground">{matchSummary}</span>
+        {/* Match score */}
+        <div className="px-3 py-2 mb-2.5 rounded-xl bg-secondary/70 text-center relative z-10">
+          <span className="text-[12px] font-bold text-foreground">{matchSummary}</span>
         </div>
 
         {/* Over highlights - hype stats */}
-        <div className="flex gap-1.5 mb-3">
+        <div className="flex flex-wrap gap-1.5 mb-3 relative z-10">
           {(data.overRuns !== undefined && data.overRuns > 0) && (
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
-              data.overRuns >= 15 ? "bg-neon/15 text-neon" : data.overRuns >= 10 ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
+              data.overRuns >= 15 ? "bg-neon/15 text-neon ring-1 ring-neon/20" :
+              data.overRuns >= 10 ? "bg-primary/15 text-primary" :
+              "bg-secondary text-muted-foreground"
             }`}>
               {data.overRuns >= 15 ? "🔥" : "🏏"} {data.overRuns} runs
             </span>
           )}
           {(data.overWickets !== undefined && data.overWickets > 0) && (
-            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-destructive/15 text-destructive">
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive ring-1 ring-destructive/15">
               💀 {data.overWickets} wicket{data.overWickets > 1 ? "s" : ""}
             </span>
           )}
           {(data.overBoundaries !== undefined && data.overBoundaries > 0) && (
-            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/15 text-primary">
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-primary/15 text-primary">
               💥 {data.overBoundaries} boundar{data.overBoundaries > 1 ? "ies" : "y"}
             </span>
           )}
           {(data.overExtras !== undefined && data.overExtras > 0) && (
-            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-muted text-muted-foreground">
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-muted text-muted-foreground">
               😬 {data.overExtras} extra{data.overExtras > 1 ? "s" : ""}
             </span>
           )}
@@ -116,37 +137,48 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
 
         {/* Team allegiances */}
         {data.teamAllegiances && (
-          <div className="flex items-center justify-center gap-3 mb-3 px-2 py-1.5 rounded-lg bg-secondary/40">
+          <div className="flex items-center justify-center gap-3 mb-3 px-3 py-2 rounded-xl bg-secondary/40 relative z-10">
             <span className="text-[10px] font-bold text-primary">
               {data.teamAllegiances.team1} 💙 ×{data.teamAllegiances.team1Count}
             </span>
-            <span className="text-[10px] text-muted-foreground">vs</span>
+            <span className="text-[10px] text-muted-foreground font-semibold">vs</span>
             <span className="text-[10px] font-bold text-primary">
               {data.teamAllegiances.team2} 💙 ×{data.teamAllegiances.team2Count}
             </span>
           </div>
         )}
 
-        {/* Over MVP */}
+        {/* Over MVP — enhanced callout */}
         {data.overMvp && data.overMvp.correct > 0 && (
-          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-neon/10">
-            <span className="text-lg">{data.overMvp.avatar}</span>
-            <div>
-              <p className="text-[12px] font-bold text-neon">
-                {data.overMvp.name} owned this over!
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", damping: 15, delay: 0.1 }}
+            className="flex items-center gap-3 mb-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-amber-500/15 ring-1 ring-amber-400/25 relative overflow-hidden"
+          >
+            {/* Shimmer */}
+            <div className="absolute inset-0 animate-gold-shimmer pointer-events-none" />
+            <span className="text-2xl relative z-10">{data.overMvp.avatar}</span>
+            <div className="relative z-10">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Over MVP</span>
+                <span className="text-sm">👑</span>
+              </div>
+              <p className="text-[12px] font-bold text-foreground">
+                {data.overMvp.name}
               </p>
-              <p className="text-[10px] text-muted-foreground">
-                {data.overMvp.correct}/{data.overMvp.total} correct
+              <p className="text-[10px] text-muted-foreground font-medium">
+                {data.overMvp.correct}/{data.overMvp.total} correct this over
               </p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Top 5 Standings */}
         {activeStandings.length > 0 && (
-          <div>
+          <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
                 🏆 Top {Math.min(5, activeStandings.length)}
               </p>
               {totalPlayers > 5 && (
@@ -160,13 +192,13 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
                 const streakBadge = getStreakBadge(s.streak);
                 const title = getTitle(s.accuracy, s.total);
                 return (
-                  <div key={s.name} className="flex items-center justify-between">
+                  <div key={s.name} className="flex items-center justify-between py-0.5">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className="w-4 text-center text-[10px] font-bold text-muted-foreground flex-shrink-0">
                         {i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                       </span>
                       <span className="text-[11px]">{s.avatar}</span>
-                      <span className={`text-[11px] font-semibold truncate ${s.name === "You" ? "text-primary" : "text-foreground"}`}>
+                      <span className={`text-[11px] font-bold truncate ${s.name === "You" ? "text-primary" : "text-foreground"}`}>
                         {s.name}
                       </span>
                       {s.team && (
@@ -186,13 +218,20 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <div className="w-10 h-1 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-500"
-                          style={{ width: `${s.accuracy}%` }}
+                      <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${s.accuracy}%` }}
+                          transition={{ duration: 0.6, delay: i * 0.08 }}
+                          className={`h-full rounded-full ${
+                            s.accuracy >= 70 ? "bg-neon" :
+                            s.accuracy >= 50 ? "bg-primary" :
+                            s.accuracy >= 30 ? "bg-amber-400" :
+                            "bg-muted-foreground"
+                          }`}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-primary w-7 text-right">
+                      <span className={`text-[10px] font-black w-7 text-right ${getAccuracyColor(s.accuracy)}`}>
                         {s.accuracy}%
                       </span>
                     </div>
@@ -203,12 +242,12 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
           </div>
         )}
 
-        {/* Invite CTA if room not full */}
+        {/* Invite CTA */}
         {needsMore && onInvite && (
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={onInvite}
-            className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold bg-neon/10 text-neon active:bg-neon/20 transition-colors"
+            className="w-full mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold bg-neon/10 text-neon active:bg-neon/20 transition-colors ring-1 ring-neon/15 relative z-10"
           >
             <UserPlus size={12} />
             Room has {data.maxPlayers - data.activePlayers} spots — Invite friends

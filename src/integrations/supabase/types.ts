@@ -133,6 +133,7 @@ export type Database = {
           match_venue: string
           status: string
           updated_at: string
+          host_id: string | null
         }
         Insert: {
           created_at?: string
@@ -148,6 +149,7 @@ export type Database = {
           match_venue?: string
           status?: string
           updated_at?: string
+          host_id?: string | null
         }
         Update: {
           created_at?: string
@@ -163,6 +165,7 @@ export type Database = {
           match_venue?: string
           status?: string
           updated_at?: string
+          host_id?: string | null
         }
         Relationships: []
       }

@@ -151,6 +151,52 @@
     50% { box-shadow: 0 0 16px 4px hsl(var(--neon) / 0.5), inset 0 0 0 1.5px hsl(var(--neon) / 0.7); }
   }
 
+  /* Gold shimmer for #1 rank / MVP callout */
+  @keyframes gold-shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  /* Neon text shadow pulse */
+  @keyframes neon-pulse {
+    0%, 100% { text-shadow: 0 0 4px currentColor, 0 0 12px currentColor; }
+    50% { text-shadow: 0 0 8px currentColor, 0 0 24px currentColor, 0 0 40px currentColor; }
+  }
+
+  /* Score pop on update */
+  @keyframes score-pop {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.12); }
+    60% { transform: scale(0.96); }
+    100% { transform: scale(1); }
+  }
+
+  /* Stadium gradient sweep */
+  @keyframes gradient-sweep {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Win celebration ring pulse */
+  @keyframes win-ring {
+    0% { box-shadow: 0 0 0 0 hsl(var(--neon) / 0.5); }
+    50% { box-shadow: 0 0 0 6px hsl(var(--neon) / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--neon) / 0); }
+  }
+
+  /* Ball trail shimmer */
+  @keyframes ball-trail {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  /* Tab glow for active nav */
+  @keyframes tab-glow {
+    0%, 100% { box-shadow: 0 -2px 8px hsl(var(--primary) / 0.3); }
+    50% { box-shadow: 0 -2px 16px hsl(var(--primary) / 0.5); }
+  }
+
   .animate-shake {
     animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
   }
@@ -161,5 +207,36 @@
 
   .animate-prediction-glow {
     animation: prediction-glow 1.5s ease-in-out infinite;
+  }
+
+  .animate-gold-shimmer {
+    background: linear-gradient(90deg, hsl(45 100% 50% / 0) 0%, hsl(45 100% 60% / 0.3) 50%, hsl(45 100% 50% / 0) 100%);
+    background-size: 200% 100%;
+    animation: gold-shimmer 2s ease-in-out infinite;
+  }
+
+  .animate-neon-pulse {
+    animation: neon-pulse 1.5s ease-in-out infinite;
+  }
+
+  .animate-score-pop {
+    animation: score-pop 0.35s ease-out;
+  }
+
+  .animate-gradient-sweep {
+    background-size: 200% 200%;
+    animation: gradient-sweep 3s ease infinite;
+  }
+
+  .animate-win-ring {
+    animation: win-ring 1s ease-out infinite;
+  }
+
+  .animate-ball-trail {
+    animation: ball-trail 0.8s ease-in-out infinite;
+  }
+
+  .animate-tab-glow {
+    animation: tab-glow 2s ease-in-out infinite;
   }
 }
