@@ -161,18 +161,14 @@ const COMMENTARY_LINES: Record<string, string[]> = {
   ],
 };
 
-const LOCK_TIME_AUTO = 10;      // 10s prediction window in auto mode
-const LOCK_TIME_MANUAL = 20;    // 20s prediction window in manual mode (user controls pace)
-const WAIT_AFTER_BALL_AUTO = 12000;  // 12s wait between balls in auto mode
-const WAIT_AFTER_BALL_MANUAL = 3000; // 3s wait after ball in manual mode (host controls pace)
-const MULTIPLAYER_AUTO_THROW_MS = 15000; // 15s auto-throw in multiplayer after prediction
+const LOCK_TIME = 10;           // 10s prediction window
+const WAIT_AFTER_BALL = 12000;  // 12s wait between balls
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
   onHype?: (type: "four" | "six" | "wicket", isDuck?: boolean) => void;
-  isManualMode?: boolean;
   onPredictionResolved?: (record: PredictionRecord) => void;
   onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number }>) => void;
   soundMuted: boolean;
@@ -205,7 +201,6 @@ const BanterStream = ({
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
   onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, bowlingTeamShort, team1Short, team2Short, onAiPick,
-  isManualMode,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -218,7 +213,6 @@ const BanterStream = ({
   const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
     () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
   );
-  const [showManualButton, setShowManualButton] = useState(false); // Item 4
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [userChatStyle, setUserChatStyle] = useState<UserChatStyle>("neutral");
   const [totalUserPredictions, setTotalUserPredictions] = useState(0);
@@ -237,11 +231,8 @@ const BanterStream = ({
   const pendingHostResolvedRef = useRef<{ ballId: number; label: string; result: { label: string; type: string }; expectedBallEventsLen: number } | null>(null);
   const startNewBallRef = useRef<() => void>(() => {});
   // Refs for values used inside callbacks without causing stale closures
-  const isManualModeRef = useRef(isManualMode);
-  isManualModeRef.current = isManualMode;
   const activePlayersRef = useRef(activePlayers);
   activePlayersRef.current = activePlayers;
-  const autoThrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Over tracking
   const legalBallsThisOver = useRef(0);
@@ -650,7 +641,7 @@ const BanterStream = ({
     const msgPool = WAITING_MESSAGES[resultKey] || WAITING_MESSAGES.dot;
     const pickedMsg = msgPool.messages[Math.floor(Math.random() * msgPool.messages.length)];
 
-    const waitTime = isManualModeRef.current ? WAIT_AFTER_BALL_MANUAL : WAIT_AFTER_BALL_AUTO;
+    const waitTime = WAIT_AFTER_BALL;
 
     setTimeout(() => {
       setWaitingMessage({ emoji: msgPool.emoji, text: pickedMsg });
@@ -696,18 +687,12 @@ const BanterStream = ({
 
   const startNewBall = useCallback(() => {
     setWaitingForNext(false);
-    setShowManualButton(false); // hide any lingering throw button
-    // Cancel any pending auto-throw from the previous ball
-    if (autoThrowTimerRef.current) {
-      clearTimeout(autoThrowTimerRef.current);
-      autoThrowTimerRef.current = null;
-    }
 
     idRef.current += 1;
     const ballId = idRef.current;
     activeBallIdRef.current = ballId;
 
-    const lockTime = isManualModeRef.current ? LOCK_TIME_MANUAL : LOCK_TIME_AUTO;
+    const lockTime = LOCK_TIME;
 
     const tempBallCount = ballCountRef.current + 1;
     const overNum = Math.floor((tempBallCount - 1) / 6);
@@ -750,32 +735,16 @@ const BanterStream = ({
       ));
       if (count <= 0) {
         clearInterval(countdownRef.current);
-        if (isManualModeRef.current) {
-          // Manual mode: time's up — cancel any pending auto-throw, show throw button as fallback
-          if (autoThrowTimerRef.current) {
-            clearTimeout(autoThrowTimerRef.current);
-            autoThrowTimerRef.current = null;
-          }
-          setBalls(prev => prev.map(b =>
-            b.id === ballId && b.predictionState === "idle"
-              ? { ...b, predictionState: "locked" as PredictionState }
-              : b
-          ));
-          if (isHost) {
-            setShowManualButton(true);
-          }
-        } else {
-          // Auto mode: lock and resolve
-          setBalls(prev => prev.map(b =>
-            b.id === ballId && b.predictionState === "idle"
-              ? { ...b, predictionState: "pending" as PredictionState }
-              : b
-          ));
-          if (isHost) {
-            setTimeout(() => resolveBallRef.current(ballId), 1500);
-          }
-          // Non-host: resolution comes from snapshot
+        // Lock and resolve
+        setBalls(prev => prev.map(b =>
+          b.id === ballId && b.predictionState === "idle"
+            ? { ...b, predictionState: "pending" as PredictionState }
+            : b
+        ));
+        if (isHost) {
+          setTimeout(() => resolveBallRef.current(ballId), 1500);
         }
+        // Non-host: resolution comes from snapshot
       }
     }, 1000);
   }, [addFriendPicks, resolveBall, scrollToBottom, onBallStateChange, match]);
@@ -789,36 +758,16 @@ const BanterStream = ({
     ));
     clearInterval(countdownRef.current);
 
-    if (isManualModeRef.current && isHost) {
-      // Manual mode: prediction made — show "Throw Next Ball" button
-      // Host throws when ready; in multiplayer, auto-throw after a delay
-      setShowManualButton(true);
-      if (activePlayersRef.current > 1) {
-        // Other real players are in the room — auto-throw after grace period
-        if (autoThrowTimerRef.current) clearTimeout(autoThrowTimerRef.current);
-        autoThrowTimerRef.current = setTimeout(() => {
-          autoThrowTimerRef.current = null;
-          setShowManualButton(false);
-          setBalls(prev => prev.map(b =>
-            b.id === ballId && b.predictionState !== "resolved"
-              ? { ...b, predictionState: "pending" as PredictionState }
-              : b
-          ));
-          setTimeout(() => resolveBallRef.current(ballId), 800);
-        }, MULTIPLAYER_AUTO_THROW_MS);
+    // Auto mode: proceed with resolution after a brief lock display
+    setTimeout(() => {
+      setBalls(prev => prev.map(b =>
+        b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
+      ));
+      if (isHost) {
+        setTimeout(() => resolveBallRef.current(ballId), 1500);
       }
-    } else {
-      // Auto mode (or non-host): proceed with immediate resolution
-      setTimeout(() => {
-        setBalls(prev => prev.map(b =>
-          b.id === ballId ? { ...b, predictionState: "pending" as PredictionState } : b
-        ));
-        if (isHost) {
-          setTimeout(() => resolveBallRef.current(ballId), 1500);
-        }
-        // Non-host: resolution comes from snapshot
-      }, 2000);
-    }
+      // Non-host: resolution comes from snapshot
+    }, 2000);
   }, [isHost, resolveBall]);
 
   const handleUserChat = useCallback((text: string) => {
@@ -848,10 +797,6 @@ const BanterStream = ({
     }
     return () => {
       clearInterval(countdownRef.current);
-      if (autoThrowTimerRef.current) {
-        clearTimeout(autoThrowTimerRef.current);
-        autoThrowTimerRef.current = null;
-      }
     };
   }, []);
 
@@ -1108,44 +1053,6 @@ const BanterStream = ({
         </AnimatePresence>
       </div>
 
-
-      {/* Manual mode: "Throw Next Ball" — appears after user locks prediction, resolves the current ball */}
-      <AnimatePresence>
-        {showManualButton && isHost && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
-            className="px-4 pb-2"
-          >
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                // Cancel any pending auto-throw
-                if (autoThrowTimerRef.current) {
-                  clearTimeout(autoThrowTimerRef.current);
-                  autoThrowTimerRef.current = null;
-                }
-                setShowManualButton(false);
-                // Move to pending then resolve the CURRENT ball
-                const ballId = activeBallIdRef.current;
-                if (ballId !== null) {
-                  setBalls(prev => prev.map(b =>
-                    b.id === ballId && b.predictionState !== "resolved"
-                      ? { ...b, predictionState: "pending" as PredictionState }
-                      : b
-                  ));
-                  setTimeout(() => resolveBallRef.current(ballId), 800);
-                }
-              }}
-              className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-[14px] shadow-lg shadow-primary/25 flex items-center justify-center gap-2 active:scale-98 transition-transform"
-            >
-              🏏 Throw Next Ball
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <ChatInput onSend={handleUserChat} userTeam={userTeam} matchContext={matchContext} userStyle={userChatStyle} />
     </div>

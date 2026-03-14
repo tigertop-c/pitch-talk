@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(cmd.exe /c \"node --version && npm --version\")",
+      "Bash(cmd.exe /c \"where node\")",
+      "Bash(cmd.exe /c \"where npm\")",
+      "Bash(cmd.exe /c \"where bun\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(npm run build)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(cmd /c \"npm run build 2>&1\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\Yash\\\\Desktop\\\\Pitch-Talk && npx tsc --noEmit 2>&1\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\Yash\\\\Desktop\\\\Pitch-Talk && npm run build > C:\\\\Users\\\\Yash\\\\Desktop\\\\build_output.txt 2>&1\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\Yash\\\\Desktop\\\\Pitch-Talk && npx tsc --noEmit > C:\\\\Users\\\\Yash\\\\Desktop\\\\ts_output.txt 2>&1\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\Yash\\\\Desktop\\\\Pitch-Talk && npm run dev -- --port 5175 > C:\\\\Users\\\\Yash\\\\Desktop\\\\dev_output.txt 2>&1\")",
+      "Bash(timeout 8)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where node)",
+      "Bash(where npm)",
+      "Bash(cmd /c \"npx tsc --noEmit 2>&1\")",
+      "Bash(cmd /c \"npx tsc --noEmit > C:\\\\Users\\\\Yash\\\\Desktop\\\\tsc_out.txt 2>&1\")",
+      "Bash(timeout /t 5)",
+      "Bash(gh auth status)",
+      "Bash(winget install --id GitHub.cli -e --source winget)",
+      "Bash(\"/c/Program Files/nodejs/npx.cmd\" tsc --noEmit)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(node --version)",
+      "Bash(node_modules.bintsc --noEmit)",
+      "Read(//mnt/c/Users/Yash/Desktop/**)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Read(//c/Users/Yash/AppData/Local/fnm/**)",
+      "Read(//c/Users/Yash/AppData/Roaming/**)",
+      "Bash(PATH=\"/c/Program Files/nodejs:$PATH\")"
+    ]
+  }
+}

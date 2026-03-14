@@ -120,9 +120,9 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
           state === "idle" && !selected
             ? "animate-prediction-glow"
             : state === "resolved" && won
-            ? "ring-2 ring-neon/40"
+            ? "ring-2 ring-neon/40 animate-win-ring"
             : state === "resolved" && selected && !won
-            ? "ring-2 ring-destructive/30"
+            ? "ring-2 ring-destructive/30 opacity-90"
             : ""
         } ${urgency && state === "idle" ? "ring-2 ring-destructive/20" : ""}`}
       >
@@ -180,24 +180,39 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
         {/* Your prediction summary after resolution */}
         {state === "resolved" && (
           <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-secondary/50"
+            initial={{ opacity: 0, y: 5, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", damping: 20, delay: 0.1 }}
+            className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${
+              won
+                ? "bg-neon/10 border border-neon/20"
+                : selected
+                ? "bg-destructive/5 border border-destructive/10"
+                : "bg-secondary/50"
+            }`}
           >
             {selected ? (
               <>
                 <span className="text-[10px] text-muted-foreground">You picked:</span>
-                <span className={`text-[11px] font-semibold ${
+                <span className={`text-[11px] font-bold ${
                   won
                     ? "text-neon"
                     : "text-muted-foreground line-through decoration-destructive/60"
                 }`}>
                   {selected}
                 </span>
-                <span className={`text-xs ${won ? "text-neon" : "text-destructive"}`}>
-                  {won ? "🎯 Nailed it!" : "❌ Miss"}
-                </span>
+                {won ? (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", damping: 10, delay: 0.3 }}
+                    className="text-xs text-neon font-bold"
+                  >
+                    🎯 Nailed it!
+                  </motion.span>
+                ) : (
+                  <span className="text-xs text-destructive">❌ Miss</span>
+                )}
               </>
             ) : (
               <span className="text-[10px] text-muted-foreground/60 italic">⏭️ No prediction made</span>
@@ -212,6 +227,42 @@ const PredictionCard = ({ id, ballLabel, countdown, state, result, selected, fri
             className="mb-2 px-3 py-1.5 rounded-lg bg-neon/10 text-neon text-[11px] font-medium text-center"
           >
             {hintText}
+          </motion.div>
+        )}
+
+        {/* Ball being thrown — prominent animation during pending state */}
+        {state === "pending" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-6 gap-3"
+          >
+            <motion.div
+              className="relative"
+              animate={{ x: [0, 60, 120], y: [0, -30, 0], rotate: [0, 180, 360] }}
+              transition={{ duration: 1.2, ease: "easeInOut", repeat: Infinity }}
+            >
+              <span className="text-3xl">🏏</span>
+            </motion.div>
+            <div className="flex items-center gap-2">
+              <motion.span
+                className="text-[13px] font-bold text-primary"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.2, repeat: Infinity }}
+              >
+                Ball in the air...
+              </motion.span>
+            </div>
+            <div className="flex gap-1">
+              {[0, 1, 2].map(i => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-primary"
+                  animate={{ scale: [0.5, 1.2, 0.5], opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                />
+              ))}
+            </div>
           </motion.div>
         )}
 

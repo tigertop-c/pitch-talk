@@ -1,73 +1,50 @@
-# Welcome to your Lovable project
+# Pitch Talk
 
-## Project info
+## Summary
+Pitch Talk is a single-app cricket prediction experience for live and simulated IPL matches. Players join a room, lock in ball-by-ball predictions, track squad standings, and share receipts after the match.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- Supabase for multiplayer state and real match data
 
-## How can I edit this code?
+## Local Development
+### Prerequisites
+- Node.js 18+
+- npm
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+### Install
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Run
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment
+Copy `.env.local.example` to `.env.local`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Set `VITE_USE_MOCK_DATA=true` to run against local fixtures in `src/test/fixtures/mockMatches.ts`.
+- Set the Supabase env vars to use real match data and multiplayer services.
 
-**Use GitHub Codespaces**
+## Scripts
+- `npm run dev` - start the Vite dev server
+- `npm run build` - create a production build
+- `npm run lint` - run ESLint
+- `npm run test` - run Vitest
+- `npx tsc --noEmit` - run a TypeScript typecheck
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Repo Working Rules
+- Repo-specific agent instructions live in `AGENTS.md`.
+- Architecture, process, security, and release decisions go in `docs/DECISIONS.md`.
+- The reusable lean change-management template lives in `docs/CHANGE_MANAGEMENT_PROMPT.md`.
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Product Notes
+- Preserve the current Vite/React/Supabase stack unless a human explicitly requests a platform change or the current stack blocks the goal.
+- Prefer real match data when configured; use mock mode for local or offline development.
+- Do not invent real-world match results or unverifiable product claims.

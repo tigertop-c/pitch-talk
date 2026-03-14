@@ -44,6 +44,7 @@ export interface RoomPrediction {
 
 export function useMultiplayer() {
   const [myId, setMyId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [myName, setMyName] = useState<string>("");
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
@@ -52,8 +53,19 @@ export function useMultiplayer() {
   const [currentPredictions, setCurrentPredictions] = useState<RoomPrediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   const channelsRef = useRef<any[]>([]);
+
+  // Initialize persistent User ID for room ownership
+  useEffect(() => {
+    let uid = localStorage.getItem("pitchtalk_user_id");
+    if (!uid) {
+      uid = crypto.randomUUID();
+      localStorage.setItem("pitchtalk_user_id", uid);
+    }
+    setUserId(uid);
+  }, []);
 
   const cleanup = useCallback(() => {
     channelsRef.current.forEach(ch => supabase.removeChannel(ch));
@@ -120,7 +132,7 @@ export function useMultiplayer() {
     channelsRef.current = [roomCh, playerCh, predCh];
   }, [cleanup, fetchPlayers]);
 
-  const createRoom = useCallback(async (name: string, avatar: string): Promise<string> => {
+  const createRoom = useCallback(async (name: string, avatar: string, match?: any): Promise<string> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -131,12 +143,30 @@ export function useMultiplayer() {
         match: { runs: 0, wickets: 0, overs: 0, balls: 0, currentBowler: "Bumrah", target: 185 },
       };
 
-      const { error: roomErr } = await supabase.from("rooms").insert({
+      // Single Active Room Policy: Delete any previous rooms hosted by this user
+      if (userId) {
+        await supabase.from("rooms").delete().eq("host_id", userId);
+      }
+
+      const roomData: any = {
         id: code,
         host_name: name,
         status: "waiting",
         game_snapshot: initialSnapshot as any,
-      });
+        host_id: userId,
+      };
+
+      if (match) {
+        roomData.match_label = `${match.team1.short} vs ${match.team2.short}`;
+        roomData.match_team1_name = match.team1.name;
+        roomData.match_team1_short = match.team1.short;
+        roomData.match_team2_name = match.team2.name;
+        roomData.match_team2_short = match.team2.short;
+        roomData.match_venue = match.venue;
+        roomData.match_number = match.matchNumber;
+      }
+
+      const { error: roomErr } = await supabase.from("rooms").insert(roomData);
       if (roomErr) throw roomErr;
 
       const { data: playerData, error: playerErr } = await supabase
@@ -161,6 +191,9 @@ export function useMultiplayer() {
         team_picked: ai.team,
       }));
       await supabase.from("room_players").insert(aiInserts);
+
+      localStorage.setItem("pitchtalk_room_id", code);
+      localStorage.setItem("pitchtalk_participant_id", playerData.id);
 
       await fetchPlayers(code);
       subscribe(code);
@@ -206,6 +239,9 @@ export function useMultiplayer() {
       if (room.game_snapshot) {
         setGameSnapshot(room.game_snapshot as unknown as GameSnapshot);
       }
+      localStorage.setItem("pitchtalk_room_id", roomCode);
+      localStorage.setItem("pitchtalk_participant_id", playerData.id);
+
       await fetchPlayers(roomCode);
       subscribe(roomCode);
       return true;
@@ -277,15 +313,86 @@ export function useMultiplayer() {
     await fetchPlayers(roomId);
   }, [roomId, isHost]);
 
+  const leaveRoom = useCallback(() => {
+    localStorage.removeItem("pitchtalk_room_id");
+    localStorage.removeItem("pitchtalk_participant_id");
+    cleanup();
+    setRoomId(null);
+    setMyId(null);
+    setIsHost(false);
+    setPlayers([]);
+    setGameSnapshot(null);
+  }, [cleanup]);
+
+  const reconnect = useCallback(async () => {
+    const savedRoomId = localStorage.getItem("pitchtalk_room_id");
+    const savedParticipantId = localStorage.getItem("pitchtalk_participant_id");
+
+    if (!savedRoomId || !savedParticipantId) return null;
+
+    setIsReconnecting(true);
+    try {
+      // 1. Verify player still exists in the room
+      const { data: player, error: playerErr } = await supabase
+        .from("room_players")
+        .select("*")
+        .eq("id", savedParticipantId)
+        .eq("room_id", savedRoomId)
+        .single();
+
+      if (playerErr || !player) {
+        localStorage.removeItem("pitchtalk_room_id");
+        localStorage.removeItem("pitchtalk_participant_id");
+        return null;
+      }
+
+      // 2. Fetch room to get latest snapshot and metadata
+      const { data: room, error: roomErr } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("id", savedRoomId)
+        .single();
+
+      if (roomErr || !room) {
+        localStorage.removeItem("pitchtalk_room_id");
+        localStorage.removeItem("pitchtalk_participant_id");
+        return null;
+      }
+
+      setMyId(player.id);
+      setMyName(player.player_name);
+      setRoomId(savedRoomId);
+      setIsHost(player.is_host);
+      
+      if (room.game_snapshot) {
+        setGameSnapshot(room.game_snapshot as unknown as GameSnapshot);
+      }
+
+      await fetchPlayers(savedRoomId);
+      subscribe(savedRoomId);
+
+      // Return matching object for Index to restore selectedMatch
+      return {
+        room,
+        player,
+      };
+    } catch (e) {
+      console.error("Reconnection failed:", e);
+      return null;
+    } finally {
+      setIsReconnecting(false);
+    }
+  }, [fetchPlayers, subscribe]);
+
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
 
   return {
     myId, myName, roomId, isHost, players, gameSnapshot,
-    currentPredictions, isLoading, error,
+    currentPredictions, isLoading, error, isReconnecting,
     createRoom, joinRoom, updateGameSnapshot, submitPick,
     updateMyScore, updateMyTeam, startGame, fetchPredictionsForBall,
-    setError, removeAIPlayers,
+    setError, removeAIPlayers, reconnect, leaveRoom,
   };
 }
