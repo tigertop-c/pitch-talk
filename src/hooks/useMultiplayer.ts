@@ -204,7 +204,7 @@ export function useMultiplayer() {
     } finally {
       setIsLoading(false);
     }
-  }, [subscribe]);
+  }, [subscribe, userId, fetchPlayers]);
 
   const joinRoom = useCallback(async (code: string, name: string, avatar: string): Promise<boolean> => {
     setIsLoading(true);

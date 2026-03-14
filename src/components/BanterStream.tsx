@@ -305,6 +305,7 @@ const BanterStream = ({
   }, [activeFriends]);
 
   const addFriendPicks = useCallback((ballId: number) => {
+    if (activeFriends.length === 0) return;
     const friends = [...activeFriends].sort(() => Math.random() - 0.5).slice(0, Math.min(activeFriends.length, 3 + Math.floor(Math.random() * 2)));
     const delays = [1500, 3000, 5000, 7000, 8500];
 
@@ -574,7 +575,9 @@ const BanterStream = ({
     const hasOnlyAiPlayers = activeFriends.every(f => isAiPlayer(f.name));
     const shouldComment = hasOnlyAiPlayers ? Math.random() < 0.7 : true;
     
-    if (!shouldComment && hasOnlyAiPlayers) {
+    if (playersToUse.length === 0) {
+      // No squad reactions available in solo mode without AI/friends.
+    } else if (!shouldComment && hasOnlyAiPlayers) {
       // Skip comments occasionally to avoid spam
     } else {
       for (let i = 0; i < numMessages; i++) {
