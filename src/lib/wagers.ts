@@ -53,7 +53,7 @@ export interface PairwiseSettlement {
 
 export const WAGER_TIER_CONFIG: Record<WagerTier, { label: string; stake: number }> = {
   small: { label: "Chai", stake: 5 },
-  medium: { label: "Martini", stake: 25 },
+  medium: { label: "Coffee", stake: 25 },
   patiala: { label: "Patiala", stake: 50 },
 };
 
@@ -165,6 +165,7 @@ export function settleBallPot(entries: BallPotEntry[], resultType: string): Ball
   const grossPayouts = Object.fromEntries(rankedRemainders.map((entry) => [entry.name, entry.amount])) as Record<string, number>;
   const weightedShares = Object.fromEntries(weighted.map((entry) => [entry.name, entry.weight])) as Record<string, number>;
 
+  // Final net winnings should sum to zero across all participants (zero-sum system)
   return {
     poolTotal,
     winningPlayers: winners.map((entry) => entry.name),

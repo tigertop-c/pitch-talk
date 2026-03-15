@@ -55,7 +55,7 @@ const getMatchCommentary = (winnerShort: string, loserShort: string, winMargin: 
 };
 
 // Match Over Screen Component
-const MatchOverScreen = ({ winnerShort, loserShort, winMargin, myTeamWon, correctPredictions, totalPredictions, accuracy, bestStreak, chasingTeamWon, firstInningsScore, secondInningsScore, secondInningsWickets, soundMuted }: {
+const MatchOverScreen = ({ winnerShort, loserShort, winMargin, myTeamWon, correctPredictions, totalPredictions, accuracy, bestStreak, chasingTeamWon, firstInningsScore, secondInningsScore, secondInningsWickets, soundMuted, onPlayAgain }: {
   winnerShort: string;
   loserShort: string;
   winMargin: string;
@@ -353,6 +353,8 @@ const Index = () => {
   }, []);
 
   const [predictions, setPredictions] = useState<PredictionRecord[]>([]);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [betMode, setBetMode] = useState<"none" | "bet">("none");
 
   const [bestStreak, setBestStreak] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -422,6 +424,7 @@ const Index = () => {
   // For solo/host mode, use other players from multiplayer (includes AI bots)
   const fallbackAiFriends: FriendDef[] = useMemo(() => {
     if (mp.players.length > 0 || !selectedMatch) return [];
+    if (import.meta.env.VITE_ENABLE_AI_PLAYERS !== "true") return [];
     const fallbackTeams = [selectedMatch.team1.short as TeamId, selectedMatch.team2.short as TeamId];
     return AI_PLAYERS.map((ai, index) => ({
       id: `local-ai-${index}`,
@@ -442,33 +445,41 @@ const Index = () => {
   }, [mp.players, playerName, fallbackAiFriends]);
 
   const displayPlayers = useMemo(() => {
-    if (mp.players.length > 0) return mp.players;
     const localPlayerName = playerName || "You";
-    return [
-      {
-        id: "local-player",
-        name: localPlayerName,
-        avatar: playerAvatar,
-        isHost: true,
-        isHuman: true,
-        wins: 0,
-        total: 0,
-        streak: 0,
-        teamPicked: userTeam,
-      },
-      ...fallbackAiFriends.map((friend, index) => ({
-        id: `local-ai-${index}`,
-        name: friend.name,
-        avatar: friend.avatar,
-        isHost: false,
-        isHuman: false,
-        wins: 0,
-        total: 0,
-        streak: 0,
-        teamPicked: friend.team,
-      })),
-    ];
-  }, [mp.players, playerName, playerAvatar, userTeam, fallbackAiFriends]);
+    const localPlayer = {
+      id: "local-player",
+      name: localPlayerName,
+      avatar: playerAvatar,
+      isHost: true,
+      isHuman: true,
+      wins: 0,
+      total: 0,
+      streak: 0,
+      teamPicked: userTeam,
+    };
+
+    if (mp.players.length === 0) {
+      return [
+        localPlayer,
+        ...fallbackAiFriends.map((friend, index) => ({
+          id: `local-ai-${index}`,
+          name: friend.name,
+          avatar: friend.avatar,
+          isHost: false,
+          isHuman: false,
+          wins: 0,
+          total: 0,
+          streak: 0,
+          teamPicked: friend.team,
+        })),
+      ];
+    }
+
+    // If we have rooms players, ensure the local player is present if not already there
+    const hasLocal = mp.players.some(p => p.name === localPlayerName || p.id === mp.myId);
+    if (hasLocal) return mp.players;
+    return [localPlayer, ...mp.players];
+  }, [mp.players, mp.myId, playerName, playerAvatar, userTeam, fallbackAiFriends]);
 
   const devMockHumanPlayer = useMemo(() => {
     if (!DEV_PITCH_PAISA_OVERRIDE_ENABLED || devPitchPaisaMode !== "simulate_second_human") return null;
@@ -575,11 +586,14 @@ const Index = () => {
       const avatar = savedProfileRef.current.avatar;
       setPlayerName(name);
       setPlayerAvatar(avatar);
+      setIsCreatingRoom(true);
       try {
         await mp.createRoom(name, avatar, m);
       } catch (error) {
         // Local quick games should still work without multiplayer if room creation fails.
         if (!m.isSimulation) throw error;
+      } finally {
+        setIsCreatingRoom(false);
       }
       setStage("pregame");
     } else {
@@ -606,10 +620,13 @@ const Index = () => {
       }
     } else if (selectedMatch) {
       // Creating room after picking match
+      setIsCreatingRoom(true);
       try {
         await mp.createRoom(name, avatar, selectedMatch);
       } catch (error) {
         if (!selectedMatch.isSimulation) throw error;
+      } finally {
+        setIsCreatingRoom(false);
       }
       setStage("pregame");
     }
@@ -665,10 +682,11 @@ const Index = () => {
     })();
   }, [profileLoaded, reconnect, roomCodeFromUrl]);
 
-  const handleGameStart = useCallback(async (team: TeamId, overs: number = 1, stakeTier: WagerTier = "small") => {
+  const handleGameStart = useCallback(async (team: TeamId, overs: number = 1, stakeTier: WagerTier = "small", mode: "none" | "bet" = "none") => {
     setUserTeam(team);
     setSelectedOvers(overs);
     setRoomStakeTier(stakeTier);
+    setBetMode(mode);
     mp.updateMyTeam(team);
     if (mp.roomId) {
       await mp.setRoomStake(stakeTier);
@@ -698,6 +716,8 @@ const Index = () => {
     }
   }, []);
 
+  const [allTimeHumanNets, setAllTimeHumanNets] = useState<Record<string, { name: string; avatar: string; net: number }>>({});
+
   const handleFriendScoresUpdate = useCallback((scores: Record<string, { wins: number; total: number; streak: number; netWinnings: number; amountWagered: number; biggestHit: number }>) => {
     setFriendScores(prev => {
       const next = { ...prev };
@@ -709,7 +729,23 @@ const Index = () => {
       });
       return next;
     });
-  }, []);
+
+    // Update all-time human nets for zero-sum consistency
+    setAllTimeHumanNets(prev => {
+      const next = { ...prev };
+      Object.entries(scores).forEach(([name, s]) => {
+        const isHuman = effectiveActiveFriends.find(f => f.name === name)?.isHuman;
+        if (isHuman) {
+          next[name] = { 
+            name, 
+            avatar: effectiveActiveFriends.find(f => f.name === name)?.avatar || "🏏", 
+            net: s.netWinnings 
+          };
+        }
+      });
+      return next;
+    });
+  }, [effectiveActiveFriends]);
 
   const handlePlayAgain = useCallback(() => {
     leaveRoom();
@@ -808,11 +844,7 @@ const Index = () => {
     : 0;
   const finalNetByPlayer = [
     { name: playerName || "You", avatar: playerAvatar, net: myNetWinnings },
-    ...effectiveActiveFriends.filter((friend) => friend.isHuman).map((friend) => ({
-      name: friend.name,
-      avatar: friend.avatar,
-      net: friendScores[friend.name]?.netWinnings || 0,
-    })),
+    ...Object.values(allTimeHumanNets).filter(p => p.name !== (playerName || "You"))
   ];
   const pairwiseSettlements = wagerMode && !(DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode === "force_wager")
     ? buildPairwiseSettlements(finalNetByPlayer)
@@ -860,6 +892,7 @@ const Index = () => {
     wagerMode,
     finalNetByPlayer,
     pairwiseSettlements,
+    isPracticeMode: betMode === "none",
     isDevOverride: DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode !== "off",
     devPitchPaisaMode,
     matchTitle: selectedMatch
@@ -914,9 +947,9 @@ const Index = () => {
       netWinnings: wagerMode && f.isHuman ? friendScores[f.name]?.netWinnings || 0 : 0,
       amountWagered: wagerMode && f.isHuman ? friendScores[f.name]?.amountWagered || 0 : 0,
       isHuman: f.isHuman,
-      status: f.isHuman && f.id && currentBallId !== null && (eligibilityMap[f.id] ?? null) !== null && currentBallId <= (eligibilityMap[f.id] ?? null)
+      status: (f.isHuman && f.id && currentBallId !== null && (eligibilityMap[f.id] ?? null) !== null && currentBallId <= (eligibilityMap[f.id] ?? null)
         ? (mp.gameSnapshot?.ball?.state === "resolved" ? "joining_next_ball" : "watching")
-        : "active",
+        : "active") as "watching" | "joining_next_ball" | "active",
     })),
   ], [myCorrectPicks, mySettledPredictions.length, myNetWinnings, myAmountWagered, effectiveActiveFriends, friendScores, currentStreak, playerName, playerAvatar, wagerMode, myJoinStatus, currentBallId, eligibilityMap, mp.gameSnapshot?.ball?.state]);
 
@@ -945,7 +978,7 @@ const Index = () => {
 
           {/* Stage: Match Picker (first screen) */}
           {stage === "picker" && (
-            <GamePicker onSelectMatch={handleSelectMatch} isReconnecting={isReconnecting} />
+            <GamePicker onSelectMatch={handleSelectMatch} isReconnecting={isReconnecting} isCreatingRoom={isCreatingRoom} />
           )}
 
           {/* Stage: Name Entry (if not saved) */}
@@ -965,6 +998,7 @@ const Index = () => {
               isSimulation={selectedMatch.isSimulation}
               players={effectiveDisplayPlayers}
               onInvite={handleInvite}
+              onAddAI={mp.addAiPlayer}
               onRemoveAI={mp.removeAIPlayers}
               roomStakeTier={roomStakeTier}
               humanPlayerCount={effectiveHumanPlayerCount}
@@ -1061,6 +1095,7 @@ const Index = () => {
                   roomStakeTier={roomStakeTier}
                   roomStakeAmount={getStakeForTier(roomStakeTier)}
                   wagerMode={wagerMode}
+                  isPracticeMode={betMode === "none"}
                   eligibleHumanNames={eligibleHumanNames}
                   isCurrentUserWagerEligible={isCurrentUserWagerEligible}
                   canPredictCurrentBall={canPredictCurrentBall}

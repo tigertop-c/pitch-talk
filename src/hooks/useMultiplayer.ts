@@ -111,6 +111,24 @@ export function useMultiplayer() {
     }
   }, []);
 
+  // AI Balancing: if a human joins and total > 4, remove an AI
+  useEffect(() => {
+    if (!isHost || players.length <= 4) return;
+    const aiPlayers = players.filter(p => !p.isHuman);
+    if (aiPlayers.length === 0) return;
+
+    // Remove one random AI
+    const victim = aiPlayers[Math.floor(Math.random() * aiPlayers.length)];
+    if (!roomId) {
+      setPlayers(prev => prev.filter(p => p.id !== victim.id));
+    } else {
+      supabase.from("room_players").delete().eq("id", victim.id).then(() => {
+        fetchPlayers(roomId);
+      });
+    }
+  }, [players, isHost, roomId, fetchPlayers]);
+
+
   const subscribe = useCallback((rId: string) => {
     cleanup();
 
@@ -206,15 +224,17 @@ export function useMultiplayer() {
       setIsHost(true);
       setGameSnapshot(initialSnapshot);
 
-      // Insert AI bot players into the room
-      const aiInserts = AI_PLAYERS.map(ai => ({
-        room_id: code,
-        player_name: ai.name,
-        avatar: ai.avatar,
-        is_host: false,
-        team_picked: ai.team,
-      }));
-      await supabase.from("room_players").insert(aiInserts);
+      // Insert AI bot players into the room if enabled via config
+      if (import.meta.env.VITE_ENABLE_AI_PLAYERS === "true") {
+        const aiInserts = AI_PLAYERS.map(ai => ({
+          room_id: code,
+          player_name: ai.name,
+          avatar: ai.avatar,
+          is_host: false,
+          team_picked: ai.team,
+        }));
+        await supabase.from("room_players").insert(aiInserts);
+      }
 
       localStorage.setItem("pitchtalk_room_id", code);
       localStorage.setItem("pitchtalk_participant_id", playerData.id);
@@ -263,6 +283,12 @@ export function useMultiplayer() {
       if (room.game_snapshot) {
         const currentSnapshot = room.game_snapshot as unknown as GameSnapshot;
         const currentHumanCount = currentSnapshot.humanPlayerCount ?? 1;
+        
+        if (currentHumanCount >= 4) {
+          setError("Room is full. Maximum 4 real players allowed.");
+          return false;
+        }
+
         const nextHumanCount = currentHumanCount + 1;
         const nextSnapshot: GameSnapshot = {
           ...currentSnapshot,
@@ -372,11 +398,54 @@ export function useMultiplayer() {
   }, [roomId, parseRoomPrediction]);
 
   const removeAIPlayers = useCallback(async () => {
-    if (!roomId || !isHost) return;
+    if (!roomId) {
+      setPlayers(prev => prev.filter(p => p.isHuman));
+      return;
+    }
+    if (!isHost) return;
     const aiNames = AI_PLAYERS.map(a => a.name);
     await supabase.from("room_players").delete().eq("room_id", roomId).in("player_name", aiNames);
     await fetchPlayers(roomId);
-  }, [roomId, isHost]);
+  }, [roomId, isHost, fetchPlayers]);
+
+  const addAiPlayer = useCallback(async () => {
+    const aiNamesInRoom = new Set(players.filter(p => !p.isHuman).map(p => p.name));
+    const availableAIs = AI_PLAYERS.filter(ai => !aiNamesInRoom.has(ai.name));
+    if (availableAIs.length === 0) return;
+    
+    // Pick a random available AI
+    const ai = availableAIs[Math.floor(Math.random() * availableAIs.length)];
+    
+    if (!roomId) {
+      // Local mode fallback
+      setPlayers(prev => [...prev, {
+        id: `local-ai-${ai.name}`,
+        name: ai.name,
+        avatar: ai.avatar,
+        isHost: false,
+        isHuman: false,
+        wins: 0,
+        total: 0,
+        streak: 0,
+        teamPicked: ai.team,
+      }]);
+      return;
+    }
+
+    const { error } = await supabase.from("room_players").insert({
+      room_id: roomId,
+      player_name: ai.name,
+      avatar: ai.avatar,
+      is_host: false,
+      team_picked: ai.team,
+    });
+    
+    if (error) {
+      console.error("Failed to add AI:", error);
+    } else {
+      await fetchPlayers(roomId);
+    }
+  }, [roomId, players, fetchPlayers]);
 
   const leaveRoom = useCallback(() => {
     localStorage.removeItem("pitchtalk_room_id");
@@ -458,6 +527,6 @@ export function useMultiplayer() {
     currentPredictions, isLoading, error, isReconnecting,
     createRoom, joinRoom, updateGameSnapshot, setRoomStake, submitPick,
     updateMyScore, updateMyTeam, startGame, fetchPredictionsForBall,
-    setError, removeAIPlayers, reconnect, leaveRoom,
+    setError, removeAIPlayers, addAiPlayer, reconnect, leaveRoom,
   };
 }

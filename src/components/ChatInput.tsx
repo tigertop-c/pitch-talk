@@ -4,6 +4,7 @@ import { getBanterPicks, type BanterContext } from "@/lib/banterEngine";
 
 export type TeamId = "CSK" | "DC" | "GT" | "KKR" | "LSG" | "MI" | "PBKS" | "RCB" | "RR" | "SRH";
 export type UserChatStyle = "hype" | "expert" | "troll" | "neutral";
+export type ChatItemType = "text" | "prediction" | "flex" | "taunt";
 
 export interface MatchContext {
   lastBallResult: string | null;
@@ -21,13 +22,14 @@ export interface MatchContext {
 }
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, type?: ChatItemType, meta?: any) => void;
   userTeam: TeamId;
   matchContext: MatchContext;
   userStyle?: UserChatStyle;
+  currentNetWinnings?: number;
 }
 
-const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: ChatInputProps) => {
+const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral", currentNetWinnings = 0 }: ChatInputProps) => {
   const [text, setText] = useState("");
   const [showTextInput, setShowTextInput] = useState(false);
   // Item 2: Use ref instead of state so setting it doesn't trigger a picks re-render
@@ -85,10 +87,19 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    onSend(trimmed);
+    onSend(trimmed, "text");
     setText("");
     setShowTextInput(false);
   }, [text, onSend]);
+
+  const handleFlex = useCallback(() => {
+    const amount = currentNetWinnings;
+    if (amount <= 0) {
+      onSend("Still waiting for my big payout... 🏏", "text");
+    } else {
+      onSend(`Currently up ₹${amount}! Who's catching me? 🤑`, "flex", { amount });
+    }
+  }, [currentNetWinnings, onSend]);
 
   return (
     <div className="ios-glass px-3 py-2" style={{ borderTop: "0.5px solid hsl(0 0% 0% / 0.1)" }}>
@@ -111,6 +122,12 @@ const ChatInput = ({ onSend, userTeam, matchContext, userStyle = "neutral" }: Ch
             ✏️ Type
           </button>
         )}
+        <button
+          onClick={handleFlex}
+          className="px-3.5 py-2 rounded-full bg-neon/10 text-neon text-[12px] font-semibold active:scale-95 transition-all duration-150 ml-auto border border-neon/20"
+        >
+          Flex 💰
+        </button>
       </div>
 
       {/* Free-text input — only when expanded */}

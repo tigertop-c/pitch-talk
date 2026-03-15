@@ -173,16 +173,7 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
           </div>
         )}
 
-        {needsMore && onInvite && (
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={onInvite}
-            className="w-full mt-3 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[11px] font-bold bg-neon/10 text-neon active:bg-neon/20 transition-colors ring-1 ring-neon/15 relative z-10"
-          >
-            <UserPlus size={12} />
-            Room has {data.maxPlayers - data.activePlayers} spots — Invite friends
-          </motion.button>
-        )}
+
       </div>
     </motion.div>
   );

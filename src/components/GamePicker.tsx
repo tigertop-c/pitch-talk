@@ -121,6 +121,7 @@ function formatTimeUntil(date: Date): string {
 interface GamePickerProps {
   onSelectMatch: (match: UpcomingMatch) => void;
   isReconnecting?: boolean;
+  isCreatingRoom?: boolean;
 }
 
 const MatchCard = ({ match, i, onSelect }: { match: UpcomingMatch; i: number; onSelect: () => void }) => {
@@ -215,7 +216,7 @@ const MatchCard = ({ match, i, onSelect }: { match: UpcomingMatch; i: number; on
 };
 
 
-const GamePicker = ({ onSelectMatch, isReconnecting }: GamePickerProps) => {
+const GamePicker = ({ onSelectMatch, isReconnecting, isCreatingRoom }: GamePickerProps) => {
   const [simTeam1, setSimTeam1] = useState<string | null>(null);
   const [simTeam2, setSimTeam2] = useState<string | null>(null);
   const { matches, loading, error } = useCricketMatches();
@@ -280,6 +281,19 @@ const GamePicker = ({ onSelectMatch, isReconnecting }: GamePickerProps) => {
           </motion.div>
           <h2 className="text-lg font-bold">Rejoining your game...</h2>
           <p className="text-sm text-muted-foreground mt-1">Getting you back to the arena</p>
+        </div>
+      )}
+      {isCreatingRoom && (
+        <div className="absolute inset-0 z-[300] bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+            className="text-4xl mb-4"
+          >
+            🏟️
+          </motion.div>
+          <h2 className="text-lg font-bold">Setting up your game...</h2>
+          <p className="text-sm text-muted-foreground mt-1">Preparing the simulator</p>
         </div>
       )}
       <div className="flex-1 overflow-y-auto px-4 pt-5 pb-4 space-y-5">

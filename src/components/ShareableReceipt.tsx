@@ -31,6 +31,7 @@ export interface ReceiptData {
   wagerMode: boolean;
   finalNetByPlayer: { name: string; avatar?: string; net: number }[];
   pairwiseSettlements: PairwiseSettlement[];
+  isPracticeMode?: boolean;
   isDevOverride?: boolean;
   devPitchPaisaMode?: "off" | "force_wager" | "simulate_second_human";
 }
@@ -79,7 +80,7 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
           ...(data.isDevOverride && data.devPitchPaisaMode === "force_wager" ? ["Force wager mode uses solo dev-only totals. No real settle-up is generated."] : []),
           "Informal only. Settle outside the app.",
         ]
-      : ["Invite one more human next time to unlock Pitch Paisa settle-up."]),
+      : [data.isPracticeMode ? "Great practice match! Squad banter in full flow." : "Invite one more human next time to unlock Pitch Paisa settle-up."]),
   ];
   const shareText = shareLines.join("\n");
   const shareUrl = window.location.origin;
@@ -129,7 +130,7 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
             <p className="text-[10px] text-muted-foreground/70 mt-1">
               {data.wagerMode
                 ? `${getWagerTierLabel(data.roomStakeTier)} room • ${formatStakeValue(data.roomStakeAmount)} per ball • settle outside the app`
-                : "Prediction-only room • no settle-up for this match"}
+                : data.isPracticeMode ? "Practice match • squad banter and points" : "Prediction-only room • no settle-up for this match"}
             </p>
             {data.isDevOverride && (
               <p className="text-[10px] text-primary mt-1 font-semibold">Development test mode</p>
@@ -233,7 +234,9 @@ const ShareableReceipt = ({ data }: { data: ReceiptData }) => {
             </>
           ) : (
             <div className="mb-4 rounded-xl border border-secondary bg-secondary/40 px-3 py-2 text-[10px] text-muted-foreground leading-snug">
-              Pitch Paisa stayed off for this match. AI picks still counted for banter, but only rooms with 2+ humans unlock settle-up.
+              {data.isPracticeMode 
+                ? "This was a practice match for fun. Points and accuracy were tracked for the room standings."
+                : "Pitch Paisa stayed off for this match. AI picks still counted for banter, but only rooms with 2+ humans unlock settle-up."}
             </div>
           )}
 

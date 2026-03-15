@@ -47,6 +47,7 @@ interface PredictionCardProps {
   predictionDisabled?: boolean;
   predictionDisabledReason?: string | null;
   onInviteMore?: () => void;
+  isPracticeMode?: boolean;
 }
 
 const mainOutcomes = [
@@ -107,6 +108,7 @@ const PredictionCard = ({
   predictionDisabled = false,
   predictionDisabledReason = null,
   onInviteMore,
+  isPracticeMode,
 }: PredictionCardProps) => {
   const urgency = countdown <= 5;
   const showHint = state === "idle" && !selected && totalUserPredictions < 3;
@@ -168,15 +170,17 @@ const PredictionCard = ({
       className="mx-4 my-1.5"
     >
       <div
-        className={`p-3.5 ios-card transition-all duration-300 ${
+        className={`p-4 rounded-3xl border transition-all duration-300 overflow-hidden relative shadow-lg ${
           state === "idle" && !selected
-            ? "animate-prediction-glow"
+            ? "bg-card border-neon/40 shadow-neon/10 animate-prediction-glow"
+            : state === "locked"
+            ? "bg-secondary/60 border-secondary/80"
             : state === "resolved" && won && !expired
-            ? "ring-2 ring-neon/40 animate-win-ring"
+            ? "bg-gradient-to-br from-neon/10 to-transparent border-neon/50 shadow-neon/20 animate-win-ring"
             : state === "resolved" && selected && !won
-            ? "ring-2 ring-destructive/30 opacity-90"
-            : ""
-        } ${urgency && state === "idle" ? "ring-2 ring-destructive/20" : ""}`}
+            ? "bg-destructive/5 border-destructive/20 opacity-90"
+            : "bg-secondary/50 border-secondary"
+        } ${urgency && state === "idle" ? "ring-2 ring-destructive/50 shadow-destructive/20" : ""}`}
       >
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
@@ -184,7 +188,8 @@ const PredictionCard = ({
               {ballLabel}
             </span>
             {state === "idle" && !selected && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[10px] font-semibold text-neon">
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[10px] font-black tracking-wider text-neon uppercase flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-neon animate-pulse" />
                 YOUR TURN
               </motion.span>
             )}
@@ -200,10 +205,10 @@ const PredictionCard = ({
             )}
           </div>
           {state === "idle" && (
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-              urgency ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground"
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
+              urgency ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-secondary text-foreground"
             }`}>
-              <Clock size={10} />
+              <Clock size={12} />
               <span>{countdown}s</span>
             </div>
           )}
@@ -227,96 +232,45 @@ const PredictionCard = ({
         </div>
 
         {wagerMode ? (
-          <div className="mb-2.5 rounded-xl border border-primary/10 bg-primary/5 px-3 py-2">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold">
-              <span className="text-foreground">Stake {formatStake(roomStakeTier)}</span>
-              {selected && estimatedShare !== null && state !== "resolved" && (
-                <span className="text-primary">Est. share {formatRs(estimatedShare - roomStakeAmount)}</span>
-              )}
-              {state === "resolved" && actualNet !== null && !expired && (
-                <span className={actualNet >= 0 ? "text-neon" : "text-destructive"}>
-                  Net {formatRs(actualNet)}
-                </span>
-              )}
-              {state === "resolved" && expired && (
-                <span className="text-muted-foreground">No winning slips this ball</span>
-              )}
+          <div className="mb-3 px-1 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 opacity-80">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pool Stake</span>
+              <span className="text-[11px] font-black">{formatStake(roomStakeTier)}</span>
             </div>
-            <p className="mt-1 text-[10px] text-muted-foreground leading-snug">
-              Each ball is its own pool. Correct picks split that ball&apos;s pool. Harder picks earn more.
-            </p>
+            
+            {selected && state !== "resolved" && estimatedShare !== null && (
+              <div className="flex items-center gap-1.5 opacity-80">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Est. Share</span>
+                <span className="text-[11px] font-black text-primary">+{formatRs(estimatedShare - roomStakeAmount)}</span>
+              </div>
+            )}
+            
+            {state === "resolved" && actualNet !== null && !expired && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Result</span>
+                <span className={`text-[12px] font-black ${actualNet >= 0 ? "text-neon" : "text-destructive"}`}>
+                  {actualNet >= 0 ? "+" : ""}{formatRs(actualNet)}
+                </span>
+              </div>
+            )}
+            
+            {state === "resolved" && expired && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Result</span>
+                <span className="text-[10px] font-bold text-muted-foreground">Expired</span>
+              </div>
+            )}
           </div>
-        ) : (
+        ) : !isPracticeMode && (
           <div className="mb-2.5 rounded-xl border border-secondary bg-secondary/40 px-3 py-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold">
               <span className="text-foreground">Prediction-only mode</span>
-              {onInviteMore ? (
-                <button
-                  type="button"
-                  onClick={onInviteMore}
-                  className="text-primary underline underline-offset-2 active:opacity-70"
-                >
-                  Invite one more human to unlock Pitch Paisa
-                </button>
-              ) : (
-                <span className="text-muted-foreground">Invite one more human to unlock Pitch Paisa</span>
-              )}
+              <span className="text-muted-foreground">More humans needed to unlock Pitch Paisa</span>
             </div>
           </div>
         )}
 
-        {state === "resolved" && (
-          <motion.div
-            initial={{ opacity: 0, y: 5, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: "spring", damping: 20, delay: 0.1 }}
-            className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${
-              expired
-                ? "bg-secondary/50 border border-secondary"
-                : won
-                ? "bg-neon/10 border border-neon/20"
-                : selected
-                ? "bg-destructive/5 border border-destructive/10"
-                : "bg-secondary/50"
-            }`}
-          >
-            {selected ? (
-              <>
-                <span className="text-[10px] text-muted-foreground">You picked:</span>
-                <span className={`text-[11px] font-bold ${
-                  won && !expired
-                    ? "text-neon"
-                    : expired
-                    ? "text-foreground"
-                    : "text-muted-foreground line-through decoration-destructive/60"
-                }`}>
-                  {selected}
-                </span>
-                <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                  {getStakeLabel(roomStakeTier)}
-                </span>
-                {expired ? (
-                  <span className="text-xs text-muted-foreground">Pool expired. No one owes anyone.</span>
-                ) : won ? (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", damping: 10, delay: 0.3 }}
-                    className="text-xs text-neon font-bold"
-                  >
-                    🎯 {actualNet !== null ? `Net ${formatRs(actualNet)}` : "Nailed it!"}
-                  </motion.span>
-                ) : (
-                  <span className="text-xs text-destructive">
-                    ❌ {actualNet !== null ? `Net ${formatRs(actualNet)}` : "Miss"}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-[10px] text-muted-foreground/60 italic">⏭️ No prediction made</span>
-            )}
-          </motion.div>
-        )}
+
 
         {predictionDisabled && predictionDisabledReason && (
           <motion.div
@@ -364,9 +318,9 @@ const PredictionCard = ({
               };
 
               const mainSizeClasses: Record<string, string> = {
-                lg: "py-3 px-1.5 rounded-xl text-[11px]",
-                md: "py-2.5 px-1 rounded-xl text-[10px]",
-                sm: "py-2 px-1 rounded-xl text-[9px] opacity-80",
+                lg: "py-3.5 px-2 rounded-xl text-[12px] shadow-sm",
+                md: "py-3 px-1.5 rounded-xl text-[11px] shadow-sm",
+                sm: "py-2.5 px-1 rounded-xl text-[10px] opacity-80 shadow-sm",
               };
 
               const mainIconSize: Record<string, number> = { lg: 17, md: 15, sm: 13 };
@@ -446,37 +400,75 @@ const PredictionCard = ({
           </>
         )}
 
-        {friendPicks.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {friendPicks.map((friendPick, i) => (
-              <motion.div
-                key={`${friendPick.name}-${i}`}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", damping: 20 }}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium ${
-                  state === "resolved" && friendPick.won !== undefined
-                    ? friendPick.won
-                      ? "bg-neon/10 text-neon"
-                      : "bg-destructive/10 text-destructive"
-                    : "bg-secondary text-muted-foreground"
-                }`}
-              >
-                <span>{friendPick.avatar}</span>
-                {getRankBadge(friendPick.name) && <span className="text-[8px]">{getRankBadge(friendPick.name)}</span>}
-                <span className="font-semibold">{friendPick.name}</span>
-                <span className="opacity-50">→</span>
-                <span className="font-semibold">{friendPick.pick}</span>
-                {state === "resolved" && friendPick.won !== undefined && (
-                  <span>{friendPick.won ? "✓" : "✕"}</span>
-                )}
-                {wagerMode && friendPick.netWinnings !== undefined && (
-                  <span className="text-[8px] opacity-50">{formatRs(friendPick.netWinnings)}</span>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        )}
+        {(() => {
+          // Combine friend picks and your own pick into one list
+          const myPickContext = selected ? [{
+            name: "You",
+            avatar: "🙋",
+            pick: selected,
+            won,
+            netWinnings: actualNet ?? undefined,
+          }] : [];
+          
+          const allPicks = [...myPickContext, ...friendPicks];
+          if (allPicks.length === 0) return null;
+
+          return (
+            <div className="flex flex-col gap-1.5 mt-2.5 border-t border-border/50 pt-3">
+              <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1 px-1">Squad Picks ({allPicks.length})</span>
+              {allPicks.map((pickEntry, i) => {
+                const totalNet = userScores[pickEntry.name]?.netWinnings ?? 0;
+                
+                return (
+                  <motion.div
+                    key={`${pickEntry.name}-${i}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ type: "spring", damping: 20 }}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-medium shadow-sm border ${
+                      state === "resolved" && pickEntry.won !== undefined
+                        ? pickEntry.won
+                          ? pickEntry.name === "You" ? "bg-neon/15 border-neon/30 text-neon ring-2 ring-neon/20 shadow-neon/10" : "bg-neon/10 border-neon/20 text-neon"
+                          : pickEntry.name === "You" ? "bg-destructive/10 border-destructive/20 text-destructive opacity-90 ring-1 ring-destructive/10" : "bg-destructive/5 border-destructive/10 text-destructive opacity-90"
+                        : pickEntry.name === "You"
+                          ? "bg-secondary text-foreground border-border/70 shadow-md ring-1 ring-border/50"
+                          : "bg-secondary/40 text-foreground border-transparent"
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] flex-shrink-0">{pickEntry.avatar}</span>
+                        {getRankBadge(pickEntry.name) && <span className="text-[10px] flex-shrink-0">{getRankBadge(pickEntry.name)}</span>}
+                        <span className={`font-semibold text-[13px] truncate ${pickEntry.name === "You" ? "font-bold tracking-wide" : ""}`}>
+                          {pickEntry.name}
+                        </span>
+                        {wagerMode && (
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded pl-1 ${totalNet >= 0 ? "bg-neon/10 text-neon" : "bg-destructive/10 text-destructive"}`}>
+                            {totalNet >= 0 ? "+" : ""}{formatRs(totalNet)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                      <span className={`font-bold text-[12px] ${state === "resolved" && pickEntry.won === false ? "line-through opacity-70" : "opacity-90"}`}>
+                        {pickEntry.pick}
+                      </span>
+                      {state === "resolved" && pickEntry.won !== undefined && (
+                        <span className="font-black text-[12px] w-3 text-center">{pickEntry.won ? "✓" : "✕"}</span>
+                      )}
+                      {wagerMode && pickEntry.netWinnings !== undefined && state === "resolved" && (
+                        <span className={`text-[11px] font-black w-8 text-right ${pickEntry.netWinnings > 0 ? "text-neon" : "text-destructive"}`}>
+                          {pickEntry.netWinnings > 0 ? "+" : ""}{formatRs(pickEntry.netWinnings)}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </motion.div>
   );

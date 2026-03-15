@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Users, ChevronRight, MessageCircle, Clock, UserPlus, Zap, Play, Bot, X } from "lucide-react";
 import type { TeamId } from "./ChatInput";
 import { isAiPlayer, AI_PLAYERS } from "@/lib/aiPlayers";
-import { formatStakeValue, getWagerTierLabel, type WagerTier, WAGER_TIER_ORDER } from "@/lib/wagers";
+import { formatStake, formatStakeValue, getWagerTierLabel, type WagerTier, WAGER_TIER_ORDER } from "@/lib/wagers";
 
 // Team logos
 import cskLogo from "@/assets/teams/csk.png";
@@ -37,7 +37,7 @@ interface MultiplayerPlayer {
 }
 
 interface PreGameIntroProps {
-  onStart: (team: TeamId, overs: number, roomStakeTier: WagerTier) => void;
+  onStart: (team: TeamId, overs: number, roomStakeTier: WagerTier, mode: "none" | "bet") => void;
   matchStartTime: Date;
   team1: { name: string; short: string };
   team2: { name: string; short: string };
@@ -46,6 +46,7 @@ interface PreGameIntroProps {
   isSimulation?: boolean;
   players?: MultiplayerPlayer[];
   onInvite?: () => void;
+  onAddAI?: () => void;
   onRemoveAI?: () => void;
   roomStakeTier?: WagerTier;
   onStakeTierChange?: (tier: WagerTier) => void;
@@ -89,6 +90,7 @@ const PreGameIntro = ({
   isSimulation,
   players,
   onInvite,
+  onAddAI,
   onRemoveAI,
   roomStakeTier = "small",
   onStakeTierChange,
@@ -105,6 +107,7 @@ const PreGameIntro = ({
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [selectedOvers, setSelectedOvers] = useState(1); // Item 5: default 1 over
+  const [betMode, setBetMode] = useState<"none" | "bet" | null>(null);
   const [selectedStakeTier, setSelectedStakeTier] = useState<WagerTier>(roomStakeTier);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +119,7 @@ const PreGameIntro = ({
   };
 
   useEffect(() => { if (userTeam) scrollToBottom(); }, [userTeam]);
+  useEffect(() => { if (betMode) scrollToBottom(); }, [betMode]);
   useEffect(() => { if (tossResult) scrollToBottom(); }, [tossResult]);
   useEffect(() => { if (stage === "starting") scrollToBottom(); }, [stage]);
   const { hours, minutes, seconds, isLive } = useCountdown(matchStartTime);
@@ -161,7 +165,8 @@ const PreGameIntro = ({
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0 && userTeam) {
-      const t = setTimeout(() => onStart(userTeam, selectedOvers, selectedStakeTier), 400);
+      const mode = betMode || "none";
+      const t = setTimeout(() => onStart(userTeam, selectedOvers, selectedStakeTier, mode), 400);
       return () => clearTimeout(t);
     }
   }, [stage, countdown, onStart, userTeam, selectedOvers, selectedStakeTier]);
@@ -218,45 +223,6 @@ const PreGameIntro = ({
     </motion.button>
   );
 
-  const HowItWorksCard = () => (
-    <div className="ios-card p-4 space-y-3">
-      <div>
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">How It Works</p>
-        <p className="text-[13px] font-semibold text-foreground mt-0.5">
-          Predict every ball, build the pot, settle outside the app
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        {[
-          { emoji: "🎲", text: "Every delivery is generated live for the room." },
-          { emoji: "🎯", text: "Predict each ball before it lands." },
-          { emoji: "🤖", text: "Friends and AI opponents pick alongside you." },
-        ].map((item, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <span className="text-sm flex-shrink-0">{item.emoji}</span>
-            <p className="text-[12px] text-muted-foreground leading-snug">{item.text}</p>
-          </div>
-        ))}
-      </div>
-      <div className="rounded-xl bg-secondary/35 px-3 py-2.5">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Stake ladder</p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-          {WAGER_TIER_ORDER.map((tier) => (
-            <span key={tier} className="text-foreground">
-              <span className="font-black uppercase">{getWagerTierLabel(tier)}</span>{" "}
-              <span className="font-semibold text-primary">{formatStakeValue(tier === "small" ? 5 : tier === "medium" ? 25 : 50)}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="space-y-1.5 text-[11px] text-muted-foreground leading-snug">
-        <p>Each ball builds a shared pot from the squad's slips.</p>
-        <p>Correct pickers win a weighted share. Harder picks earn more.</p>
-        <p>If nobody wins, that ball expires. Settle outside the app after the match.</p>
-        <p>Pitch Paisa unlocks only when 2+ human players join. AI picks never count toward settle-up.</p>
-      </div>
-    </div>
-  );
 
   const StakeSelector = () => (
     <div>
@@ -287,7 +253,8 @@ const PreGameIntro = ({
     </div>
   );
 
-  const DevOverrideSelector = () => {
+  // De-aliased DevOverrideSelector to prevent unmounting on re-render
+  const renderDevOverride = () => {
     if (!devPitchPaisaOverrideEnabled) return null;
 
     const modes: { value: "off" | "force_wager" | "simulate_second_human"; label: string; note: string }[] = [
@@ -349,22 +316,13 @@ const PreGameIntro = ({
             </motion.p>
           </motion.div>
 
-          <HowItWorksCard />
-          <DevOverrideSelector />
-
-          {/* Pick which team you support (only the 2 match teams) */}
+          {/* 2. Team selection */}
           <AnimatePresence mode="wait">
             {stage === "welcome" && (
-              <motion.div
-                key="sim-welcome"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}
-                transition={{ ...spring, delay: 0.5 }}
-                className="space-y-3"
-              >
-                {/* Matchup display */}
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="space-y-4">
                 <div className="ios-card p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ {team1.short} vs {team2.short}</p>
-                  <p className="text-[15px] font-semibold text-foreground mb-3">Who are you supporting?</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Support Your Side</p>
+                  <p className="text-[14px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { id: team1.short as TeamId, name: team1.name, short: team1.short, logo: ALL_TEAMS.find(t => t.short === team1.short)?.logo },
@@ -375,127 +333,130 @@ const PreGameIntro = ({
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setUserTeam(t.id)}
                         className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
-                          userTeam === t.id
-                            ? "bg-primary/15 ring-2 ring-primary shadow-sm"
-                            : "bg-secondary/50 active:bg-muted"
+                          userTeam === t.id ? "bg-primary/15 ring-2 ring-primary shadow-sm" : "bg-secondary/50 active:bg-muted"
                         }`}
                       >
-                        {t.logo && <img src={t.logo} alt={t.short} className="w-14 h-14 object-contain" />}
-                        <span className={`text-[13px] font-bold ${userTeam === t.id ? "text-primary" : "text-foreground"}`}>{t.short}</span>
+                        {t.logo && <img src={t.logo} alt={t.short} className="w-12 h-12 object-contain" />}
+                        <span className={`text-[12px] font-bold ${userTeam === t.id ? "text-primary" : "text-foreground"}`}>{t.short}</span>
                       </motion.button>
                     ))}
                   </div>
                 </div>
 
-                {/* Squad / Friends + Invite section — show immediately */}
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.1 }}
-                  className="ios-card p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">👥 Your Squad</p>
-                      <p className="text-[13px] font-semibold text-foreground mt-0.5">
-                        {squadMembers.length} {squadMembers.length === 1 ? "player" : "players"} in the room
-                      </p>
+                {/* 3. Bet Mode Selection */}
+                {userTeam && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="ios-card p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">💰 Play Mode</p>
+                    <p className="text-[14px] font-semibold text-foreground mb-3">Do you want to bet against a friend?</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <PickButton label="Yes, Bet mode" selected={betMode === "bet"} onPick={() => setBetMode("bet")} />
+                      <PickButton label="No, just practice" selected={betMode === "none"} onPick={() => setBetMode("none")} />
                     </div>
-                    <button
-                      onClick={handleInviteWhatsApp}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:bg-[hsl(142,70%,45%,0.2)] transition-all active:scale-95"
-                    >
-                      <UserPlus size={12} />
-                      Invite
-                    </button>
-                  </div>
+                  </motion.div>
+                )}
 
-                  <div className="space-y-1.5">
-                    {squadMembers.map((m, i) => (
-                      <motion.div
-                        key={m.name}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ ...spring, delay: 0.05 * i }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-secondary/40"
-                      >
-                        <span className="text-base">{m.avatar}</span>
-                        <span className="text-[13px] font-semibold text-foreground flex-1">{m.name}</span>
-                        {m.isBot ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
-                        ) : (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">PLAYER</span>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
+                {/* 4. Instructions based on mode */}
+                {userTeam && betMode === "bet" && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                    <div className="ios-card p-4 space-y-3 border-primary/20 bg-primary/5">
+                      <p className="text-[10px] uppercase tracking-widest text-primary font-bold">How Bet Mode Works</p>
+                      <div className="space-y-1.5">
+                        <p className="text-[12px] text-foreground font-medium flex items-start gap-2">
+                          <span>🎯</span> Base bet per ball is {formatStake(selectedStakeTier)}.
+                        </p>
+                        <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                          <span>🚀</span> Multipliers apply for harder picks (e.g. 6 or Wicket).
+                        </p>
+                        <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                          <span>💸</span> No real money is involved in this app.
+                        </p>
+                      </div>
+                      <StakeSelector />
+                    </div>
+                  </motion.div>
+                )}
 
-                  {hasAiPlayers && onRemoveAI && (
-                    <button
-                      onClick={onRemoveAI}
-                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-[11px] font-medium text-muted-foreground bg-secondary/40 active:bg-secondary/60 transition-all"
-                    >
-                      <X size={12} />
-                      Remove AI players
-                    </button>
-                  )}
+                {userTeam && betMode === "none" && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                    <div className="ios-card p-4 space-y-3 border-accent/20 bg-accent/5">
+                      <p className="text-[10px] uppercase tracking-widest text-foreground/80 font-bold">How Practice Mode Works</p>
+                      <div className="space-y-1.5">
+                        <p className="text-[12px] text-foreground font-medium flex items-start gap-2">
+                          <span>🏏</span> Compete to predict the next ball and get points.
+                        </p>
+                        <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                          <span>🤖</span> You can add AI bot friends to play with.
+                        </p>
+                        <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                          <span>📊</span> Every ball is simulated ball-by-ball.
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    {hasAiPlayers ? "AI players fill the gaps — or invite friends!" : "Invite friends to join your room!"}
-                  </p>
-                  {/* Room code inline — compact, de-emphasised */}
-                  <div className="flex items-center justify-center gap-1.5 pt-0.5">
-                    <span className="text-[10px] text-muted-foreground">Room:</span>
-                    <span className="text-[10px] font-bold tracking-widest text-foreground/60">{roomId}</span>
-                    <button
-                      onClick={handleInviteWhatsApp}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:scale-95 transition-transform ml-1"
-                    >
-                      <MessageCircle size={9} />
-                      Share
-                    </button>
-                  </div>
-                </motion.div>
+                {/* 5. Squad / Players */}
+                {userTeam && betMode && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="ios-card p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">👥 Your Squad</p>
+                        <p className="text-[13px] font-semibold text-foreground mt-0.5">
+                          {squadMembers.length} in the room
+                        </p>
+                      </div>
+                    </div>
 
-                {/* Overs picker + Start button */}
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.2 }}
-                  className="ios-card p-4 space-y-3"
-                >
-                  <StakeSelector />
-                  <DevOverrideSelector />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">⏱ How many overs?</p>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <motion.button
-                          key={n}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setSelectedOvers(n)}
-                          className={`flex-1 py-2 rounded-xl text-[13px] font-bold transition-all duration-150 ${
-                            selectedOvers === n
-                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                              : "bg-secondary text-foreground active:bg-muted"
-                          }`}
-                        >
-                          {n}
-                        </motion.button>
+                    <div className="space-y-1.5">
+                      {squadMembers.map((m, i) => (
+                        <div key={m.name} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-secondary/40">
+                          <span className="text-base">{m.avatar}</span>
+                          <span className="text-[13px] font-semibold text-foreground flex-1">{m.name}</span>
+                          {m.isBot ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
+                          ) : (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">PLAYER</span>
+                          )}
+                        </div>
                       ))}
                     </div>
-                  </div>
 
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={handleStartSimulation}
-                    className="w-full py-4 rounded-2xl bg-primary text-primary-foreground text-[16px] font-bold shadow-lg shadow-primary/25 active:bg-primary/90 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Play size={18} />
-                    Start {selectedOvers}-Over Game
-                  </motion.button>
-                  {!userTeam && (
-                    <p className="text-[10px] text-muted-foreground text-center -mt-1">
-                      Pick a team above, or we'll default to {team1.short} 🏏
-                    </p>
-                  )}
-                </motion.div>
+                    <div className="flex gap-2">
+                      <button onClick={handleInviteWhatsApp} className="flex-1 py-2.5 rounded-xl bg-primary/10 text-primary text-[12px] font-bold flex items-center justify-center gap-1.5 active:bg-primary/20 transition-all">
+                        <UserPlus size={14} /> Invite Friend
+                      </button>
+                       {betMode === "none" && onAddAI && (
+                         <button 
+                           type="button"
+                           onClick={onAddAI} 
+                           disabled={squadMembers.length >= 4}
+                           className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground text-[12px] font-bold flex items-center justify-center gap-1.5 active:bg-muted transition-all border border-border/50 disabled:opacity-50"
+                         >
+                           <Bot size={14} /> Add AI Player
+                         </button>
+                       )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* 6. Start Button */}
+                {userTeam && betMode && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                    <button
+                      onClick={handleStartSimulation}
+                      disabled={betMode === "bet" && squadMembers.filter(m => !m.isBot).length < 2}
+                      className="w-full py-4 rounded-2xl bg-primary text-primary-foreground text-[16px] font-bold shadow-lg shadow-primary/25 disabled:opacity-50 disabled:grayscale active:bg-primary/90 transition-all flex flex-col items-center justify-center gap-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Play size={18} fill="currentColor" />
+                        <span>Start 1-Over Game</span>
+                      </div>
+                      {betMode === "bet" && squadMembers.filter(m => !m.isBot).length < 2 && (
+                        <p className="text-[10px] font-medium opacity-80 uppercase tracking-wider">Need at least 1 friend to join</p>
+                      )}
+                    </button>
+                  </motion.div>
+                )}
               </motion.div>
             )}
 
@@ -530,6 +491,7 @@ const PreGameIntro = ({
               </motion.div>
             )}
           </AnimatePresence>
+          {renderDevOverride()}
         </div>
       </div>
     );
@@ -590,85 +552,124 @@ const PreGameIntro = ({
           </motion.div>
         </motion.div>
 
-        {/* How it works + invite */}
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.5 }} className="space-y-2.5">
-          <div className="flex gap-2 text-center">
-            {[
-              { emoji: "🎯", text: "Predict every ball" },
-              { emoji: "🗣️", text: "Play with your squad" },
-              { emoji: "📊", text: "Track your record" },
-            ].map((s, i) => (
-              <div key={i} className="flex-1 py-3 px-2 rounded-xl bg-secondary/50">
-                <div className="text-lg mb-0.5 text-center">{s.emoji}</div>
-                <p className="text-[10px] text-muted-foreground leading-tight font-medium text-center">{s.text}</p>
-              </div>
-            ))}
-          </div>
-
-          {stage !== "starting" && (
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-secondary/50">
-              <div className="flex -space-x-1.5 flex-shrink-0">
-                {squadMembers.slice(0, 3).map(m => (
-                  <div key={m.name} className="w-6 h-6 flex items-center justify-center rounded-full bg-card text-[10px] ring-2 ring-background">
-                    {m.avatar}
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground flex-1 leading-snug">
-                <span className="font-semibold text-foreground">{squadMembers.length} players</span> are here
-              </p>
-              <button
-                onClick={handleInviteWhatsApp}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-[hsl(142,70%,35%)] bg-[hsl(142,70%,45%,0.12)] active:bg-[hsl(142,70%,45%,0.2)] transition-all active:scale-95"
-              >
-                <MessageCircle size={12} />
-                Invite
-              </button>
-            </div>
-          )}
-        </motion.div>
-
-        <HowItWorksCard />
-        <DevOverrideSelector />
-
-        {/* Game Stages */}
         <AnimatePresence mode="wait">
           {stage === "welcome" && (
-            <motion.div key="welcome" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ ...spring, delay: 0.6 }} className="space-y-3">
+            <motion.div key="welcome" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={spring} className="space-y-4">
+              {/* 2. Team selection */}
               <div className="p-4 ios-card">
-                <StakeSelector />
-                <DevOverrideSelector />
-              </div>
-              {/* Team selection (2 teams for live) */}
-              <div className="p-4 ios-card">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Pick Your Side</p>
-                <p className="text-[15px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
-                <div className="grid grid-cols-2 gap-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Support Your Side</p>
+                <p className="text-[14px] font-semibold text-foreground mb-3">Who are you rooting for?</p>
+                <div className="grid grid-cols-2 gap-3">
                   <motion.button whileTap={{ scale: 0.96 }} onClick={() => setUserTeam(team1.short as TeamId)}
                     className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
-                      userTeam === team1.short ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary" : "bg-secondary text-foreground active:bg-muted"
+                      userTeam === team1.short ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary" : "bg-secondary/50 text-foreground active:bg-muted"
                     }`}>
                     <img src={team1Logo} alt={team1.short} className="w-12 h-12 object-contain" />
-                    <span className="text-[14px] font-bold">{team1.name}</span>
+                    <span className="text-[13px] font-bold">{team1.name}</span>
                   </motion.button>
                   <motion.button whileTap={{ scale: 0.96 }} onClick={() => setUserTeam(team2.short as TeamId)}
                     className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl transition-all duration-200 ${
-                      userTeam === team2.short ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary" : "bg-secondary text-foreground active:bg-muted"
+                      userTeam === team2.short ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-2 ring-primary" : "bg-secondary/50 text-foreground active:bg-muted"
                     }`}>
                     <img src={team2Logo} alt={team2.short} className="w-12 h-12 object-contain" />
-                    <span className="text-[14px] font-bold">{team2.name}</span>
+                    <span className="text-[13px] font-bold">{team2.name}</span>
                   </motion.button>
                 </div>
-                {userTeam && (
-                  <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={spring}
-                    className="text-[11px] text-primary mt-2.5 text-center font-medium">
-                    💙 {userTeam} gang locked in!
-                  </motion.p>
-                )}
               </div>
 
-              {/* Toss prediction */}
+              {/* 3. Bet Mode Selection */}
               {userTeam && (
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="ios-card p-4">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">💰 Play Mode</p>
+                  <p className="text-[14px] font-semibold text-foreground mb-3">Do you want to bet against a friend?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <PickButton label="Yes, Bet mode" selected={betMode === "bet"} onPick={() => setBetMode("bet")} />
+                    <PickButton label="No, just practice" selected={betMode === "none"} onPick={() => setBetMode("none")} />
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 4. Instructions based on mode */}
+              {userTeam && betMode === "bet" && (
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                  <div className="ios-card p-4 space-y-3 border-primary/20 bg-primary/5">
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-bold">How Bet Mode Works</p>
+                    <div className="space-y-1.5">
+                      <p className="text-[12px] text-foreground font-medium flex items-start gap-2">
+                        <span>🎯</span> Base bet per ball is {formatStake(selectedStakeTier)}.
+                      </p>
+                      <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                        <span>🚀</span> Multipliers apply for harder picks (e.g. 6 or Wicket).
+                      </p>
+                      <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                        <span>💸</span> No real money is involved in this app.
+                      </p>
+                    </div>
+                    <StakeSelector />
+                  </div>
+                </motion.div>
+              )}
+
+              {userTeam && betMode === "none" && (
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring}>
+                  <div className="ios-card p-4 space-y-3 border-accent/20 bg-accent/5">
+                    <p className="text-[10px] uppercase tracking-widest text-accent font-bold">How Practice Mode Works</p>
+                    <div className="space-y-1.5">
+                      <p className="text-[12px] text-foreground font-medium flex items-start gap-2">
+                        <span>🎯</span> Compete against others to predict the next ball.
+                      </p>
+                      <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                        <span>✨</span> Get points for correct picks (same as bet mode).
+                      </p>
+                      <p className="text-[12px] text-muted-foreground flex items-start gap-2">
+                        <span>🤝</span> No pool or wagers—just pure cricket banter.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 5. Squad / Players */}
+              {userTeam && betMode && (
+                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="ios-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">👥 Your Squad</p>
+                      <p className="text-[13px] font-semibold text-foreground mt-0.5">
+                        {squadMembers.length} in the room
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {squadMembers.map((m, i) => (
+                      <div key={m.name} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-secondary/40">
+                        <span className="text-base">{m.avatar}</span>
+                        <span className="text-[13px] font-semibold text-foreground flex-1">{m.name}</span>
+                        {m.isBot ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-muted-foreground">🤖 AI</span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">PLAYER</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button onClick={handleInviteWhatsApp} className="flex-1 py-2.5 rounded-xl bg-primary/10 text-primary text-[12px] font-bold flex items-center justify-center gap-1.5 active:bg-primary/20 transition-all">
+                      <UserPlus size={14} /> Invite Friend
+                    </button>
+                    {betMode === "none" && onAddAI && squadMembers.length < 4 && (
+                      <button type="button" onClick={onAddAI} className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground text-[12px] font-bold flex items-center justify-center gap-1.5 active:bg-muted transition-all border border-border/50">
+                        <Bot size={14} /> Add AI Player
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Toss prediction - only show after mode selection and if 2+ humans join if in bet mode */}
+              {userTeam && betMode && (
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="p-4 ios-card">
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🪙 Toss call</p>
                   <p className="text-[15px] font-semibold text-foreground mb-3">Who wins the toss?</p>
@@ -726,6 +727,7 @@ const PreGameIntro = ({
             </motion.div>
           )}
         </AnimatePresence>
+        {renderDevOverride()}
       </div>
     </div>
   );
