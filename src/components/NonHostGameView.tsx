@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import PredictionCard, { type PredictionState, type BallResult, type FriendPick } from "./PredictionCard";
+import PredictionCard, { type PredictionState, type FriendPick } from "./PredictionCard";
 import { type GameSnapshot, type MultiplayerPlayer, type RoomPrediction } from "@/hooks/useMultiplayer";
 import { checkPickWon, LOCK_TIME } from "@/lib/cricket";
 import { playBallActiveSound, playWinSound, playFailSound, playClickSound, playHypeHorn, isSoundMuted } from "@/lib/sounds";
+import { getStakeForTier, type WagerTier } from "@/lib/wagers";
 
 interface NonHostGameViewProps {
   playerName: string;
@@ -29,21 +30,19 @@ const NonHostGameView = ({
   const prevBallIdRef = useRef<number | null>(null);
 
   const ball = gameSnapshot?.ball;
+  const roomStakeTier = gameSnapshot?.roomStakeTier || "small";
+  const roomStakeAmount = gameSnapshot?.roomStakeAmount || getStakeForTier(roomStakeTier);
 
-  // When new ball opens, reset pick and play sound
   useEffect(() => {
     if (ball?.state === "idle" && ball.id !== prevBallIdRef.current) {
       prevBallIdRef.current = ball.id;
       setMyPick(null);
       setMyPickBallId(null);
       setWaiting(false);
-      if (!isSoundMuted()) {
-        playBallActiveSound();
-      }
+      if (!isSoundMuted()) playBallActiveSound();
     }
   }, [ball?.id, ball?.state]);
 
-  // Countdown timer
   useEffect(() => {
     if (ball?.state === "idle" && ball.openedAt) {
       const tick = () => {
@@ -57,14 +56,13 @@ const NonHostGameView = ({
     }
   }, [ball?.id, ball?.state, ball?.openedAt]);
 
-  // When ball resolves, score my pick
   useEffect(() => {
     if (ball?.state === "resolved" && ball.result && ball.id !== lastResolvedBallId) {
       setLastResolvedBallId(ball.id);
 
       if (myPick && myPickBallId === ball.id) {
         const won = checkPickWon(myPick, ball.result.type);
-        setMyScore(prev => {
+        setMyScore((prev) => {
           const newWins = prev.wins + (won ? 1 : 0);
           const newTotal = prev.total + 1;
           const newStreak = won ? prev.streak + 1 : 0;
@@ -78,16 +76,12 @@ const NonHostGameView = ({
         }
       }
 
-      // Hype for big moments
       const type = ball.result.type;
       if (type === "six" || type === "four" || type === "wicket") {
         onHype?.(type as "four" | "six" | "wicket");
-        if (!isSoundMuted()) {
-          playHypeHorn();
-        }
+        if (!isSoundMuted()) playHypeHorn();
       }
 
-      // Show waiting after result
       setTimeout(() => setWaiting(true), 3000);
     }
   }, [ball?.state, ball?.id, ball?.result, myPick, myPickBallId, lastResolvedBallId, onScoreUpdate, onHype]);
@@ -100,41 +94,34 @@ const NonHostGameView = ({
     if (!isSoundMuted()) playClickSound();
   }, [myPick, ball, onPick]);
 
-  // Build friend picks from currentPredictions
   const friendPicks: FriendPick[] = currentPredictions
-    .filter(p => p.player_name !== playerName && ball && p.ball_id === ball.id)
-    .map(p => {
-      const player = players.find(pl => pl.name === p.player_name);
+    .filter((prediction) => prediction.player_name !== playerName && ball && prediction.ball_id === ball.id)
+    .map((prediction) => {
+      const player = players.find((roomPlayer) => roomPlayer.name === prediction.player_name);
       return {
-        name: p.player_name,
+        name: prediction.player_name,
         avatar: player?.avatar || "🏏",
-        pick: p.prediction,
+        pick: prediction.prediction,
         won: ball?.state === "resolved" && ball.result
-          ? checkPickWon(p.prediction, ball.result.type)
+          ? checkPickWon(prediction.prediction, ball.result.type)
           : undefined,
       };
     });
 
-  // Determine prediction state for the card
   let predState: PredictionState = "idle";
-  if (myPick) {
-    predState = ball?.state === "resolved" ? "resolved" : "locked";
-  } else if (ball?.state === "resolved") {
-    predState = "resolved";
-  } else if (ball?.state === "pending") {
-    predState = "pending";
-  }
+  if (myPick) predState = ball?.state === "resolved" ? "resolved" : "locked";
+  else if (ball?.state === "resolved") predState = "resolved";
+  else if (ball?.state === "pending") predState = "pending";
 
-  const userScores: Record<string, { wins: number; total: number; streak: number }> = {};
-  players.forEach(p => {
-    userScores[p.name] = { wins: p.wins, total: p.total, streak: p.streak };
+  const userScores: Record<string, { wins: number; total: number; streak: number; netWinnings?: number }> = {};
+  players.forEach((player) => {
+    userScores[player.name] = { wins: player.wins, total: player.total, streak: player.streak };
   });
 
   const matchInfo = gameSnapshot?.match;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Match score bar */}
       {matchInfo && (
         <div className="flex items-center justify-center gap-4 px-4 py-2 bg-secondary/50 border-b border-border">
           <span className="text-[13px] font-bold text-foreground tabular-nums">
@@ -151,7 +138,6 @@ const NonHostGameView = ({
         </div>
       )}
 
-      {/* My score */}
       <div className="flex items-center justify-between px-4 py-2 bg-secondary/30">
         <div className="flex items-center gap-2">
           <span className="text-sm">{playerAvatar}</span>
@@ -185,6 +171,8 @@ const NonHostGameView = ({
                   ? { label: ball.result.label, type: ball.result.type as any }
                   : null}
                 selected={myPick}
+                roomStakeTier={roomStakeTier}
+                roomStakeAmount={roomStakeAmount}
                 friendPicks={friendPicks}
                 userScores={userScores}
                 onPredict={handlePick}
@@ -214,31 +202,6 @@ const NonHostGameView = ({
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Players in room */}
-        <div className="px-4 mt-4">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">
-            Players in Room
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {players.map(p => (
-              <div
-                key={p.id}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] ${
-                  p.name === playerName
-                    ? "bg-primary/10 ring-1 ring-primary/30"
-                    : "bg-secondary"
-                }`}
-              >
-                <span className="text-sm">{p.avatar}</span>
-                <span className="font-semibold text-foreground">{p.name}</span>
-                {p.wins > 0 && (
-                  <span className="text-[9px] text-muted-foreground">{p.wins}W</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

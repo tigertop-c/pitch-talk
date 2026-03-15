@@ -16,6 +16,7 @@
 ## Core Rules
 - Keep changes scoped to the current request.
 - Preserve the existing stack unless the human explicitly asks to change it or the current stack blocks the requested outcome.
+- Treat React web as the primary delivery surface for now; do not introduce Flutter-specific abstractions or parallel mobile architecture unless explicitly requested.
 - Reuse existing docs and conventions instead of creating parallel process files.
 - Do not invent match data, sensitive content, or unverifiable product claims. Mark placeholders clearly when human review is needed.
 - For review-only tasks, do not mutate repo files.
@@ -31,3 +32,4 @@
 - Do not create governance files by default beyond the lightweight files already in this repo.
 - Update `docs/DECISIONS.md` only for architecture, process, security, or release-significant changes.
 - Do not create log noise for routine edits or read-only work.
+- Use `docs/REACT_STRATEGY.md` for the current React-first implementation priorities and cross-platform guidance.

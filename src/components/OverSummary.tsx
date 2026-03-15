@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { UserPlus } from "lucide-react";
+import { formatRs } from "@/lib/wagers";
 
 export interface OverSummaryData {
   overNumber: number;
@@ -12,6 +13,8 @@ export interface OverSummaryData {
     accuracy: number;
     streak: number;
     bestStreak: number;
+    netWinnings: number;
+    amountWagered: number;
     team?: string;
   }[];
   activePlayers: number;
@@ -25,7 +28,12 @@ export interface OverSummaryData {
   overWickets?: number;
   overBoundaries?: number;
   overExtras?: number;
+  overNetChange?: number;
   teamAllegiances?: { team1: string; team1Count: number; team2: string; team2Count: number };
+  biggestHit?: { name: string; avatar: string; net: number } | null;
+  bravestMiss?: { name: string; avatar: string; net: number } | null;
+  overNetWinner?: { name: string; avatar: string; net: number } | null;
+  roomStakeTier?: string;
 }
 
 interface OverSummaryProps {
@@ -34,21 +42,6 @@ interface OverSummaryProps {
 }
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
-
-const getStreakBadge = (streak: number) => {
-  if (streak >= 5) return { label: "🔥 On Fire", style: "bg-destructive/15 text-destructive" };
-  if (streak >= 3) return { label: "⚡ Hot", style: "bg-amber-400/15 text-amber-400" };
-  return null;
-};
-
-const getTitle = (accuracy: number, total: number) => {
-  if (total < 2) return null;
-  if (accuracy >= 80) return { title: "Nostradamus 🔮", style: "text-neon" };
-  if (accuracy >= 60) return { title: "Cricket Brain 🧠", style: "text-primary" };
-  if (accuracy >= 40) return { title: "Decent Read 👌", style: "text-muted-foreground" };
-  if (accuracy >= 20) return { title: "Still Learning 📚", style: "text-muted-foreground" };
-  return { title: "Bold Guesser 🎲", style: "text-muted-foreground" };
-};
 
 const getAccuracyColor = (accuracy: number) => {
   if (accuracy >= 70) return "text-neon";
@@ -59,20 +52,16 @@ const getAccuracyColor = (accuracy: number) => {
 
 const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
   const activeStandings = data.standings
-    .filter(s => s.total > 0)
-    .sort((a, b) => b.accuracy - a.accuracy || b.wins - a.wins)
+    .filter(s => s.total > 0 || s.amountWagered > 0)
+    .sort((a, b) => b.netWinnings - a.netWinnings || b.accuracy - a.accuracy || b.wins - a.wins)
     .slice(0, 5);
 
-  const totalPlayers = data.standings.filter(s => s.total > 0).length;
+  const totalPlayers = data.standings.filter(s => s.total > 0 || s.amountWagered > 0).length;
   const needsMore = data.activePlayers < data.maxPlayers;
 
   const matchSummary = data.matchTarget
-    ? `${data.matchRuns}/${data.matchWickets} (${data.matchOvers}) • Need ${data.matchTarget - data.matchRuns} off ${120 - (parseInt(data.matchOvers) * 6 + parseInt(data.matchOvers.split('.')[1] || '0'))} balls`
+    ? `${data.matchRuns}/${data.matchWickets} (${data.matchOvers}) • Need ${data.matchTarget - data.matchRuns}`
     : `${data.matchRuns}/${data.matchWickets} (${data.matchOvers})`;
-
-  // Determine over quality
-  const isExplosiveOver = (data.overRuns ?? 0) >= 15;
-  const isQuietOver = (data.overRuns ?? 0) <= 4 && (data.overWickets ?? 0) === 0;
 
   return (
     <motion.div
@@ -81,100 +70,75 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
       transition={spring}
       className="mx-4 my-2"
     >
-      <div className={`ios-card p-4 relative overflow-hidden ${
-        isExplosiveOver ? "border-l-4 border-l-neon" : "border-l-4 border-l-primary"
-      }`}>
-        {/* Decorative gradient for explosive overs */}
-        {isExplosiveOver && (
-          <div className="absolute top-0 right-0 w-32 h-32 bg-neon/5 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-        )}
-
-        {/* Header + Match Score */}
+      <div className="ios-card p-4 relative overflow-hidden border-l-4 border-l-primary">
         <div className="flex items-center justify-between mb-2 relative z-10">
           <div className="flex items-center gap-2">
-            <span className="text-sm">{isExplosiveOver ? "🔥" : isQuietOver ? "🤫" : "📊"}</span>
+            <span className="text-sm">📊</span>
             <span className="text-[13px] font-black text-foreground">End of Over {data.overNumber}</span>
           </div>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            isExplosiveOver ? "bg-neon/15 text-neon" : "bg-secondary text-muted-foreground"
-          }`}>
-            {isExplosiveOver ? "Explosive!" : "Summary"}
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+            Slip recap
           </span>
         </div>
 
-        {/* Match score */}
         <div className="px-3 py-2 mb-2.5 rounded-xl bg-secondary/70 text-center relative z-10">
           <span className="text-[12px] font-bold text-foreground">{matchSummary}</span>
         </div>
 
-        {/* Over highlights - hype stats */}
         <div className="flex flex-wrap gap-1.5 mb-3 relative z-10">
-          {(data.overRuns !== undefined && data.overRuns > 0) && (
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${
-              data.overRuns >= 15 ? "bg-neon/15 text-neon ring-1 ring-neon/20" :
-              data.overRuns >= 10 ? "bg-primary/15 text-primary" :
-              "bg-secondary text-muted-foreground"
-            }`}>
-              {data.overRuns >= 15 ? "🔥" : "🏏"} {data.overRuns} runs
+          {(data.overRuns ?? 0) > 0 && (
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-secondary text-muted-foreground">
+              🏏 {data.overRuns} runs
             </span>
           )}
-          {(data.overWickets !== undefined && data.overWickets > 0) && (
+          {(data.overWickets ?? 0) > 0 && (
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive ring-1 ring-destructive/15">
-              💀 {data.overWickets} wicket{data.overWickets > 1 ? "s" : ""}
+              💀 {data.overWickets} wicket{data.overWickets! > 1 ? "s" : ""}
             </span>
           )}
-          {(data.overBoundaries !== undefined && data.overBoundaries > 0) && (
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-primary/15 text-primary">
-              💥 {data.overBoundaries} boundar{data.overBoundaries > 1 ? "ies" : "y"}
-            </span>
-          )}
-          {(data.overExtras !== undefined && data.overExtras > 0) && (
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-muted text-muted-foreground">
-              😬 {data.overExtras} extra{data.overExtras > 1 ? "s" : ""}
+          {data.overNetChange !== undefined && (
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${data.overNetChange >= 0 ? "bg-neon/10 text-neon" : "bg-destructive/10 text-destructive"}`}>
+              {data.overNetChange >= 0 ? "💸" : "🥶"} {formatRs(data.overNetChange)}
             </span>
           )}
         </div>
 
-        {/* Team allegiances */}
         {data.teamAllegiances && (
           <div className="flex items-center justify-center gap-3 mb-3 px-3 py-2 rounded-xl bg-secondary/40 relative z-10">
             <span className="text-[10px] font-bold text-primary">
-              {data.teamAllegiances.team1} 💙 ×{data.teamAllegiances.team1Count}
+              {data.teamAllegiances.team1} ×{data.teamAllegiances.team1Count}
             </span>
             <span className="text-[10px] text-muted-foreground font-semibold">vs</span>
             <span className="text-[10px] font-bold text-primary">
-              {data.teamAllegiances.team2} 💙 ×{data.teamAllegiances.team2Count}
+              {data.teamAllegiances.team2} ×{data.teamAllegiances.team2Count}
             </span>
           </div>
         )}
 
-        {/* Over MVP — enhanced callout */}
-        {data.overMvp && data.overMvp.correct > 0 && (
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", damping: 15, delay: 0.1 }}
-            className="flex items-center gap-3 mb-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-amber-500/15 ring-1 ring-amber-400/25 relative overflow-hidden"
-          >
-            {/* Shimmer */}
-            <div className="absolute inset-0 animate-gold-shimmer pointer-events-none" />
-            <span className="text-2xl relative z-10">{data.overMvp.avatar}</span>
-            <div className="relative z-10">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Over MVP</span>
-                <span className="text-sm">👑</span>
-              </div>
-              <p className="text-[12px] font-bold text-foreground">
-                {data.overMvp.name}
-              </p>
-              <p className="text-[10px] text-muted-foreground font-medium">
-                {data.overMvp.correct}/{data.overMvp.total} correct this over
-              </p>
+        <div className="grid grid-cols-1 gap-2 mb-3 relative z-10">
+          {data.biggestHit && (
+            <div className="rounded-xl bg-neon/10 border border-neon/15 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-neon font-bold">Biggest hit</p>
+              <p className="text-[12px] font-semibold text-foreground">{data.biggestHit.avatar} {data.biggestHit.name}</p>
+              <p className="text-[10px] text-neon font-bold">{formatRs(data.biggestHit.net)}</p>
             </div>
-          </motion.div>
-        )}
+          )}
+          {data.bravestMiss && (
+            <div className="rounded-xl bg-destructive/10 border border-destructive/15 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-destructive font-bold">Bravest miss</p>
+              <p className="text-[12px] font-semibold text-foreground">{data.bravestMiss.avatar} {data.bravestMiss.name}</p>
+              <p className="text-[10px] text-destructive font-bold">{formatRs(data.bravestMiss.net)}</p>
+            </div>
+          )}
+          {data.overNetWinner && (
+            <div className="rounded-xl bg-primary/10 border border-primary/15 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-primary font-bold">Net winner</p>
+              <p className="text-[12px] font-semibold text-foreground">{data.overNetWinner.avatar} {data.overNetWinner.name}</p>
+              <p className="text-[10px] text-primary font-bold">{formatRs(data.overNetWinner.net)}</p>
+            </div>
+          )}
+        </div>
 
-        {/* Top 5 Standings */}
         {activeStandings.length > 0 && (
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
@@ -182,67 +146,33 @@ const OverSummary = ({ data, onInvite }: OverSummaryProps) => {
                 🏆 Top {Math.min(5, activeStandings.length)}
               </p>
               {totalPlayers > 5 && (
-                <span className="text-[9px] text-muted-foreground">
-                  +{totalPlayers - 5} more playing
-                </span>
+                <span className="text-[9px] text-muted-foreground">+{totalPlayers - 5} more</span>
               )}
             </div>
             <div className="space-y-1.5">
-              {activeStandings.map((s, i) => {
-                const streakBadge = getStreakBadge(s.streak);
-                const title = getTitle(s.accuracy, s.total);
-                return (
-                  <div key={s.name} className="flex items-center justify-between py-0.5">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="w-4 text-center text-[10px] font-bold text-muted-foreground flex-shrink-0">
-                        {i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
-                      </span>
-                      <span className="text-[11px]">{s.avatar}</span>
-                      <span className={`text-[11px] font-bold truncate ${s.name === "You" ? "text-primary" : "text-foreground"}`}>
-                        {s.name}
-                      </span>
-                      {s.team && (
-                        <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-secondary text-muted-foreground flex-shrink-0">
-                          {s.team}
-                        </span>
-                      )}
-                      {streakBadge && (
-                        <span className={`text-[7px] font-bold px-1 py-0.5 rounded-full flex-shrink-0 ${streakBadge.style}`}>
-                          {streakBadge.label}
-                        </span>
-                      )}
-                      {title && (
-                        <span className={`text-[8px] font-semibold flex-shrink-0 ${title.style}`}>
-                          {title.title}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <div className="w-12 h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${s.accuracy}%` }}
-                          transition={{ duration: 0.6, delay: i * 0.08 }}
-                          className={`h-full rounded-full ${
-                            s.accuracy >= 70 ? "bg-neon" :
-                            s.accuracy >= 50 ? "bg-primary" :
-                            s.accuracy >= 30 ? "bg-amber-400" :
-                            "bg-muted-foreground"
-                          }`}
-                        />
-                      </div>
-                      <span className={`text-[10px] font-black w-7 text-right ${getAccuracyColor(s.accuracy)}`}>
-                        {s.accuracy}%
-                      </span>
-                    </div>
+              {activeStandings.map((s, i) => (
+                <div key={s.name} className="flex items-center justify-between py-0.5">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className="w-4 text-center text-[10px] font-bold text-muted-foreground flex-shrink-0">
+                      {i === 0 ? "👑" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
+                    </span>
+                    <span className="text-[11px]">{s.avatar}</span>
+                    <span className="text-[11px] font-bold truncate text-foreground">{s.name}</span>
+                    <span className={`text-[9px] font-bold ${s.netWinnings >= 0 ? "text-neon" : "text-destructive"}`}>
+                      {formatRs(s.netWinnings)}
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`text-[10px] font-black w-7 text-right ${getAccuracyColor(s.accuracy)}`}>
+                      {s.accuracy}%
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Invite CTA */}
         {needsMore && onInvite && (
           <motion.button
             whileTap={{ scale: 0.96 }}

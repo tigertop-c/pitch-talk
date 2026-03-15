@@ -18,9 +18,25 @@ import { setSoundMuted, playMatchWinSound, playMatchLossSound, playInningsBreakS
 import type { TeamId } from "@/components/ChatInput";
 import SquadStandingsBar, { type SquadEntry } from "@/components/SquadStandingsBar";
 import { AI_PLAYERS } from "@/lib/aiPlayers";
+import { buildPairwiseSettlements, getStakeForTier, type WagerTier } from "@/lib/wagers";
+import { type OverSummaryData } from "@/components/OverSummary";
 
 // When VITE_USE_MOCK_DATA=true, all matches run as simulations (no real API polling).
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === "true";
+const DEV_PITCH_PAISA_OVERRIDE_ENABLED =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_PITCH_PAISA_DEV_OVERRIDE === "true";
+
+type DevPitchPaisaMode = "off" | "force_wager" | "simulate_second_human";
+const DEV_MOCK_HUMAN = {
+  id: "dev-mock-human",
+  name: "Dev Sparring Partner",
+  avatar: "🧪",
+  isHost: false,
+  isHuman: true,
+  wins: 0,
+  total: 0,
+  streak: 0,
+} as const;
 
 // Commentator match summaries
 const getMatchCommentary = (winnerShort: string, loserShort: string, winMargin: string, chasingTeamWon: boolean, firstInningsScore: number, secondInningsScore: number): string => {
@@ -198,6 +214,95 @@ const MatchOverScreen = ({ winnerShort, loserShort, winMargin, myTeamWon, correc
 
 const MAX_PLAYERS = 10;
 
+const OverRecapOverlay = ({
+  data,
+  countdown,
+}: {
+  data: OverSummaryData;
+  countdown: number;
+}) => {
+  const topStandings = [...data.standings]
+    .filter((entry) => entry.amountWagered > 0 || entry.netWinnings !== 0)
+    .sort((a, b) => b.netWinnings - a.netWinnings || b.accuracy - a.accuracy)
+    .slice(0, 5);
+
+  return (
+    <div className="absolute inset-0 z-[95] bg-gradient-to-b from-primary/25 via-primary/10 to-background overflow-y-auto">
+      <div className="min-h-full flex flex-col items-center justify-center px-6 py-8">
+        <motion.div
+          initial={{ scale: 0.92, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-full max-w-sm text-center"
+        >
+          <motion.span
+            animate={{ scale: [1, 1.08, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="text-5xl mb-3 block"
+          >
+            💸
+          </motion.span>
+          <h2 className="text-3xl font-black text-foreground tracking-tight">END OF OVER {data.overNumber}</h2>
+          <p className="text-[12px] text-muted-foreground mt-1">
+            Pitch Paisa standings
+          </p>
+
+          <div className="mt-4 rounded-2xl bg-secondary/60 px-5 py-4">
+            <p className="text-2xl font-black text-primary">{data.matchRuns}/{data.matchWickets}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {data.matchOvers}{data.matchTarget ? ` • Need ${data.matchTarget - data.matchRuns}` : ""}
+            </p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 text-left">
+            {data.biggestHit && (
+              <div className="rounded-xl bg-neon/10 border border-neon/15 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-neon font-bold">Biggest hit</p>
+                <p className="text-[12px] font-semibold text-foreground">{data.biggestHit.avatar} {data.biggestHit.name}</p>
+                <p className="text-[10px] font-bold text-neon">+₹{data.biggestHit.net}</p>
+              </div>
+            )}
+            {data.bravestMiss && (
+              <div className="rounded-xl bg-destructive/10 border border-destructive/15 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-destructive font-bold">Bravest miss</p>
+                <p className="text-[12px] font-semibold text-foreground">{data.bravestMiss.avatar} {data.bravestMiss.name}</p>
+                <p className="text-[10px] font-bold text-destructive">₹{data.bravestMiss.net}</p>
+              </div>
+            )}
+            {data.overNetWinner && (
+              <div className="rounded-xl bg-primary/10 border border-primary/15 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wide text-primary font-bold">Net winner</p>
+                <p className="text-[12px] font-semibold text-foreground">{data.overNetWinner.avatar} {data.overNetWinner.name}</p>
+                <p className="text-[10px] font-bold text-primary">{data.overNetWinner.net >= 0 ? "+" : ""}₹{data.overNetWinner.net}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-secondary/40 px-4 py-3 text-left">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Top standings</p>
+            <div className="space-y-2">
+              {topStandings.map((entry, index) => (
+                <div key={entry.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-bold text-muted-foreground w-4">{index === 0 ? "👑" : index + 1}</span>
+                    <span className="text-sm">{entry.avatar}</span>
+                    <span className="text-[12px] font-semibold text-foreground truncate">{entry.name}</span>
+                  </div>
+                  <span className={`text-[12px] font-black ${entry.netWinnings >= 0 ? "text-neon" : "text-destructive"}`}>
+                    {entry.netWinnings >= 0 ? "+" : ""}₹{entry.netWinnings}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p className="mt-4 text-4xl font-black text-primary tabular-nums">{countdown}</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Next over starting soon</p>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
 // Flow: picker → name (if needed) → pregame (auto-create/join room) → game
 type AppStage = "picker" | "name" | "pregame" | "game";
 
@@ -213,6 +318,12 @@ const Index = () => {
   const [hypeState, setHypeState] = useState<{
     type: "four" | "six" | "wicket";
     isDuck?: boolean;
+    moneySummary?: {
+      yourNetForBall?: number | null;
+      topWinnerForBall?: { name: string; avatar: string; net: number } | null;
+      topLoserForBall?: { name: string; avatar: string; net: number } | null;
+      liveLeader?: { name: string; avatar: string; net: number } | null;
+    } | null;
   } | null>(null);
   const [mutedHypeTypes, setMutedHypeTypes] = useState<Set<string>>(new Set());
   const [selectedOvers, setSelectedOvers] = useState(1); // Item 5: default 1 over
@@ -227,6 +338,7 @@ const Index = () => {
   const [playerName, setPlayerName] = useState("");
   const [playerAvatar, setPlayerAvatar] = useState("🏏");
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(roomCodeFromUrl);
+  const [devPitchPaisaMode, setDevPitchPaisaMode] = useState<DevPitchPaisaMode>("off");
 
   const mp = useMultiplayer();
   const { reconnect, isReconnecting, leaveRoom } = mp;
@@ -247,6 +359,9 @@ const Index = () => {
   const [showInningsBreak, setShowInningsBreak] = useState(false);
   const [inningsBreakCountdown, setInningsBreakCountdown] = useState(15); // Item 9
   const inningsBreakTimerRef = useRef<ReturnType<typeof setInterval> | null>(null); // Item 9
+  const [overRecapData, setOverRecapData] = useState<OverSummaryData | null>(null);
+  const [overRecapCountdown, setOverRecapCountdown] = useState(4);
+  const [resumeOverRecapToken, setResumeOverRecapToken] = useState(0);
 
   // Handle innings completion — Item 9: 15s countdown with Skip button (sim only)
   const handleInningsComplete = useCallback(() => {
@@ -309,9 +424,11 @@ const Index = () => {
     if (mp.players.length > 0 || !selectedMatch) return [];
     const fallbackTeams = [selectedMatch.team1.short as TeamId, selectedMatch.team2.short as TeamId];
     return AI_PLAYERS.map((ai, index) => ({
+      id: `local-ai-${index}`,
       name: ai.name,
       avatar: ai.avatar,
       team: fallbackTeams[index % fallbackTeams.length],
+      isHuman: false,
     }));
   }, [mp.players.length, selectedMatch]);
 
@@ -321,7 +438,7 @@ const Index = () => {
     }
     return mp.players
       .filter(p => p.name !== playerName)
-      .map(p => ({ name: p.name, avatar: p.avatar, team: (p.teamPicked as TeamId) || "DC" }));
+      .map(p => ({ id: p.id, name: p.name, avatar: p.avatar, team: (p.teamPicked as TeamId) || "DC", isHuman: p.isHuman }));
   }, [mp.players, playerName, fallbackAiFriends]);
 
   const displayPlayers = useMemo(() => {
@@ -333,6 +450,7 @@ const Index = () => {
         name: localPlayerName,
         avatar: playerAvatar,
         isHost: true,
+        isHuman: true,
         wins: 0,
         total: 0,
         streak: 0,
@@ -343,6 +461,7 @@ const Index = () => {
         name: friend.name,
         avatar: friend.avatar,
         isHost: false,
+        isHuman: false,
         wins: 0,
         total: 0,
         streak: 0,
@@ -351,16 +470,90 @@ const Index = () => {
     ];
   }, [mp.players, playerName, playerAvatar, userTeam, fallbackAiFriends]);
 
-  const displayedActivePlayers = displayPlayers.length;
+  const devMockHumanPlayer = useMemo(() => {
+    if (!DEV_PITCH_PAISA_OVERRIDE_ENABLED || devPitchPaisaMode !== "simulate_second_human") return null;
+    const defaultTeam = (selectedMatch?.team2.short as TeamId) || "DC";
+    const oppositeTeam = userTeam === selectedMatch?.team1.short
+      ? (selectedMatch?.team2.short as TeamId | undefined)
+      : (selectedMatch?.team1.short as TeamId | undefined);
+    return {
+      ...DEV_MOCK_HUMAN,
+      teamPicked: oppositeTeam || defaultTeam,
+    };
+  }, [devPitchPaisaMode, selectedMatch, userTeam]);
 
-  const [friendScores, setFriendScores] = useState<Record<string, { wins: number; total: number; streak: number; bestStreak: number }>>({});
+  const effectiveDisplayPlayers = useMemo(() => {
+    if (!devMockHumanPlayer) return displayPlayers;
+    if (displayPlayers.some((player) => player.id === devMockHumanPlayer.id)) return displayPlayers;
+    return [...displayPlayers, devMockHumanPlayer];
+  }, [devMockHumanPlayer, displayPlayers]);
+
+  const effectiveActiveFriends: FriendDef[] = useMemo(() => {
+    if (!devMockHumanPlayer) return activeFriends;
+    if (activeFriends.some((friend) => friend.id === devMockHumanPlayer.id)) return activeFriends;
+    return [
+      ...activeFriends,
+      {
+        id: devMockHumanPlayer.id,
+        name: devMockHumanPlayer.name,
+        avatar: devMockHumanPlayer.avatar,
+        team: (devMockHumanPlayer.teamPicked as TeamId) || "DC",
+        isHuman: true,
+        isDevMock: true,
+      },
+    ];
+  }, [activeFriends, devMockHumanPlayer]);
+
+  const displayedActivePlayers = effectiveDisplayPlayers.length;
+  const humanPlayers = useMemo(() => effectiveDisplayPlayers.filter((player) => player.isHuman), [effectiveDisplayPlayers]);
+  const humanPlayerCount = humanPlayers.length;
+  const devForceWagerMode = DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode === "force_wager";
+  const effectiveHumanPlayerCount = devForceWagerMode ? Math.max(humanPlayerCount, 2) : humanPlayerCount;
+  const baseWagerMode = effectiveHumanPlayerCount >= 2;
+  const roomWagerMode = mp.gameSnapshot?.wagerMode ?? (stage !== "game" ? baseWagerMode : false);
+  const wagerMode = DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode !== "off"
+    ? true
+    : (stage === "game" ? roomWagerMode : baseWagerMode);
+  const eligibilityMap = mp.gameSnapshot?.playerEligibilityAfterBallId || {};
+  const currentBallId = mp.gameSnapshot?.ball?.id ?? null;
+  const myEligibilityAfterBallId = mp.myId ? eligibilityMap[mp.myId] ?? null : null;
+  const myJoinStatus: "watching" | "joining_next_ball" | "active" = myEligibilityAfterBallId !== null && currentBallId !== null && currentBallId <= myEligibilityAfterBallId
+    ? (mp.gameSnapshot?.ball?.state === "resolved" ? "joining_next_ball" : "watching")
+    : "active";
+  const isCurrentUserWagerEligible = wagerMode && myJoinStatus === "active" && effectiveHumanPlayerCount >= 1;
+  const canPredictCurrentBall = myJoinStatus === "active";
+  const predictionDisabledReason = myJoinStatus === "watching"
+    ? "Watching this ball. You join from the next one."
+    : myJoinStatus === "joining_next_ball"
+    ? "You enter the pool from the next ball."
+    : null;
+  const eligibleHumanNames = useMemo(() => {
+    const names = new Set<string>();
+    effectiveDisplayPlayers.forEach((player) => {
+      if (!player.isHuman) return;
+      const afterBallId = eligibilityMap[player.id] ?? null;
+      if (afterBallId === null || currentBallId === null || currentBallId > afterBallId) {
+        names.add(player.name);
+      }
+    });
+    return Array.from(names);
+  }, [effectiveDisplayPlayers, eligibilityMap, currentBallId]);
+
+  const [friendScores, setFriendScores] = useState<Record<string, { wins: number; total: number; streak: number; bestStreak: number; netWinnings: number; amountWagered: number; biggestHit: number }>>({});
+  const [roomStakeTier, setRoomStakeTier] = useState<WagerTier>("small");
 
   const handleHype = useCallback((
     type: "four" | "six" | "wicket",
     isDuck?: boolean,
+    moneySummary?: {
+      yourNetForBall?: number | null;
+      topWinnerForBall?: { name: string; avatar: string; net: number } | null;
+      topLoserForBall?: { name: string; avatar: string; net: number } | null;
+      liveLeader?: { name: string; avatar: string; net: number } | null;
+    },
   ) => {
     if (mutedHypeTypes.has(type)) return;
-    setHypeState({ type, isDuck });
+    setHypeState({ type, isDuck, moneySummary: wagerMode ? moneySummary || null : null });
   }, [mutedHypeTypes]);
 
   // Muting any hype silences all hype types for the rest of the session
@@ -472,10 +665,14 @@ const Index = () => {
     })();
   }, [profileLoaded, reconnect, roomCodeFromUrl]);
 
-  const handleGameStart = useCallback((team: TeamId, overs: number = 1) => {
+  const handleGameStart = useCallback(async (team: TeamId, overs: number = 1, stakeTier: WagerTier = "small") => {
     setUserTeam(team);
     setSelectedOvers(overs);
+    setRoomStakeTier(stakeTier);
     mp.updateMyTeam(team);
+    if (mp.roomId) {
+      await mp.setRoomStake(stakeTier);
+    }
     // Reset the simulation with the correct team rosters before the game starts
     const t1 = selectedMatch?.team1.short ?? "MI";
     const t2 = selectedMatch?.team2.short ?? "DC";
@@ -501,7 +698,7 @@ const Index = () => {
     }
   }, []);
 
-  const handleFriendScoresUpdate = useCallback((scores: Record<string, { wins: number; total: number; streak: number }>) => {
+  const handleFriendScoresUpdate = useCallback((scores: Record<string, { wins: number; total: number; streak: number; netWinnings: number; amountWagered: number; biggestHit: number }>) => {
     setFriendScores(prev => {
       const next = { ...prev };
       Object.entries(scores).forEach(([name, s]) => {
@@ -521,9 +718,32 @@ const Index = () => {
     setStage("picker");
   }, [leaveRoom]);
 
-  const handleOverComplete = useCallback((overNum: number, participation: Record<string, boolean>) => {
-    // No friend drop-off logic needed for multiplayer
-  }, []);
+  const handleOverComplete = useCallback((overNum: number, participation: Record<string, boolean>, summary: OverSummaryData) => {
+    const isLastOver = overNum >= selectedOvers;
+    if (!wagerMode || isLastOver) return;
+    setOverRecapData(summary);
+    setOverRecapCountdown(4);
+  }, [selectedOvers, wagerMode]);
+
+  useEffect(() => {
+    if (!overRecapData) return;
+    if (showInningsBreak || match.matchOver) {
+      setOverRecapData(null);
+      return;
+    }
+    const id = setInterval(() => {
+      setOverRecapCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(id);
+          setOverRecapData(null);
+          setResumeOverRecapToken((token) => token + 1);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [overRecapData, showInningsBreak, match.matchOver]);
 
   const handleInvite = useCallback(() => {
     const matchLabel = selectedMatch ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short}` : "the match";
@@ -549,9 +769,14 @@ const Index = () => {
         result: ball.result,
       },
       match: matchState,
+      wagerMode: mp.gameSnapshot?.wagerMode ?? false,
+      humanPlayerCount: mp.gameSnapshot?.humanPlayerCount ?? effectiveHumanPlayerCount,
+      roomStakeTier: mp.gameSnapshot?.roomStakeTier || roomStakeTier,
+      roomStakeAmount: mp.gameSnapshot?.roomStakeAmount || getStakeForTier(roomStakeTier),
+      playerEligibilityAfterBallId: mp.gameSnapshot?.playerEligibilityAfterBallId || {},
     };
     mp.updateGameSnapshot(snapshot);
-  }, [mp]);
+  }, [mp, effectiveHumanPlayerCount, roomStakeTier]);
 
   // Listen for host starting game (non-host)
   const gamePhase = mp.gameSnapshot?.phase;
@@ -564,19 +789,48 @@ const Index = () => {
     return () => clearTimeout(id);
   }, [isNonHostInGame]);
 
+  useEffect(() => {
+    if (mp.gameSnapshot?.roomStakeTier) {
+      setRoomStakeTier(mp.gameSnapshot.roomStakeTier);
+    }
+  }, [mp.gameSnapshot?.roomStakeTier]);
+
+  const mySettledPredictions = predictions.filter(p => p.won !== null);
+  const myCorrectPicks = predictions.filter(p => p.won === true).length;
+  const myNetWinnings = predictions.reduce((sum, prediction) => sum + (prediction.net ?? 0), 0);
+  const myAmountWagered = predictions.reduce((sum, prediction) => sum + (prediction.stake ?? 0), 0);
+  const myBiggestHit = predictions.reduce((best, prediction) => Math.max(best, prediction.net ?? 0), 0);
+  const myAccuracy = mySettledPredictions.length > 0
+    ? Math.round((myCorrectPicks / mySettledPredictions.length) * 100)
+    : 0;
+  const myRoiPercent = myAmountWagered > 0
+    ? Math.round((myNetWinnings / myAmountWagered) * 100)
+    : 0;
+  const finalNetByPlayer = [
+    { name: playerName || "You", avatar: playerAvatar, net: myNetWinnings },
+    ...effectiveActiveFriends.filter((friend) => friend.isHuman).map((friend) => ({
+      name: friend.name,
+      avatar: friend.avatar,
+      net: friendScores[friend.name]?.netWinnings || 0,
+    })),
+  ];
+  const pairwiseSettlements = wagerMode && !(DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode === "force_wager")
+    ? buildPairwiseSettlements(finalNetByPlayer)
+    : [];
+
   const allPlayerStandings = useMemo(() => [
     {
       name: playerName || "You",
       avatar: playerAvatar,
-      wins: predictions.filter(p => p.won === true).length,
-      total: predictions.filter(p => p.won !== null).length,
-      accuracy: predictions.filter(p => p.won !== null).length > 0
-        ? Math.round((predictions.filter(p => p.won === true).length / predictions.filter(p => p.won !== null).length) * 100)
-        : 0,
+      wins: myCorrectPicks,
+      total: mySettledPredictions.length,
+      accuracy: myAccuracy,
       streak: currentStreak,
       bestStreak,
+      netWinnings: myNetWinnings,
+      amountWagered: myAmountWagered,
     },
-    ...activeFriends.map(f => ({
+    ...effectiveActiveFriends.map(f => ({
       name: f.name,
       avatar: f.avatar,
       wins: friendScores[f.name]?.wins || 0,
@@ -586,18 +840,28 @@ const Index = () => {
         : 0,
       streak: friendScores[f.name]?.streak || 0,
       bestStreak: friendScores[f.name]?.bestStreak || 0,
+      netWinnings: friendScores[f.name]?.netWinnings || 0,
+      amountWagered: friendScores[f.name]?.amountWagered || 0,
     })),
-  ], [predictions, activeFriends, friendScores, currentStreak, bestStreak, playerName, playerAvatar]);
+  ], [myCorrectPicks, mySettledPredictions.length, myAccuracy, myNetWinnings, myAmountWagered, effectiveActiveFriends, friendScores, currentStreak, bestStreak, playerName, playerAvatar]);
 
   const receiptData: ReceiptData | undefined = predictions.length > 0 ? {
     predictions,
-    totalBalls: predictions.filter(p => p.won !== null).length,
-    correctPicks: predictions.filter(p => p.won === true).length,
-    accuracy: Math.round(
-      (predictions.filter(p => p.won === true).length /
-        Math.max(1, predictions.filter(p => p.won !== null).length)) * 100
-    ),
+    totalBalls: mySettledPredictions.length,
+    correctPicks: myCorrectPicks,
+    accuracy: myAccuracy,
     bestStreak,
+    netWinnings: myNetWinnings,
+    amountWagered: wagerMode ? myAmountWagered : 0,
+    biggestHit: myBiggestHit,
+    roiPercent: myRoiPercent,
+    roomStakeTier,
+    roomStakeAmount: getStakeForTier(roomStakeTier),
+    wagerMode,
+    finalNetByPlayer,
+    pairwiseSettlements,
+    isDevOverride: DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode !== "off",
+    devPitchPaisaMode,
     matchTitle: selectedMatch
       ? `${selectedMatch.team1.short} vs ${selectedMatch.team2.short} • IPL 2025`
       : "IPL 2025",
@@ -607,18 +871,24 @@ const Index = () => {
     {
       name: playerName || "You",
       avatar: playerAvatar,
-      wins: predictions.filter(p => p.won === true).length,
-      total: predictions.filter(p => p.won !== null).length,
+      wins: myCorrectPicks,
+      total: mySettledPredictions.length,
       streak: currentStreak,
       bestStreak,
+      netWinnings: wagerMode ? myNetWinnings : 0,
+      amountWagered: wagerMode ? myAmountWagered : 0,
+      isHuman: true,
     },
-    ...activeFriends.map(u => ({
+    ...effectiveActiveFriends.map(u => ({
       name: u.name,
       avatar: u.avatar,
       wins: friendScores[u.name]?.wins || 0,
       total: friendScores[u.name]?.total || 0,
       streak: friendScores[u.name]?.streak || 0,
       bestStreak: friendScores[u.name]?.bestStreak || 0,
+      netWinnings: wagerMode && u.isHuman ? friendScores[u.name]?.netWinnings || 0 : 0,
+      amountWagered: wagerMode && u.isHuman ? friendScores[u.name]?.amountWagered || 0 : 0,
+      isHuman: u.isHuman,
     })),
   ];
 
@@ -626,19 +896,29 @@ const Index = () => {
     {
       name: playerName || "You",
       avatar: playerAvatar,
-      wins: predictions.filter(p => p.won === true).length,
-      total: predictions.filter(p => p.won !== null).length,
+      wins: myCorrectPicks,
+      total: mySettledPredictions.length,
       streak: currentStreak,
+      netWinnings: wagerMode ? myNetWinnings : 0,
+      amountWagered: wagerMode ? myAmountWagered : 0,
       isYou: true,
+      isHuman: true,
+      status: myJoinStatus,
     },
-    ...activeFriends.map(f => ({
+    ...effectiveActiveFriends.map(f => ({
       name: f.name,
       avatar: f.avatar,
       wins: friendScores[f.name]?.wins || 0,
       total: friendScores[f.name]?.total || 0,
       streak: friendScores[f.name]?.streak || 0,
+      netWinnings: wagerMode && f.isHuman ? friendScores[f.name]?.netWinnings || 0 : 0,
+      amountWagered: wagerMode && f.isHuman ? friendScores[f.name]?.amountWagered || 0 : 0,
+      isHuman: f.isHuman,
+      status: f.isHuman && f.id && currentBallId !== null && (eligibilityMap[f.id] ?? null) !== null && currentBallId <= (eligibilityMap[f.id] ?? null)
+        ? (mp.gameSnapshot?.ball?.state === "resolved" ? "joining_next_ball" : "watching")
+        : "active",
     })),
-  ], [predictions, activeFriends, friendScores, currentStreak, playerName, playerAvatar]);
+  ], [myCorrectPicks, mySettledPredictions.length, myNetWinnings, myAmountWagered, effectiveActiveFriends, friendScores, currentStreak, playerName, playerAvatar, wagerMode, myJoinStatus, currentBallId, eligibilityMap, mp.gameSnapshot?.ball?.state]);
 
   const isGameActive = stage === "game";
 
@@ -657,7 +937,11 @@ const Index = () => {
             onDismiss={handleDismissHype}
             onMute={handleMuteHype}
             isDuck={hypeState?.isDuck}
+            moneySummary={hypeState?.moneySummary}
           />
+          {overRecapData && wagerMode && !hypeState && !showInningsBreak && !match.matchOver && (
+            <OverRecapOverlay data={overRecapData} countdown={overRecapCountdown} />
+          )}
 
           {/* Stage: Match Picker (first screen) */}
           {stage === "picker" && (
@@ -679,9 +963,21 @@ const Index = () => {
               matchNumber={selectedMatch.matchNumber}
               roomId={mp.roomId || "SOLO"}
               isSimulation={selectedMatch.isSimulation}
-              players={displayPlayers}
+              players={effectiveDisplayPlayers}
               onInvite={handleInvite}
               onRemoveAI={mp.removeAIPlayers}
+              roomStakeTier={roomStakeTier}
+              humanPlayerCount={effectiveHumanPlayerCount}
+              wagerModeAvailable={baseWagerMode}
+              devPitchPaisaOverrideEnabled={DEV_PITCH_PAISA_OVERRIDE_ENABLED}
+              devPitchPaisaMode={devPitchPaisaMode}
+              onDevPitchPaisaModeChange={setDevPitchPaisaMode}
+              onStakeTierChange={(tier) => {
+                setRoomStakeTier(tier);
+                if (mp.roomId) {
+                  void mp.setRoomStake(tier);
+                }
+              }}
             />
           )}
 
@@ -697,8 +993,11 @@ const Index = () => {
               <p className="text-sm text-muted-foreground text-center mb-4">
                 Room <span className="font-bold text-foreground">{mp.roomId}</span> — waiting for host to start the game...
               </p>
+              <p className="text-[12px] text-muted-foreground text-center mb-4">
+                Room stake locked at <span className="font-bold text-foreground">{roomStakeTier === "small" ? "Chai" : roomStakeTier === "medium" ? "Martini" : "Patiala"} • ₹{getStakeForTier(roomStakeTier)}</span>
+              </p>
               <div className="space-y-2 w-full max-w-xs">
-                {displayPlayers.map(p => (
+                {effectiveDisplayPlayers.map(p => (
                   <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-secondary">
                     <span className="text-lg">{p.avatar}</span>
                     <span className="text-[13px] font-semibold text-foreground flex-1">{p.name}</span>
@@ -719,7 +1018,19 @@ const Index = () => {
                 onOpenLeaderboard={() => setActiveTab("leaderboard")}
                 onInvite={handleInvite}
                 spotsLeft={MAX_PLAYERS - displayedActivePlayers}
+                showFinancials={wagerMode}
               />
+              {!canPredictCurrentBall && (
+                <div className="mx-4 mt-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2">
+                  <p className="text-[11px] font-semibold text-foreground">You joined mid-match</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Score {match.runs}/{match.wickets} in {match.overs}.{match.balls} overs • {roomStakeTier === "small" ? "Chai" : roomStakeTier === "medium" ? "Martini" : "Patiala"} ₹{getStakeForTier(roomStakeTier)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {predictionDisabledReason} Earlier balls do not count toward your total.
+                  </p>
+                </div>
+              )}
               {/* Arena tab — always kept mounted so BanterStream never loses its ball counter state */}
               <div className={activeTab === "arena" ? "flex flex-col flex-1 min-h-0 overflow-hidden" : "hidden"}>
                 <BanterStream
@@ -729,7 +1040,7 @@ const Index = () => {
                   onPredictionResolved={handlePredictionResolved}
                   onFriendScoresUpdate={handleFriendScoresUpdate}
                   soundMuted={soundMuted}
-                  activeFriends={activeFriends}
+                  activeFriends={effectiveActiveFriends}
                   onOverComplete={handleOverComplete}
                   allPlayerStandings={allPlayerStandings}
                   userTeam={userTeam}
@@ -747,6 +1058,19 @@ const Index = () => {
                   bowlingTeamShort={match.innings === 1 ? (selectedMatch?.team2.short || "MI") : (selectedMatch?.team1.short || "DC")}
                   team1Short={selectedMatch?.team1.short || "DC"}
                   team2Short={selectedMatch?.team2.short || "MI"}
+                  roomStakeTier={roomStakeTier}
+                  roomStakeAmount={getStakeForTier(roomStakeTier)}
+                  wagerMode={wagerMode}
+                  eligibleHumanNames={eligibleHumanNames}
+                  isCurrentUserWagerEligible={isCurrentUserWagerEligible}
+                  canPredictCurrentBall={canPredictCurrentBall}
+                  predictionDisabledReason={predictionDisabledReason}
+                  currentPredictions={mp.currentPredictions}
+                  myPlayerName={playerName || "You"}
+                  maxOvers={selectedOvers}
+                  resumeOverRecapToken={resumeOverRecapToken}
+                  showInlineOverSummary={!wagerMode}
+                  minimumWagerParticipants={DEV_PITCH_PAISA_OVERRIDE_ENABLED && devPitchPaisaMode === "force_wager" ? 1 : 2}
                   onAiPick={(ballId, pick, name) => mp.submitPick(ballId, pick, name)}
                 />
               </div>
@@ -761,7 +1085,7 @@ const Index = () => {
                     <h2 className="text-lg font-bold text-foreground tracking-tight">🏆 Leaderboard</h2>
                     <p className="text-[11px] text-muted-foreground mt-0.5">Who's got the best cricket brain?</p>
                   </div>
-                  <Leaderboard entries={leaderboardEntries} />
+                  <Leaderboard entries={leaderboardEntries} showFinancials={wagerMode} />
                 </div>
               )}
               <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Users, ChevronRight, MessageCircle, Clock, UserPlus, Zap, Play, Bot, X } from "lucide-react";
 import type { TeamId } from "./ChatInput";
 import { isAiPlayer, AI_PLAYERS } from "@/lib/aiPlayers";
+import { formatStakeValue, getWagerTierLabel, type WagerTier, WAGER_TIER_ORDER } from "@/lib/wagers";
 
 // Team logos
 import cskLogo from "@/assets/teams/csk.png";
@@ -36,7 +37,7 @@ interface MultiplayerPlayer {
 }
 
 interface PreGameIntroProps {
-  onStart: (team: TeamId, overs: number) => void;
+  onStart: (team: TeamId, overs: number, roomStakeTier: WagerTier) => void;
   matchStartTime: Date;
   team1: { name: string; short: string };
   team2: { name: string; short: string };
@@ -46,6 +47,13 @@ interface PreGameIntroProps {
   players?: MultiplayerPlayer[];
   onInvite?: () => void;
   onRemoveAI?: () => void;
+  roomStakeTier?: WagerTier;
+  onStakeTierChange?: (tier: WagerTier) => void;
+  humanPlayerCount?: number;
+  wagerModeAvailable?: boolean;
+  devPitchPaisaOverrideEnabled?: boolean;
+  devPitchPaisaMode?: "off" | "force_wager" | "simulate_second_human";
+  onDevPitchPaisaModeChange?: (mode: "off" | "force_wager" | "simulate_second_human") => void;
 }
 
 type Stage = "welcome" | "toss" | "target" | "starting";
@@ -71,7 +79,25 @@ function useCountdown(targetDate: Date) {
   return { hours, minutes, seconds, isLive: timeLeft <= 0 };
 }
 
-const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, roomId, isSimulation, players, onInvite, onRemoveAI }: PreGameIntroProps) => {
+const PreGameIntro = ({
+  onStart,
+  matchStartTime,
+  team1,
+  team2,
+  matchNumber,
+  roomId,
+  isSimulation,
+  players,
+  onInvite,
+  onRemoveAI,
+  roomStakeTier = "small",
+  onStakeTierChange,
+  humanPlayerCount = 1,
+  wagerModeAvailable = false,
+  devPitchPaisaOverrideEnabled = false,
+  devPitchPaisaMode = "off",
+  onDevPitchPaisaModeChange,
+}: PreGameIntroProps) => {
   const [stage, setStage] = useState<Stage>("welcome");
   const [userTeam, setUserTeam] = useState<TeamId | null>(null);
   const [tossWinner, setTossWinner] = useState<string | null>(null);
@@ -79,6 +105,7 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
   const [runTarget, setRunTarget] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [selectedOvers, setSelectedOvers] = useState(1); // Item 5: default 1 over
+  const [selectedStakeTier, setSelectedStakeTier] = useState<WagerTier>(roomStakeTier);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -134,10 +161,14 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
       return () => clearTimeout(t);
     }
     if (stage === "starting" && countdown === 0 && userTeam) {
-      const t = setTimeout(() => onStart(userTeam, selectedOvers), 400);
+      const t = setTimeout(() => onStart(userTeam, selectedOvers, selectedStakeTier), 400);
       return () => clearTimeout(t);
     }
-  }, [stage, countdown, onStart, userTeam, selectedOvers]);
+  }, [stage, countdown, onStart, userTeam, selectedOvers, selectedStakeTier]);
+
+  useEffect(() => {
+    setSelectedStakeTier(roomStakeTier);
+  }, [roomStakeTier]);
 
   useEffect(() => {
     if (stage === "starting") {
@@ -167,6 +198,11 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
     setCountdown(5);
   };
 
+  const handleStakeTierChange = (tier: WagerTier) => {
+    setSelectedStakeTier(tier);
+    onStakeTierChange?.(tier);
+  };
+
   const PickButton = ({ label, selected, onPick }: { label: string; selected: boolean; onPick: () => void }) => (
     <motion.button
       whileTap={{ scale: 0.96 }}
@@ -181,6 +217,114 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
       {label}
     </motion.button>
   );
+
+  const HowItWorksCard = () => (
+    <div className="ios-card p-4 space-y-3">
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">How It Works</p>
+        <p className="text-[13px] font-semibold text-foreground mt-0.5">
+          Predict every ball, build the pot, settle outside the app
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        {[
+          { emoji: "🎲", text: "Every delivery is generated live for the room." },
+          { emoji: "🎯", text: "Predict each ball before it lands." },
+          { emoji: "🤖", text: "Friends and AI opponents pick alongside you." },
+        ].map((item, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className="text-sm flex-shrink-0">{item.emoji}</span>
+            <p className="text-[12px] text-muted-foreground leading-snug">{item.text}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl bg-secondary/35 px-3 py-2.5">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-1">Stake ladder</p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          {WAGER_TIER_ORDER.map((tier) => (
+            <span key={tier} className="text-foreground">
+              <span className="font-black uppercase">{getWagerTierLabel(tier)}</span>{" "}
+              <span className="font-semibold text-primary">{formatStakeValue(tier === "small" ? 5 : tier === "medium" ? 25 : 50)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-1.5 text-[11px] text-muted-foreground leading-snug">
+        <p>Each ball builds a shared pot from the squad's slips.</p>
+        <p>Correct pickers win a weighted share. Harder picks earn more.</p>
+        <p>If nobody wins, that ball expires. Settle outside the app after the match.</p>
+        <p>Pitch Paisa unlocks only when 2+ human players join. AI picks never count toward settle-up.</p>
+      </div>
+    </div>
+  );
+
+  const StakeSelector = () => (
+    <div>
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">💸 Room stake</p>
+      <div className="grid grid-cols-3 gap-2">
+        {WAGER_TIER_ORDER.map((tier) => (
+          <motion.button
+            key={tier}
+            type="button"
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleStakeTierChange(tier)}
+            className={`rounded-xl px-2 py-2 text-center transition-all ${
+              selectedStakeTier === tier
+                ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25 ring-2 ring-primary/40"
+                : "bg-secondary text-foreground active:bg-muted"
+            }`}
+          >
+            <p className="text-[10px] font-black uppercase">{getWagerTierLabel(tier)}</p>
+            <p className="text-[11px] font-semibold">{formatStakeValue(tier === "small" ? 5 : tier === "medium" ? 25 : 50)}</p>
+          </motion.button>
+        ))}
+      </div>
+      <p className="mt-2 text-[10px] text-muted-foreground leading-snug">
+        {wagerModeAvailable
+          ? "The whole room plays at this stake for the full match."
+          : `${Math.max(0, 2 - humanPlayerCount)} more human ${Math.max(0, 2 - humanPlayerCount) === 1 ? "player" : "players"} needed to unlock Pitch Paisa.`}
+      </p>
+    </div>
+  );
+
+  const DevOverrideSelector = () => {
+    if (!devPitchPaisaOverrideEnabled) return null;
+
+    const modes: { value: "off" | "force_wager" | "simulate_second_human"; label: string; note: string }[] = [
+      { value: "off", label: "Off", note: "Normal product rules." },
+      { value: "force_wager", label: "Force wager", note: "Solo UI and flow test mode." },
+      { value: "simulate_second_human", label: "Mock 2nd human", note: "Exercise pool splits and settle-up." },
+    ];
+
+    return (
+      <details className="rounded-xl border border-dashed border-primary/20 bg-primary/5 px-3 py-2">
+        <summary className="cursor-pointer list-none text-[10px] uppercase tracking-widest text-primary font-semibold">
+          Dev override
+        </summary>
+        <div className="mt-2 space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {modes.map((mode) => (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => onDevPitchPaisaModeChange?.(mode.value)}
+                className={`rounded-xl px-2 py-2 text-center transition-all ${
+                  devPitchPaisaMode === mode.value
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25 ring-2 ring-primary/40"
+                    : "bg-secondary text-foreground active:bg-muted"
+                }`}
+              >
+                <p className="text-[10px] font-black uppercase">{mode.label}</p>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-snug">
+            {modes.find((mode) => mode.value === devPitchPaisaMode)?.note} Development only. Never active in production.
+          </p>
+        </div>
+      </details>
+    );
+  };
 
   // ─── SIMULATION MODE ───
   if (isSimulation) {
@@ -205,25 +349,8 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
             </motion.p>
           </motion.div>
 
-          {/* How it works */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.4 }}
-            className="ios-card p-4 space-y-2"
-          >
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">⚡ How It Works</p>
-            <div className="space-y-1.5">
-              {[
-                { emoji: "🎲", text: "Every delivery is randomly generated — no scripted outcomes" },
-                { emoji: "🎯", text: "Predict each ball before it's bowled — Dot, Boundary, Six, Wicket & more" },
-                { emoji: "🤖", text: "Play with friends or AI opponents who predict alongside you" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <span className="text-sm flex-shrink-0">{item.emoji}</span>
-                  <p className="text-[12px] text-muted-foreground leading-snug">{item.text}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+          <HowItWorksCard />
+          <DevOverrideSelector />
 
           {/* Pick which team you support (only the 2 match teams) */}
           <AnimatePresence mode="wait">
@@ -333,6 +460,8 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
                   initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.2 }}
                   className="ios-card p-4 space-y-3"
                 >
+                  <StakeSelector />
+                  <DevOverrideSelector />
                   <div>
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-2">⏱ How many overs?</p>
                     <div className="flex gap-2">
@@ -499,10 +628,17 @@ const PreGameIntro = ({ onStart, matchStartTime, team1, team2, matchNumber, room
           )}
         </motion.div>
 
+        <HowItWorksCard />
+        <DevOverrideSelector />
+
         {/* Game Stages */}
         <AnimatePresence mode="wait">
           {stage === "welcome" && (
             <motion.div key="welcome" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ ...spring, delay: 0.6 }} className="space-y-3">
+              <div className="p-4 ios-card">
+                <StakeSelector />
+                <DevOverrideSelector />
+              </div>
               {/* Team selection (2 teams for live) */}
               <div className="p-4 ios-card">
                 <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1 font-medium">🏟️ Pick Your Side</p>
