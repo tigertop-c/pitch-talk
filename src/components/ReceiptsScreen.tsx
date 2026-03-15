@@ -42,7 +42,7 @@ const ReceiptsScreen = ({ receiptData }: ReceiptsScreenProps) => {
               📊 Your Scorecard
             </h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Share your prediction receipts
+              Share your Pitch Paisa settlement slip
             </p>
           </div>
           <ShareableReceipt data={receiptData} />
@@ -90,7 +90,7 @@ const ReceiptsScreen = ({ receiptData }: ReceiptsScreenProps) => {
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-semibold text-[12px] rounded-xl transition-transform duration-150 active:scale-[0.97]"
               >
                 <Share2 size={14} />
-                Share to WhatsApp
+              Share to WhatsApp
               </button>
             </motion.div>
           ))}

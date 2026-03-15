@@ -6,6 +6,12 @@ interface HypeOverlayProps {
   onDismiss?: () => void;
   onMute?: () => void;
   isDuck?: boolean;
+  moneySummary?: {
+    yourNetForBall?: number | null;
+    topWinnerForBall?: { name: string; avatar: string; net: number } | null;
+    topLoserForBall?: { name: string; avatar: string; net: number } | null;
+    liveLeader?: { name: string; avatar: string; net: number } | null;
+  } | null;
 }
 
 const HYPE: Record<string, { emoji: string; text: string; bg: string; accent: string; particles: string[] }> = {
@@ -55,7 +61,7 @@ const FloatingParticle = ({ emoji, delay, index }: { emoji: string; delay: numbe
   );
 };
 
-const HypeOverlay = ({ type, onDismiss, onMute, isDuck }: HypeOverlayProps) => {
+const HypeOverlay = ({ type, onDismiss, onMute, isDuck, moneySummary = null }: HypeOverlayProps) => {
   const data = type ? HYPE[type] : null;
   const displayEmoji = (type === "wicket" && isDuck) ? "🦆" : data?.emoji ?? "";
   const isDuckMode = type === "wicket" && isDuck;
@@ -157,6 +163,50 @@ const HypeOverlay = ({ type, onDismiss, onMute, isDuck }: HypeOverlayProps) => {
               className="mt-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 relative z-10"
             >
               <span className="text-[13px] font-bold text-amber-300 tracking-wide">🦆 OUT FOR DUCK!</span>
+            </motion.div>
+          )}
+
+          {moneySummary && (moneySummary.yourNetForBall !== undefined || moneySummary.topWinnerForBall || moneySummary.topLoserForBall || moneySummary.liveLeader) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              className="mt-5 w-[86%] max-w-sm rounded-2xl border border-white/10 bg-black/25 px-4 py-3 relative z-10"
+            >
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/55 font-bold mb-2">Pitch Paisa</p>
+              <div className="space-y-1.5 text-[12px]">
+                {moneySummary.yourNetForBall !== undefined && moneySummary.yourNetForBall !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/70">You</span>
+                    <span className={`font-black ${moneySummary.yourNetForBall >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                      {moneySummary.yourNetForBall >= 0 ? "+" : ""}₹{moneySummary.yourNetForBall}
+                    </span>
+                  </div>
+                )}
+                {moneySummary.topWinnerForBall && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/70">Top win</span>
+                    <span className="font-semibold text-white">{moneySummary.topWinnerForBall.avatar} {moneySummary.topWinnerForBall.name}</span>
+                    <span className="font-black text-emerald-300">+₹{moneySummary.topWinnerForBall.net}</span>
+                  </div>
+                )}
+                {moneySummary.topLoserForBall && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/70">Top loss</span>
+                    <span className="font-semibold text-white">{moneySummary.topLoserForBall.avatar} {moneySummary.topLoserForBall.name}</span>
+                    <span className="font-black text-red-300">₹{moneySummary.topLoserForBall.net}</span>
+                  </div>
+                )}
+                {moneySummary.liveLeader && (
+                  <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                    <span className="text-white/70">Leader now</span>
+                    <span className="font-semibold text-white">{moneySummary.liveLeader.avatar} {moneySummary.liveLeader.name}</span>
+                    <span className={`font-black ${moneySummary.liveLeader.net >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                      {moneySummary.liveLeader.net >= 0 ? "+" : ""}₹{moneySummary.liveLeader.net}
+                    </span>
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
 

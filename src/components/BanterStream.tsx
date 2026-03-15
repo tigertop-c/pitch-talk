@@ -7,8 +7,9 @@ import OverSummary, { type OverSummaryData } from "./OverSummary";
 import { type PredictionRecord } from "./ShareableReceipt";
 import ChatInput, { type TeamId, type UserChatStyle } from "./ChatInput";
 import { type MatchState, type BallEvent, formatBall } from "@/hooks/useMatchState";
-import { type GameSnapshot } from "@/hooks/useMultiplayer";
+import { type GameSnapshot, type RoomPrediction } from "@/hooks/useMultiplayer";
 import { playBallActiveSound, isSoundMuted } from "@/lib/sounds";
+import { getOutcomeMultiplier, getStakeForTier, settleBallPot, type WagerTier } from "@/lib/wagers";
 
 interface BallBlock {
   id: number;
@@ -18,6 +19,8 @@ interface BallBlock {
   selected: string | null;
   result: BallResult | null;
   friendPicks: FriendPick[];
+  actualNet: number | null;
+  expired: boolean;
 }
 
 interface ChatItem {
@@ -32,9 +35,12 @@ interface ChatItem {
 }
 
 export interface FriendDef {
+  id?: string;
   name: string;
   avatar: string;
   team?: TeamId;
+  isHuman?: boolean;
+  isDevMock?: boolean;
 }
 
 const PICK_LABELS = ["Dot", "Single", "Boundary", "Six", "Wicket", "Wide", "No Ball"];
@@ -168,12 +174,21 @@ const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
 interface BanterStreamProps {
   match: MatchState;
   onNextBall: () => BallEvent;
-  onHype?: (type: "four" | "six" | "wicket", isDuck?: boolean) => void;
+  onHype?: (
+    type: "four" | "six" | "wicket",
+    isDuck?: boolean,
+    moneySummary?: {
+      yourNetForBall?: number | null;
+      topWinnerForBall?: { name: string; avatar: string; net: number } | null;
+      topLoserForBall?: { name: string; avatar: string; net: number } | null;
+      liveLeader?: { name: string; avatar: string; net: number } | null;
+    }
+  ) => void;
   onPredictionResolved?: (record: PredictionRecord) => void;
-  onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number }>) => void;
+  onFriendScoresUpdate?: (scores: Record<string, { wins: number; total: number; streak: number; netWinnings: number; amountWagered: number; biggestHit: number }>) => void;
   soundMuted: boolean;
   activeFriends: FriendDef[];
-  onOverComplete?: (overNum: number, participation: Record<string, boolean>) => void;
+  onOverComplete?: (overNum: number, participation: Record<string, boolean>, summary: OverSummaryData) => void;
   allPlayerStandings: OverSummaryData["standings"];
   userTeam: TeamId;
   activePlayers: number;
@@ -191,6 +206,19 @@ interface BanterStreamProps {
   team1Short?: string;
   team2Short?: string;
   onAiPick?: (ballId: number, pick: string, playerName: string) => void;
+  roomStakeTier: WagerTier;
+  roomStakeAmount: number;
+  wagerMode: boolean;
+  eligibleHumanNames: string[];
+  isCurrentUserWagerEligible: boolean;
+  canPredictCurrentBall: boolean;
+  predictionDisabledReason?: string | null;
+  currentPredictions?: RoomPrediction[];
+  myPlayerName: string;
+  maxOvers: number;
+  resumeOverRecapToken?: number;
+  showInlineOverSummary?: boolean;
+  minimumWagerParticipants?: number;
 }
 
 // Exported so Index.tsx can read it
@@ -200,7 +228,7 @@ const BanterStream = ({
   match, onNextBall, onHype, onPredictionResolved, onFriendScoresUpdate,
   soundMuted, activeFriends, onOverComplete, allPlayerStandings, userTeam,
   activePlayers, maxPlayers, roomId, onInvite, onToggleSound, onFirstOverComplete,
-  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, bowlingTeamShort, team1Short, team2Short, onAiPick,
+  onBallStateChange, isHost, gameSnapshot, onInningsComplete, battingTeamShort, bowlingTeamShort, team1Short, team2Short, onAiPick, roomStakeTier, roomStakeAmount, wagerMode, eligibleHumanNames, isCurrentUserWagerEligible, canPredictCurrentBall, predictionDisabledReason, currentPredictions = [], myPlayerName, maxOvers, resumeOverRecapToken = 0, showInlineOverSummary = true, minimumWagerParticipants = 2,
 }: BanterStreamProps) => {
   const [balls, setBalls] = useState<BallBlock[]>([]);
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -210,8 +238,8 @@ const BanterStream = ({
   const [overSummaries, setOverSummaries] = useState<{ afterBallId: number; data: OverSummaryData }[]>([]);
   const [lastBallResult, setLastBallResult] = useState<string | null>(null);
   const isOverBreak = useRef(false);
-  const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number }>>(
-    () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0 }]))
+  const [userScores, setUserScores] = useState<Record<string, { wins: number; total: number; streak: number; netWinnings: number; amountWagered: number; biggestHit: number }>>(
+    () => Object.fromEntries(activeFriends.map(u => [u.name, { wins: 0, total: 0, streak: 0, netWinnings: 0, amountWagered: 0, biggestHit: 0 }]))
   );
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [userChatStyle, setUserChatStyle] = useState<UserChatStyle>("neutral");
@@ -230,6 +258,7 @@ const BanterStream = ({
   const resolveBallRef = useRef<(ballId: number, hostResult?: { label: string; type: string }) => void>(() => {});
   const pendingHostResolvedRef = useRef<{ ballId: number; label: string; result: { label: string; type: string }; expectedBallEventsLen: number } | null>(null);
   const startNewBallRef = useRef<() => void>(() => {});
+  const pauseForOverRecapRef = useRef(false);
   // Refs for values used inside callbacks without causing stale closures
   const activePlayersRef = useRef(activePlayers);
   activePlayersRef.current = activePlayers;
@@ -239,10 +268,15 @@ const BanterStream = ({
   const currentOverNum = useRef(0);
   const overFriendResults = useRef<Record<string, { correct: number; total: number }>>({});
   const overParticipation = useRef<Record<string, boolean>>({});
+  const overNetByPlayer = useRef<Record<string, { net: number; avatar: string }>>({});
   const overRunsRef = useRef(0);
   const overWicketsRef = useRef(0);
   const overBoundariesRef = useRef(0);
   const overExtrasRef = useRef(0);
+
+  const getCurrentUserNet = useCallback(() => (
+    balls.reduce((sum, ball) => sum + (ball.actualNet ?? 0), 0)
+  ), [balls]);
 
   const detectStyle = useCallback((text: string) => {
     const lower = text.toLowerCase();
@@ -298,15 +332,16 @@ const BanterStream = ({
     setUserScores(prev => {
       const next = { ...prev };
       activeFriends.forEach(f => {
-        if (!next[f.name]) next[f.name] = { wins: 0, total: 0, streak: 0 };
+        if (!next[f.name]) next[f.name] = { wins: 0, total: 0, streak: 0, netWinnings: 0, amountWagered: 0, biggestHit: 0 };
       });
       return next;
     });
   }, [activeFriends]);
 
   const addFriendPicks = useCallback((ballId: number) => {
-    if (activeFriends.length === 0) return;
-    const friends = [...activeFriends].sort(() => Math.random() - 0.5).slice(0, Math.min(activeFriends.length, 3 + Math.floor(Math.random() * 2)));
+    const autoPickFriends = activeFriends.filter((friend) => friend.isHuman === false || friend.isDevMock);
+    if (autoPickFriends.length === 0) return;
+    const friends = [...autoPickFriends].sort(() => Math.random() - 0.5).slice(0, Math.min(autoPickFriends.length, 3 + Math.floor(Math.random() * 2)));
     const delays = [1500, 3000, 5000, 7000, 8500];
 
     friends.forEach((user, i) => {
@@ -318,12 +353,76 @@ const BanterStream = ({
             : b
         ));
         overParticipation.current[user.name] = true;
-        // Store AI/friend pick in DB for cross-client consistency
-        onAiPick?.(ballId, pick, user.name);
+        // Store AI picks in DB for cross-client consistency, but keep dev-only mock humans local.
+        if (!user.isDevMock) {
+          onAiPick?.(ballId, pick, user.name);
+        }
         scrollToBottom();
       }, delays[i] || 2000);
     });
   }, [activeFriends, scrollToBottom, onAiPick]);
+
+  useEffect(() => {
+    const activeBallId = activeBallIdRef.current;
+    if (!activeBallId) return;
+
+    const friendLookup = new Map(activeFriends.map((friend) => [friend.name, friend]));
+    const nextRemotePicks = currentPredictions
+      .filter((prediction) => prediction.ball_id === activeBallId)
+      .filter((prediction) => prediction.player_name !== myPlayerName)
+      .map((prediction) => {
+        const friend = friendLookup.get(prediction.player_name);
+        if (!friend) return null;
+        return { name: prediction.player_name, avatar: friend.avatar, pick: prediction.prediction };
+      })
+      .filter((pick): pick is FriendPick => pick !== null);
+
+    if (nextRemotePicks.length === 0) return;
+
+    setBalls((prev) => prev.map((ball) => {
+      if (ball.id !== activeBallId) return ball;
+      const existing = new Set(ball.friendPicks.map((pick) => pick.name));
+      const uniqueIncoming = nextRemotePicks.filter((pick) => !existing.has(pick.name));
+      if (uniqueIncoming.length === 0) return ball;
+      return {
+        ...ball,
+        friendPicks: [...ball.friendPicks, ...uniqueIncoming],
+      };
+    }));
+  }, [activeFriends, currentPredictions, myPlayerName]);
+
+  const previousHumanNamesRef = useRef<string[]>([]);
+  useEffect(() => {
+    const humanNames = activeFriends.filter((friend) => friend.isHuman).map((friend) => friend.name).sort();
+    if (previousHumanNamesRef.current.length === 0) {
+      previousHumanNamesRef.current = humanNames;
+      return;
+    }
+
+    if (!isHost) {
+      previousHumanNamesRef.current = humanNames;
+      return;
+    }
+
+    const newcomers = humanNames.filter((name) => !previousHumanNamesRef.current.includes(name));
+    if (newcomers.length > 0) {
+      setChats((prev) => [
+        ...prev,
+        ...newcomers.map((name) => ({
+          id: ++idRef.current,
+          parentBallId: 0,
+          user: "Room",
+          avatar: "👋",
+          text: `${name} joined • enters next ball`,
+          timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          isSystem: true,
+        })),
+      ]);
+      scrollToBottom();
+    }
+
+    previousHumanNamesRef.current = humanNames;
+  }, [activeFriends, isHost, scrollToBottom]);
 
   const checkPickWon = (pick: string, result: string) =>
     (pick === "Dot" && result === "dot") ||
@@ -387,11 +486,10 @@ const BanterStream = ({
     const strikerBeforeEvent = match.batsmen?.find(b => b.isOnStrike);
     const strikerRuns = strikerBeforeEvent?.runs ?? 0;
 
-    if (event.result === "wicket" || event.result === "six" || event.result === "four") {
+    const isHypeMoment = event.result === "wicket" || event.result === "six" || event.result === "four";
+    if (isHypeMoment) {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 600);
-      const isDuck = event.result === "wicket" && strikerRuns === 0;
-      onHype?.(event.result as "four" | "six" | "wicket", isDuck);
 
       if (!isSoundMuted()) {
         try {
@@ -410,68 +508,164 @@ const BanterStream = ({
       }
     }
 
-    let userWon: boolean | null = null;
-    setBalls(prev => {
-      const ball = prev.find(b => b.id === ballId);
-      if (ball?.selected) {
-        userWon = checkPickWon(ball.selected, event.result);
-        setTotalUserPredictions(p => p + 1);
+    const currentBall = balls.find(b => b.id === ballId);
+    const userWon = currentBall?.selected ? checkPickWon(currentBall.selected, event.result) : null;
+    const eligibleHumanSet = new Set(eligibleHumanNames);
+    const humanFriendParticipants = currentBall?.friendPicks
+      .filter((friendPick) => eligibleHumanSet.has(friendPick.name))
+      .map((friendPick) => ({
+        name: friendPick.name,
+        pick: friendPick.pick,
+        stake: roomStakeAmount,
+        avatar: friendPick.avatar,
+      })) || [];
+    const userParticipants = currentBall?.selected && wagerMode && isCurrentUserWagerEligible
+      ? [{
+          name: myPlayerName,
+          pick: currentBall.selected,
+          stake: roomStakeAmount,
+          avatar: allPlayerStandings[0]?.avatar || "🏏",
+        }]
+      : [];
+    const settlementParticipants = [...humanFriendParticipants, ...userParticipants];
+    const settlement = wagerMode && settlementParticipants.length >= minimumWagerParticipants
+      ? settleBallPot(settlementParticipants, event.result)
+      : {
+          poolTotal: 0,
+          winningPlayers: [],
+          weightedShares: {},
+          expired: false,
+          settlements: settlementParticipants.map((entry) => ({
+            name: entry.name,
+            grossPayout: 0,
+            net: 0,
+            stake: entry.stake,
+          })),
+        };
+    const userSettlement = settlement.settlements.find((entry) => entry.name === myPlayerName);
+    const userNet = userSettlement?.net ?? 0;
+    const userStake = currentBall?.selected && wagerMode && isCurrentUserWagerEligible ? roomStakeAmount : 0;
+    const userGrossPayout = userSettlement?.grossPayout ?? 0;
+    if (currentBall?.selected) {
+      setTotalUserPredictions(p => p + 1);
+      overParticipation.current.You = true;
+      overNetByPlayer.current.You = {
+        net: (overNetByPlayer.current.You?.net || 0) + userNet,
+        avatar: allPlayerStandings[0]?.avatar || "🏏",
+      };
+    }
+
+    if (isHypeMoment) {
+      const ballMoneySettlements = settlement.settlements
+        .map((entry) => {
+          const avatar = entry.name === myPlayerName
+            ? allPlayerStandings[0]?.avatar || "🏏"
+            : currentBall?.friendPicks.find((pick) => pick.name === entry.name)?.avatar || "🏏";
+          return { ...entry, avatar };
+        });
+      const topWinnerForBall = ballMoneySettlements.filter((entry) => entry.net > 0).sort((a, b) => b.net - a.net)[0] || null;
+      const topLoserForBall = ballMoneySettlements.filter((entry) => entry.net < 0).sort((a, b) => a.net - b.net)[0] || null;
+      const nextFriendMoney = { ...userScores };
+      if (currentBall) {
+        currentBall.friendPicks.forEach((pick) => {
+          const isEligibleHuman = wagerMode && eligibleHumanSet.has(pick.name);
+          const net = isEligibleHuman ? settlement.settlements.find((entry) => entry.name === pick.name)?.net ?? 0 : 0;
+          if (nextFriendMoney[pick.name]) {
+            nextFriendMoney[pick.name] = {
+              ...nextFriendMoney[pick.name],
+              netWinnings: nextFriendMoney[pick.name].netWinnings + net,
+            };
+          }
+        });
       }
-      return prev;
-    });
+      const liveLeaderEntries = [
+        { name: myPlayerName, avatar: allPlayerStandings[0]?.avatar || "🏏", net: getCurrentUserNet() + userNet },
+        ...activeFriends
+          .filter((friend) => friend.isHuman)
+          .map((friend) => ({
+            name: friend.name,
+            avatar: friend.avatar,
+            net: nextFriendMoney[friend.name]?.netWinnings || 0,
+          })),
+      ].sort((a, b) => b.net - a.net);
+      const liveLeader = liveLeaderEntries[0] || null;
+      const isDuck = event.result === "wicket" && strikerRuns === 0;
+      onHype?.(event.result as "four" | "six" | "wicket", isDuck, {
+        yourNetForBall: currentBall?.selected ? userNet : null,
+        topWinnerForBall: topWinnerForBall ? { name: topWinnerForBall.name, avatar: topWinnerForBall.avatar, net: topWinnerForBall.net } : null,
+        topLoserForBall: topLoserForBall ? { name: topLoserForBall.name, avatar: topLoserForBall.avatar, net: topLoserForBall.net } : null,
+        liveLeader: liveLeader ? { name: liveLeader.name, avatar: liveLeader.avatar, net: liveLeader.net } : null,
+      });
+    }
 
     setBalls(prev => prev.map(b => {
       if (b.id === ballId) {
         const updatedPicks = b.friendPicks.map(fp => ({
           ...fp,
           won: checkPickWon(fp.pick, event.result),
+          netWinnings: wagerMode && eligibleHumanSet.has(fp.name)
+            ? settlement.settlements.find((entry) => entry.name === fp.name)?.net ?? 0
+            : undefined,
         }));
-        return { ...b, predictionState: "resolved" as PredictionState, result, friendPicks: updatedPicks };
+        return {
+          ...b,
+          predictionState: "resolved" as PredictionState,
+          result,
+          friendPicks: updatedPicks,
+          actualNet: userSettlement?.net ?? 0,
+          expired: settlement.expired,
+        };
       }
       return b;
     }));
 
-    setBalls(prev => {
-      const ball = prev.find(b => b.id === ballId);
-      if (ball) {
-        const scoreUpdates: Record<string, { won: boolean }> = {};
-        ball.friendPicks.forEach(fp => {
-          const won = checkPickWon(fp.pick, event.result);
-          scoreUpdates[fp.name] = { won };
-          if (!overFriendResults.current[fp.name]) {
-            overFriendResults.current[fp.name] = { correct: 0, total: 0 };
-          }
-          overFriendResults.current[fp.name].total += 1;
-          if (won) overFriendResults.current[fp.name].correct += 1;
-        });
-        setUserScores(prev => {
-          const next = { ...prev };
-          Object.entries(scoreUpdates).forEach(([name, { won }]) => {
-            if (next[name]) {
-              next[name] = {
-                wins: next[name].wins + (won ? 1 : 0),
-                total: next[name].total + 1,
-                streak: won ? next[name].streak + 1 : 0,
-              };
-            }
-          });
-          onFriendScoresUpdate?.(next);
-          return next;
-        });
-      }
-      return prev;
-    });
-
-    setBalls(prev => {
-      const ball = prev.find(b => b.id === ballId);
-      onPredictionResolved?.({
-        ballLabel: ball?.ballLabel || "",
-        predicted: ball?.selected || null,
-        result: event.label,
-        resultType: event.result,
-        won: ball?.selected ? userWon : null,
+    if (currentBall) {
+      const scoreUpdates: Record<string, { won: boolean; net: number; stake: number }> = {};
+      currentBall.friendPicks.forEach(fp => {
+        const won = checkPickWon(fp.pick, event.result);
+        const isEligibleHuman = wagerMode && eligibleHumanSet.has(fp.name);
+        const net = isEligibleHuman ? settlement.settlements.find((entry) => entry.name === fp.name)?.net ?? 0 : 0;
+        const stake = isEligibleHuman ? roomStakeAmount : 0;
+        scoreUpdates[fp.name] = { won, net, stake };
+        if (!overFriendResults.current[fp.name]) {
+          overFriendResults.current[fp.name] = { correct: 0, total: 0 };
+        }
+        overFriendResults.current[fp.name].total += 1;
+        if (won) overFriendResults.current[fp.name].correct += 1;
+        overNetByPlayer.current[fp.name] = {
+          net: (overNetByPlayer.current[fp.name]?.net || 0) + net,
+          avatar: fp.avatar,
+        };
       });
-      return prev;
+      setUserScores(prev => {
+        const next = { ...prev };
+        Object.entries(scoreUpdates).forEach(([name, { won, net, stake }]) => {
+          if (next[name]) {
+            next[name] = {
+              wins: next[name].wins + (won ? 1 : 0),
+              total: next[name].total + 1,
+              streak: won ? next[name].streak + 1 : 0,
+              netWinnings: next[name].netWinnings + net,
+              amountWagered: next[name].amountWagered + stake,
+              biggestHit: Math.max(next[name].biggestHit, net > 0 ? net : 0),
+            };
+          }
+        });
+        onFriendScoresUpdate?.(next);
+        return next;
+      });
+    }
+
+    onPredictionResolved?.({
+      ballLabel: currentBall?.ballLabel || "",
+      predicted: currentBall?.selected || null,
+      stake: userStake,
+      grossPayout: userGrossPayout,
+      result: event.label,
+      resultType: event.result,
+      won: currentBall?.selected ? userWon : null,
+      net: currentBall?.selected ? userNet : 0,
+      expired: settlement.expired,
     });
 
     if (isLegal) {
@@ -502,14 +696,49 @@ const BanterStream = ({
         const team2 = team2Short || "MI";
         const team1Count = activeFriends.filter(f => f.team === team1).length + (userTeam === team1 ? 1 : 0);
         const team2Count = activeFriends.filter(f => f.team === team2).length + (userTeam === team2 ? 1 : 0);
+        const overNetEntries = Object.entries(overNetByPlayer.current).map(([name, info]) => ({ name, ...info }));
+        const biggestHit = overNetEntries.filter(entry => entry.net > 0).sort((a, b) => b.net - a.net)[0] || null;
+        const bravestMiss = overNetEntries.filter(entry => entry.net < 0).sort((a, b) => a.net - b.net)[0] || null;
+        const overNetWinner = overNetEntries.sort((a, b) => b.net - a.net)[0] || null;
+        const overNetChange = overNetEntries.reduce((sum, entry) => sum + entry.net, 0);
+
+        const standings = [
+          {
+            name: myPlayerName,
+            avatar: allPlayerStandings[0]?.avatar || "🏏",
+            wins: balls.filter((ball) => ball.selected && ball.result && checkPickWon(ball.selected, ball.result.type)).length + (currentBall?.selected && userWon ? 1 : 0),
+            total: totalUserPredictions,
+            accuracy: totalUserPredictions > 0
+              ? Math.round(((balls.filter((ball) => ball.selected && ball.result && checkPickWon(ball.selected, ball.result.type)).length + (currentBall?.selected && userWon ? 1 : 0)) / totalUserPredictions) * 100)
+              : 0,
+            streak: 0,
+            bestStreak: 0,
+            netWinnings: getCurrentUserNet() + userNet,
+            amountWagered: balls.reduce((sum, ball) => sum + (ball.selected && wagerMode && isCurrentUserWagerEligible ? roomStakeAmount : 0), 0),
+            team: userTeam,
+          },
+          ...activeFriends
+            .filter((friend) => !wagerMode || friend.isHuman)
+            .map((friend) => ({
+              name: friend.name,
+              avatar: friend.avatar,
+              wins: userScores[friend.name]?.wins || 0,
+              total: userScores[friend.name]?.total || 0,
+              accuracy: (userScores[friend.name]?.total || 0) > 0
+                ? Math.round(((userScores[friend.name]?.wins || 0) / (userScores[friend.name]?.total || 1)) * 100)
+                : 0,
+              streak: userScores[friend.name]?.streak || 0,
+              bestStreak: 0,
+              netWinnings: userScores[friend.name]?.netWinnings || 0,
+              amountWagered: userScores[friend.name]?.amountWagered || 0,
+              team: friend.team,
+            })),
+        ];
 
         const summaryData: OverSummaryData = {
           overNumber: overNum,
           overMvp: mvp,
-          standings: allPlayerStandings.map(s => ({
-            ...s,
-            team: s.name === "You" ? userTeam : activeFriends.find(f => f.name === s.name)?.team,
-          })),
+          standings,
           activePlayers,
           maxPlayers,
           roomId,
@@ -521,16 +750,25 @@ const BanterStream = ({
           overWickets: overWicketsRef.current,
           overBoundaries: overBoundariesRef.current,
           overExtras: overExtrasRef.current,
+          overNetChange,
           teamAllegiances: (team1Count + team2Count) >= 3 ? { team1, team1Count, team2, team2Count } : undefined,
+          biggestHit,
+          bravestMiss,
+          overNetWinner,
+          roomStakeTier,
         };
 
-        setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
-        onOverComplete?.(overNum, { ...overParticipation.current });
+        if (showInlineOverSummary) {
+          setOverSummaries(prev => [...prev, { afterBallId: ballId, data: summaryData }]);
+        }
+        onOverComplete?.(overNum, { ...overParticipation.current }, summaryData);
         isOverBreak.current = true;
+        pauseForOverRecapRef.current = wagerMode && overNum < maxOvers;
 
         legalBallsThisOver.current = 0;
         overFriendResults.current = {};
         overParticipation.current = {};
+        overNetByPlayer.current = {};
         overRunsRef.current = 0;
         overWicketsRef.current = 0;
         overBoundariesRef.current = 0;
@@ -655,14 +893,43 @@ const BanterStream = ({
       setWaitingForNext(false);
       isOverBreak.current = false;
       if (isHost) {
-        // After ball resolves, always auto-start next prediction window.
-        // In manual mode the "Throw Next Ball" button will appear after user picks.
+        if (pauseForOverRecapRef.current) {
+          return;
+        }
         startNewBallRef.current();
       }
       // Non-host: next ball triggered by snapshot watcher
     }, numMessages * 600 + waitTime);
-  }, [onNextBall, activeFriends, allPlayerStandings, scrollToBottom, onBallStateChange, match, balls, isHost]);
+  }, [
+    onNextBall,
+    activeFriends,
+    allPlayerStandings,
+    scrollToBottom,
+    onBallStateChange,
+    match,
+    balls,
+    isHost,
+    eligibleHumanNames,
+    wagerMode,
+    isCurrentUserWagerEligible,
+    myPlayerName,
+    userScores,
+    getCurrentUserNet,
+    totalUserPredictions,
+    onOverComplete,
+    roomStakeTier,
+    maxOvers,
+    showInlineOverSummary,
+  ]);
   resolveBallRef.current = resolveBall;
+
+  useEffect(() => {
+    if (!isHost) return;
+    if (!pauseForOverRecapRef.current) return;
+    pauseForOverRecapRef.current = false;
+    setWaitingForNext(false);
+    startNewBallRef.current();
+  }, [isHost, resumeOverRecapToken]);
 
   useEffect(() => {
     if (!isHost) return;
@@ -710,6 +977,8 @@ const BanterStream = ({
       selected: null,
       result: null,
       friendPicks: [],
+      actualNet: null,
+      expired: false,
     };
 
     setBalls(prev => [...prev.slice(-20), newBall]);
@@ -754,6 +1023,8 @@ const BanterStream = ({
   startNewBallRef.current = startNewBall;
 
   const handlePredict = useCallback((ballId: number, pick: string) => {
+    if (!canPredictCurrentBall) return;
+    onAiPick?.(ballId, pick, myPlayerName);
     setBalls(prev => prev.map(b =>
       b.id === ballId
         ? { ...b, selected: pick, predictionState: "locked" as PredictionState }
@@ -771,7 +1042,7 @@ const BanterStream = ({
       }
       // Non-host: resolution comes from snapshot
     }, 2000);
-  }, [isHost, resolveBall]);
+  }, [isHost, resolveBall, canPredictCurrentBall, onAiPick, myPlayerName]);
 
   const handleUserChat = useCallback((text: string) => {
     detectStyle(text);
@@ -915,12 +1186,21 @@ const BanterStream = ({
                     state={b.predictionState}
                     result={b.result}
                     selected={b.selected}
+                    roomStakeTier={roomStakeTier}
+                    roomStakeAmount={roomStakeAmount}
+                    wagerMode={wagerMode}
+                    eligibleParticipantNames={isCurrentUserWagerEligible ? [...eligibleHumanNames, "You"] : eligibleHumanNames}
+                    minimumWagerParticipants={minimumWagerParticipants}
                     friendPicks={b.friendPicks}
                     userScores={userScores}
                     onPredict={(pick) => handlePredict(b.id, pick)}
-                    isFirstPrediction={ballCountRef.current === 0}
                     totalUserPredictions={totalUserPredictions}
                     myTeamBatting={myTeamBatting}
+                    actualNet={b.actualNet}
+                    expired={b.expired}
+                    predictionDisabled={!canPredictCurrentBall}
+                    predictionDisabledReason={predictionDisabledReason}
+                    onInviteMore={onInvite}
                   />
                 );
               }

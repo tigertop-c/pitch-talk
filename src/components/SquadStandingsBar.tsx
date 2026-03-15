@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, ChevronDown, ChevronUp, UserPlus } from "lucide-react";
+import { formatRs } from "@/lib/wagers";
 
 export interface SquadEntry {
   name: string;
@@ -8,7 +9,11 @@ export interface SquadEntry {
   wins: number;
   total: number;
   streak: number;
+  netWinnings: number;
+  amountWagered: number;
   isYou?: boolean;
+  isHuman?: boolean;
+  status?: "watching" | "joining_next_ball" | "active";
 }
 
 interface SquadStandingsBarProps {
@@ -16,52 +21,70 @@ interface SquadStandingsBarProps {
   onOpenLeaderboard?: () => void;
   onInvite?: () => void;
   spotsLeft?: number;
+  showFinancials?: boolean;
 }
 
 const spring = { type: "spring" as const, damping: 25, stiffness: 350 };
+const rankEmojis = ["🥇", "🥈", "🥉"];
 
-const SquadStandingsBar = ({ entries, onOpenLeaderboard, onInvite, spotsLeft }: SquadStandingsBarProps) => {
+function getStatusLabel(status?: SquadEntry["status"]) {
+  if (status === "watching") return "Watching";
+  if (status === "joining_next_ball") return "Next ball";
+  return null;
+}
+
+const SquadStandingsBar = ({ entries, onOpenLeaderboard, onInvite, spotsLeft, showFinancials = true }: SquadStandingsBarProps) => {
   const [expanded, setExpanded] = useState(false);
 
-  // Sort by wins desc, then accuracy desc
   const sorted = [...entries].sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (showFinancials && b.netWinnings !== a.netWinnings) return b.netWinnings - a.netWinnings;
     const accA = a.total > 0 ? a.wins / a.total : 0;
     const accB = b.total > 0 ? b.wins / b.total : 0;
     return accB - accA;
   });
 
   const top3 = sorted.slice(0, 3);
-  const rankEmojis = ["🥇", "🥈", "🥉"];
 
   if (entries.length < 2) return null;
 
   return (
     <div className="border-b border-border bg-secondary/30">
-      {/* Compact bar */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-2 px-3 py-1.5 active:bg-secondary/50 transition-colors"
       >
         <Trophy size={12} className="text-primary flex-shrink-0" />
         <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          {top3.map((entry, i) => (
-            <div
-              key={entry.name}
-              className={`flex items-center gap-1 flex-shrink-0 text-[10px] ${
-                entry.isYou ? "font-bold text-primary" : "text-foreground"
-              }`}
-            >
-              <span className="text-[10px]">{rankEmojis[i]}</span>
-              <span className="font-semibold truncate max-w-[60px]">
-                {entry.isYou ? "You" : entry.name}
-              </span>
-              <span className="text-muted-foreground tabular-nums">{entry.wins}W</span>
-              {entry.streak > 0 && (
-                <span className="text-[9px] text-neon">🔥{entry.streak}</span>
-              )}
-            </div>
-          ))}
+          {top3.map((entry, i) => {
+            const accuracy = entry.total > 0 ? Math.round((entry.wins / entry.total) * 100) : 0;
+            const statusLabel = getStatusLabel(entry.status);
+            return (
+              <div
+                key={entry.name}
+                className={`flex items-center gap-1 flex-shrink-0 text-[10px] ${
+                  entry.isYou ? "font-bold text-primary" : "text-foreground"
+                }`}
+              >
+                <span className="text-[10px]">{rankEmojis[i]}</span>
+                <span className="font-semibold truncate max-w-[60px]">
+                  {entry.isYou ? "You" : entry.name}
+                </span>
+                {showFinancials ? (
+                  <span className={entry.netWinnings >= 0 ? "text-neon" : "text-destructive"}>
+                    {formatRs(entry.netWinnings)}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">{accuracy}%</span>
+                )}
+                {entry.streak > 0 && (
+                  <span className="text-[9px] text-neon">🔥{entry.streak}</span>
+                )}
+                {statusLabel && (
+                  <span className="text-[9px] text-muted-foreground">{statusLabel}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
         {onInvite && spotsLeft && spotsLeft > 0 && (
           <motion.button
@@ -80,7 +103,6 @@ const SquadStandingsBar = ({ entries, onOpenLeaderboard, onInvite, spotsLeft }: 
         )}
       </button>
 
-      {/* Expanded view */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -93,6 +115,7 @@ const SquadStandingsBar = ({ entries, onOpenLeaderboard, onInvite, spotsLeft }: 
             <div className="px-3 pb-2 space-y-1">
               {sorted.map((entry, i) => {
                 const accuracy = entry.total > 0 ? Math.round((entry.wins / entry.total) * 100) : 0;
+                const statusLabel = getStatusLabel(entry.status);
                 return (
                   <motion.div
                     key={entry.name}
@@ -112,10 +135,21 @@ const SquadStandingsBar = ({ entries, onOpenLeaderboard, onInvite, spotsLeft }: 
                     <span className={`font-semibold flex-1 truncate ${entry.isYou ? "text-primary" : "text-foreground"}`}>
                       {entry.isYou ? "You" : entry.name}
                     </span>
-                    <span className="text-muted-foreground tabular-nums">{entry.wins}/{entry.total}</span>
+                    {showFinancials ? (
+                      <span className={`tabular-nums ${entry.netWinnings >= 0 ? "text-neon" : "text-destructive"}`}>
+                        {formatRs(entry.netWinnings)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground tabular-nums">{accuracy}%</span>
+                    )}
                     <span className="text-muted-foreground tabular-nums w-8 text-right">{accuracy}%</span>
                     {entry.streak > 0 && (
                       <span className="text-[9px] text-neon font-semibold">🔥{entry.streak}</span>
+                    )}
+                    {statusLabel && (
+                      <span className="text-[9px] text-muted-foreground font-medium">
+                        {statusLabel}
+                      </span>
                     )}
                   </motion.div>
                 );

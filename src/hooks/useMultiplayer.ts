@@ -1,12 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AI_PLAYERS } from "@/lib/aiPlayers";
+import { AI_PLAYERS, isAiPlayer } from "@/lib/aiPlayers";
+import { getStakeForTier, parseSerializedPrediction, type WagerTier } from "@/lib/wagers";
 
 export interface MultiplayerPlayer {
   id: string;
   name: string;
   avatar: string;
   isHost: boolean;
+  isHuman: boolean;
   wins: number;
   total: number;
   streak: number;
@@ -34,12 +36,19 @@ export interface GameSnapshot {
   phase: "lobby" | "pregame" | "game";
   ball: GameSnapshotBall | null;
   match: GameSnapshotMatch;
+  wagerMode?: boolean | null;
+  humanPlayerCount?: number | null;
+  roomStakeTier?: WagerTier | null;
+  roomStakeAmount?: number | null;
+  playerEligibilityAfterBallId?: Record<string, number | null> | null;
 }
 
 export interface RoomPrediction {
   player_name: string;
   ball_id: number;
   prediction: string;
+  outcomeType?: string;
+  stake?: number;
 }
 
 export function useMultiplayer() {
@@ -56,6 +65,15 @@ export function useMultiplayer() {
   const [isReconnecting, setIsReconnecting] = useState(false);
 
   const channelsRef = useRef<any[]>([]);
+
+  const parseRoomPrediction = useCallback((prediction: { player_name: string; ball_id: number; prediction: string }): RoomPrediction => {
+    const pick = parseSerializedPrediction(prediction.prediction);
+    return {
+      player_name: prediction.player_name,
+      ball_id: prediction.ball_id,
+      prediction: pick,
+    };
+  }, []);
 
   // Initialize persistent User ID for room ownership
   useEffect(() => {
@@ -84,6 +102,7 @@ export function useMultiplayer() {
         name: p.player_name,
         avatar: p.avatar,
         isHost: p.is_host,
+        isHuman: !isAiPlayer(p.player_name),
         wins: p.wins,
         total: p.total_predictions,
         streak: p.streak,
@@ -124,13 +143,13 @@ export function useMultiplayer() {
         setCurrentPredictions(prev => {
           const existing = prev.find(p => p.player_name === pred.player_name && p.ball_id === pred.ball_id);
           if (existing) return prev;
-          return [...prev, { player_name: pred.player_name, ball_id: pred.ball_id, prediction: pred.prediction }];
+          return [...prev, parseRoomPrediction({ player_name: pred.player_name, ball_id: pred.ball_id, prediction: pred.prediction })];
         });
       })
       .subscribe();
 
     channelsRef.current = [roomCh, playerCh, predCh];
-  }, [cleanup, fetchPlayers]);
+  }, [cleanup, fetchPlayers, parseRoomPrediction]);
 
   const createRoom = useCallback(async (name: string, avatar: string, match?: any): Promise<string> => {
     setIsLoading(true);
@@ -141,6 +160,11 @@ export function useMultiplayer() {
         phase: "lobby",
         ball: null,
         match: { runs: 0, wickets: 0, overs: 0, balls: 0, currentBowler: "Bumrah", target: 185 },
+        wagerMode: false,
+        humanPlayerCount: 1,
+        roomStakeTier: "small",
+        roomStakeAmount: getStakeForTier("small"),
+        playerEligibilityAfterBallId: {},
       };
 
       // Single Active Room Policy: Delete any previous rooms hosted by this user
@@ -237,7 +261,20 @@ export function useMultiplayer() {
       setRoomId(roomCode);
       setIsHost(false);
       if (room.game_snapshot) {
-        setGameSnapshot(room.game_snapshot as unknown as GameSnapshot);
+        const currentSnapshot = room.game_snapshot as unknown as GameSnapshot;
+        const currentHumanCount = currentSnapshot.humanPlayerCount ?? 1;
+        const nextHumanCount = currentHumanCount + 1;
+        const nextSnapshot: GameSnapshot = {
+          ...currentSnapshot,
+          humanPlayerCount: nextHumanCount,
+          wagerMode: currentSnapshot.phase === "game" ? currentSnapshot.wagerMode ?? false : nextHumanCount >= 2,
+          playerEligibilityAfterBallId: {
+            ...(currentSnapshot.playerEligibilityAfterBallId || {}),
+            [playerData.id]: currentSnapshot.phase === "game" ? currentSnapshot.ball?.id ?? null : null,
+          },
+        };
+        setGameSnapshot(nextSnapshot);
+        await supabase.from("rooms").update({ game_snapshot: nextSnapshot as any }).eq("id", roomCode);
       }
       localStorage.setItem("pitchtalk_room_id", roomCode);
       localStorage.setItem("pitchtalk_participant_id", playerData.id);
@@ -258,6 +295,24 @@ export function useMultiplayer() {
     setGameSnapshot(snapshot);
     await supabase.from("rooms").update({ game_snapshot: snapshot as any }).eq("id", roomId);
   }, [roomId]);
+
+  const setRoomStake = useCallback(async (tier: WagerTier) => {
+    if (!roomId) return;
+    const nextSnapshot: GameSnapshot = {
+      ...(gameSnapshot || {
+        phase: "pregame",
+        ball: null,
+        match: { runs: 0, wickets: 0, overs: 0, balls: 0, currentBowler: "Bumrah", target: 185 },
+        wagerMode: false,
+        humanPlayerCount: players.filter((player) => player.isHuman).length || 1,
+        playerEligibilityAfterBallId: {},
+      }),
+      roomStakeTier: tier,
+      roomStakeAmount: getStakeForTier(tier),
+    };
+    setGameSnapshot(nextSnapshot);
+    await supabase.from("rooms").update({ game_snapshot: nextSnapshot as any }).eq("id", roomId);
+  }, [gameSnapshot, roomId, players]);
 
   const submitPick = useCallback(async (ballId: number, pick: string, playerName: string) => {
     if (!roomId) return;
@@ -284,13 +339,22 @@ export function useMultiplayer() {
   const startGame = useCallback(async () => {
     if (!roomId || !isHost) return;
     await supabase.from("rooms").update({ status: "active" }).eq("id", roomId);
+    const humanPlayerCount = players.filter((player) => player.isHuman).length;
     const snap: GameSnapshot = {
       phase: "game",
       ball: null,
       match: gameSnapshot?.match || { runs: 0, wickets: 0, overs: 0, balls: 0, currentBowler: "Bumrah", target: 185 },
+      wagerMode: humanPlayerCount >= 2,
+      humanPlayerCount,
+      roomStakeTier: gameSnapshot?.roomStakeTier || "small",
+      roomStakeAmount: gameSnapshot?.roomStakeAmount || getStakeForTier("small"),
+      playerEligibilityAfterBallId: {
+        ...(gameSnapshot?.playerEligibilityAfterBallId || {}),
+        ...(myId ? { [myId]: null } : {}),
+      },
     };
     await updateGameSnapshot(snap);
-  }, [roomId, isHost, gameSnapshot, updateGameSnapshot]);
+  }, [roomId, isHost, gameSnapshot, updateGameSnapshot, players, myId]);
 
   const fetchPredictionsForBall = useCallback(async (ballId: number) => {
     if (!roomId) return [];
@@ -300,11 +364,12 @@ export function useMultiplayer() {
       .eq("room_id", roomId)
       .eq("ball_id", ballId);
     if (data) {
-      setCurrentPredictions(data);
-      return data;
+      const parsedPredictions = data.map(parseRoomPrediction);
+      setCurrentPredictions(parsedPredictions);
+      return parsedPredictions;
     }
     return [];
-  }, [roomId]);
+  }, [roomId, parseRoomPrediction]);
 
   const removeAIPlayers = useCallback(async () => {
     if (!roomId || !isHost) return;
@@ -391,7 +456,7 @@ export function useMultiplayer() {
   return {
     myId, myName, roomId, isHost, players, gameSnapshot,
     currentPredictions, isLoading, error, isReconnecting,
-    createRoom, joinRoom, updateGameSnapshot, submitPick,
+    createRoom, joinRoom, updateGameSnapshot, setRoomStake, submitPick,
     updateMyScore, updateMyTeam, startGame, fetchPredictionsForBall,
     setError, removeAIPlayers, reconnect, leaveRoom,
   };
